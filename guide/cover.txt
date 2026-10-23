@@ -1,0 +1,3 @@
+title: Your Kindle apps
+subtitle: Apps, Home Assistant, To Do, Notes, Crosswords, Wikipedia, Syncthing, SSH and the Web server for KOReader
+footer: A user guide

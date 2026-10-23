@@ -1,0 +1,12 @@
+# The guide's chapters, in order.
+intro.md
+apps.md
+homeassistant.md
+todo.md
+notes.md
+crosswords.md
+wikipedia.md
+syncthing.md
+ssh.md
+webserver.md
+credits.md
