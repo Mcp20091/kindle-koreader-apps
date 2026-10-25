@@ -114,10 +114,10 @@ Tap a clue's number (in the clue list) with the pen or a finger, and its squares
 
 Tap a number in the grid, and the clues that start in that square are outlined: the Across one and the Down one.
 
-- If one of those clues is on another clue page, it's pinned in a card just above where you tapped (below, if there's no room above), just as wide as the clue needs.
-  - Its tick box ticks the clue off, just as the box in the clue list does.
+- The clues are pinned in a card just above where you tapped (below, if there's no room above), just as wide as the clue needs.
+  - Its tick box ticks the clue off, just as the box in the clue list does. Once every clue on the card is ticked, the card closes, and **Undo** at the bottom unticks the last one and brings the card back (for 3 seconds; **Crossword settings > Undo after a tick** sets how long, or Off).
   - Drag the card out of the way with the pen or a finger. When you let go, the screen is cleaned up where it moved.
-  - To get the card for every clue, including ones on the same page (still outlined in the list too), set **Crossword settings > Clue card** to **Every clue**.
+  - To get the card only for clues on another clue page (the ones on the same page are just outlined in the list), set **Crossword settings > Clue card** to **Clues on other pages**.
   - Tap its **X** to close it. Otherwise it stays while you work.
 - The outline goes away with your next pen stroke, or a finger tap anywhere else.
 - The tap doesn't leave a dot.
@@ -309,7 +309,7 @@ Crosswords has its own settings, full screen like the other apps' settings: tap 
 - **DISPLAY**
   - **Clue size**: **Normal** or **Large**. Large clues that don't fit carry on to more clue pages; the grid stays put.
   - **Clue boxes**: the tick box before each clue. **On** to start with.
-  - **Clue card**: when you tap a number in the grid, a card for **Clues on other pages** only (to start with) or for **Every clue**.
+  - **Clue card**: when you tap a number in the grid, a card for **Every clue** (to start with) or for **Clues on other pages** only.
   - **Toolbar side**: **Left** or **Right**.
   - **Toolbar buttons**: which of the **⋯** menu's items go on the toolbar (see "Your toolbar buttons").
 - **SOLVING**

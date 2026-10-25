@@ -1270,10 +1270,10 @@ function Notes:crosswordTap(ed, sx, sy)
     local function screen(r)
         return { math.floor(ox + r[1] * z), math.floor(oy + r[2] * z), math.ceil(r[3] * z), math.ceil(r[4] * z) }
     end
-    -- The card: clues on another page (Crossword settings > Clue card: every
-    -- clue, those on this page too, still outlined in the list), each with
+    -- The card: every clue (Crossword settings > Clue card: only clues on
+    -- another page, those on this page just outlined in the list), each with
     -- its tick box when the clues have them.
-    local every = Settings.get("crossword_card") == "all"
+    local every = Settings.get("crossword_card") ~= "other"
     local ticks = Settings.get("crossword_boxes") ~= false
     local boxes, rows = {}, {}
     for __, e in ipairs(entries) do
@@ -1725,14 +1725,25 @@ function Notes:crosswordSettings(changed, rowsOnly)
             Settings.set("crossword_boxes", Settings.get("crossword_boxes") == false)
             relay = true
         end)
-        local card = Settings.get("crossword_card") == "all"
+        local card = Settings.get("crossword_card") ~= "other"
         pick(_("Clue card"), card and _("Every clue") or _("Clues on other pages"), function()
             Settings.choose(_("Clue card\nWhat a number tapped in the grid shows in a card."),
                 { { "other", _("Clues on other pages") }, { "all", _("Every clue") } }, card and "all" or "other", function(v)
                     if v == nil then return end
-                    Settings.set("crossword_card", v == "all" and "all" or nil)
+                    Settings.set("crossword_card", v == "other" and "other" or nil)
                     done()
                 end)
+        end)
+        local undo = tostring(tonumber(Settings.get("crossword_undo")) or 3)
+        local UNDO = { { "0", _("Off") }, { "2", _("2 seconds") }, { "3", _("3 seconds") }, { "5", _("5 seconds") }, { "8", _("8 seconds") } }
+        local undoName = undo
+        for __, o in ipairs(UNDO) do if o[1] == undo then undoName = o[2] end end
+        pick(_("Undo after a tick"), undoName, function()
+            Settings.choose(_("Undo after a tick\nHow long Undo shows after ticking a clue on its card."), UNDO, undo, function(v)
+                if v == nil then return end
+                Settings.set("crossword_undo", v ~= "3" and v or nil)
+                done()
+            end)
         end)
         local right = Settings.get("side") == "right"
         pick(_("Toolbar side"), right and _("Right") or _("Left"), function()

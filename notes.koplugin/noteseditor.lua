@@ -3196,7 +3196,7 @@ function Editor:paintClueCard(bb)
     if copyAt then self:hit(copyAt[1], copyAt[2], copyAt[3], copyAt[4], function() self:copyClueCard() end) end
     for __, t in ipairs(boxes) do
         local m = ui:u(8)
-        self:hit(t[1] - m, t[2] - m, t[3] + 2 * m, t[3] + 2 * m, function() self:tickFromCard(t[4]) end)
+        self:hit(t[1] - m, t[2] - m, t[3] + 2 * m, t[3] + 2 * m, function() self:tickOnCard(t[4]) end)
     end
 end
 
@@ -3221,6 +3221,35 @@ function Editor:tickFromCard(id)
     if self.clueCard then self:repaint(self:padded(self:clueCardRect(), self.ui:u(4))) end
 end
 
+-- A tick box on the card tapped: the clue ticked (or not). Once every clue on
+-- it is ticked, the card goes, with Undo (the apps' undo bar) to untick the
+-- last one and bring the card back.
+function Editor:tickOnCard(id)
+    local card = self.clueCard
+    self:tickFromCard(id)
+    local ticks = self:clueTicks()
+    if not (card and ticks[id]) then return end
+    for __, r in ipairs(card.rows) do
+        if r.id and not ticks[r.id] then return end
+    end
+    local rows, near, copy, x, y = card.rows, card.near, card.copy, card.x, card.y
+    local area = self:padded(self:clueCardRect(), self.ui:u(6))
+    self:freeClueCard()
+    self:repaint(area, "full")
+    -- (how long Undo shows: Crossword settings > Undo after a tick; 0 is none)
+    local secs = tonumber(Settings.get("crossword_undo")) or 3
+    local PS = require("pluginshare")
+    local okp, bar = pcall(function() return PS.popup and PS.popup.undo end)
+    if okp and bar and secs > 0 then
+        bar(_("Clue ticked"), function()
+            self:tickFromCard(id)
+            self:pinClue(rows, near, copy)
+            if self.clueCard and not near then self.clueCard.x, self.clueCard.y = x, y end
+            self:repaint()
+        end, secs)
+    end
+end
+
 -- A tap on the card (pen or finger): its tick boxes. True when it was on the card.
 function Editor:clueCardTap(x, y)
     local c = self.clueCard
@@ -3233,7 +3262,7 @@ function Editor:clueCardTap(x, y)
     end
     for __, t in ipairs(boxes) do
         if x >= t[1] - m and x < t[1] + t[3] + m and y >= t[2] - m and y < t[2] + t[3] + m then
-            self:tickFromCard(t[4])
+            self:tickOnCard(t[4])
             return true
         end
     end

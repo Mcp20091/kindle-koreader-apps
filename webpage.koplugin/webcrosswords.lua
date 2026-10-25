@@ -17,7 +17,7 @@ end
 
 local SOURCES = { guardian = true, usa = true, universal = true, wapo = true, tny = true }
 local KINDS = { quick = true, cryptic = true, quiptic = true, prize = true }
-local SETTINGS = { crossword_today = "string", crossword_clues = "string", crossword_boxes = "boolean", crossword_find = "boolean", crossword_card = "string", crossword_timer = "boolean",
+local SETTINGS = { crossword_today = "string", crossword_clues = "string", crossword_boxes = "boolean", crossword_find = "boolean", crossword_card = "string", crossword_undo = "string", crossword_timer = "boolean",
     crossword_finished = "string", crossword_auto = "table" }
 
 -- A puzzle's key from the browser: "quick/17616", "usa/20261021", "imp/2026102112000001".
