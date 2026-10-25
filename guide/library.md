@@ -133,6 +133,27 @@ Delete is at once, with **Undo** at the bottom for a few seconds. Undo puts ever
 
 ![Rename](img/library/rename.png)
 
+## Servers and catalogs
+
+**Folders** starts with **SERVERS AND CATALOGS** (Home has it too, under Folders): your FTP and WebDAV servers (a NAS, a computer) and **Catalogs**, the online OPDS catalogs. Standard Ebooks, Project Gutenberg, Feedbooks, ManyBooks, Internet Archive and OAPEN are there to start with. They're the same lists as KOReader's own Cloud storage and OPDS catalog.
+
+- **Add a server**: Type (FTP or WebDAV), Name, Address, Port, User, Password and Starting folder. **Test** says what it found; **Save** keeps it. Hold a server for **Edit** and **Delete**.
+- **Tap a book** on a server or in a catalog to download it to the download folder and open it. **On this Kindle** means it's already there. **Hold** it for **Download**, **Copy to…** (another folder), and in a catalog **Download as…** (another format) and **About this book**. **Select** on a server downloads several books at once.
+- **Copy to…** and **Move to…** on the Kindle list the servers at the top of the Home folder, so books can go onto a server too (Move deletes them here, with Undo).
+- In a catalog: its sections, **Load more** at the end of a long list, and the magnifier to search it. **+** in Catalogs adds one (a Calibre server, for example).
+- **Library settings > Download folder**: where downloads go (Downloads in the Home folder to start with).
+- On the web page: **Files > Servers and catalogs** has the same lists, with Test, and the download folder.
+
+FTP is plain FTP (no FTPS or SFTP), and there's no SMB.
+
+![Servers and catalogs in Folders](img/library/servers.png)
+
+![A server's folder](img/library/server-folder.png)
+
+![A catalog](img/library/catalog.png)
+
+![Add a server](img/library/server-add.png)
+
 ## Search
 
 The magnifier searches titles, authors, series and file names (books), authors, collections, and other files and folders by name. Tap a result to open it.

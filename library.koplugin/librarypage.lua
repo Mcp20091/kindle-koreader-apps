@@ -6,7 +6,7 @@ status line at the foot.
 
 Items (each optional field as it says):
   { band = "READING", right = "3", tap, hold, menu }    a grey heading (menu: a ⋮ for what the group can do)
-  { text, sub, icon, right, chevron, tap, hold, tick }   a row (tick: true/false in Select)
+  { text, sub, icon, right, right2, chevron, tap, hold, tick }   a row (tick: true/false in Select; right2 under right)
   { book = b, sub, right, bar, tap, hold, tick }         a book: a small cover, its title and a second line
   { covers = { b, ... }, sub = fn(b), bar = fn(b), tap = fn(b), hold = fn(b), ticks = { [path] = true } | nil }
   { chips = { { text, on, fn } } }                       the views across the top
@@ -131,7 +131,12 @@ function draw.row(page, c, F, it)
         local color = it.enabled == false and C.MID or C.BLACK
         if it.sub and it.sub ~= "" then
             c:text(x, y + 20, it.text or "", 12.5, { maxw = rx - x - rw - 6, color = color, bold = it.bold })
-            c:text(x, y + 37, it.sub, 10, { maxw = rx - x - 6, color = C.GREY })
+            local r2 = 0
+            if it.right2 then
+                r2 = math.min(c:width(it.right2, 10) + 10, 160)
+                c:text(rx, y + 37, it.right2, 10, { align = "end", color = C.GREY, maxw = 150 })
+            end
+            c:text(x, y + 37, it.sub, 10, { maxw = rx - x - r2 - 6, color = C.GREY })
         else
             c:text(x, y + 24, it.text or "", 12.5, { maxw = rx - x - rw - 6, color = color, bold = it.bold })
         end
@@ -499,6 +504,7 @@ end
 function Page:render()
     if self.canvas then self.canvas:release() end
     local c = Canvas.new(self.w, self.h, false)
+    c.turn = function(d) self:turn(d) end
     self.canvas = c
     if self.build then self.build(self) end
     local foot = (self.status and 30 or 0) + (self.buttons and #self.buttons > 0 and 80 or 0)

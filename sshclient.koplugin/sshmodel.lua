@@ -1041,4 +1041,39 @@ function M.act(data, name, args)
     return nil, "Unknown action."
 end
 
+-- ------------------------------------------------------------------ PIN
+
+--- A host's PIN as kept (a salted SHA-256, never the digits).
+function M.pinHash(host, pin)
+    local text = "sshclient-pin:" .. tostring(host.id) .. ":" .. tostring(pin)
+    local ok, sha2 = pcall(require, "ffi/sha2")
+    if ok and sha2 and sha2.sha256 then return "s2:" .. sha2.sha256(text) end
+    local okm, md5 = pcall(require, "ffi/MD5")
+    if okm and md5 then return "m5:" .. md5.sum(text) end
+    -- (outside KOReader, as in the tests: a plain string hash)
+    local h = 5381
+    for i = 1, #text do h = (h * 33 + text:byte(i)) % 4294967296 end
+    return string.format("dj:%08x", h)
+end
+
+--- A PIN of 4 to 8 digits.
+function M.pinOk(pin) return tostring(pin or ""):match("^%d%d%d%d%d?%d?%d?%d?$") ~= nil end
+
+--- Whether a host needs its PIN now: it has one and wasn't opened with it in
+-- the last 5 minutes (opened = M.unlocked[id], set by M.unlock).
+M.unlocked = {}
+M.PIN_KEEP = 5 * 60
+function M.needsPin(host, now)
+    if not (host and host.pin) then return false end
+    local at = M.unlocked[host.id]
+    return not (at and (now or os.time()) - at < M.PIN_KEEP)
+end
+function M.unlock(host, pin, now)
+    if host.pin and M.pinHash(host, pin) == host.pin then
+        M.unlocked[host.id] = now or os.time()
+        return true
+    end
+    return false
+end
+
 return M

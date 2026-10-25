@@ -421,12 +421,54 @@ local function appMenu(plugin, host, a)
     KO.list(a.name, {
         { text = _("Start"), enabled = not up, fn = function() Screens.runCommand(plugin, host, S.truenasApp(a.name, "start")) end },
         { text = _("Stop"), enabled = up, fn = function() Screens.runCommand(plugin, host, S.truenasApp(a.name, "stop"), { ask = true, name = T(_("Stop %1"), a.name) }) end },
+        { text = _("Update"), enabled = a.upgrade == true, fn = function()
+            Screens.runCommand(plugin, host, S.truenasApp(a.name, "upgrade"), { ask = true, name = T(_("Update %1"), a.name) })
+        end },
+        -- (a newer image of the same version: redeploying pulls it)
+        { text = _("Get the newer image"), enabled = a.images == true and not a.upgrade, fn = function()
+            Screens.runCommand(plugin, host, S.truenasApp(a.name, "redeploy"), { ask = true, name = T(_("Redeploy %1"), a.name) })
+        end },
         { text = _("Redeploy"), fn = function() Screens.runCommand(plugin, host, S.truenasApp(a.name, "redeploy"), { ask = true, name = T(_("Redeploy %1"), a.name) }) end },
+        { text = _("Open a shell"), enabled = up, fn = function() UI().session(plugin, host, S.truenasShell("app", a.name)) end },
+        { text = _("Logs"), fn = function() Screens.runCommand(plugin, host, S.truenasAppLogs(a.name)) end },
     })
 end
 
+local function tnGuestMenu(plugin, host, g)
+    local up = g.state == "running"
+    local function go(action, ask)
+        Screens.runCommand(plugin, host, S.truenasGuest(g.kind, g.id, action), { ask = ask, name = T("%1: %2", g.name, action) })
+    end
+    local items = {
+        { text = _("Start"), enabled = not up, fn = function() go("start") end },
+        { text = _("Stop"), enabled = up, fn = function() go("stop", true) end },
+        { text = _("Restart"), enabled = up, fn = function() go("restart", true) end },
+    }
+    if g.kind == "ct" then
+        items[#items + 1] = { text = _("Open a shell"), enabled = up, fn = function() UI().session(plugin, host, S.truenasShell("ct", g.id)) end }
+    end
+    KO.list(g.name, items)
+end
+
+local function tnGuestRow(plugin, host, g)
+    local sub = { g.kind == "ct" and _("Container") or _("VM") }
+    if g.cpus then sub[#sub + 1] = g.cpus == 1 and _("1 CPU") or T(_("%1 CPUs"), g.cpus) end
+    if g.memory then sub[#sub + 1] = T(_("RAM %1"), S.size(g.memory * 1024)) end
+    return { text = g.name, sub = table.concat(sub, " · "), icon = g.kind == "ct" and "box" or "monitor", right = upText(g.state),
+        callback = function() tnGuestMenu(plugin, host, g) end, hold_callback = function() tnGuestMenu(plugin, host, g) end }
+end
+
+local function alertRow(a)
+    local lvl = tostring(a.level):upper()
+    local bad = lvl == "CRITICAL" or lvl == "ERROR" or lvl == "ALERT" or lvl == "EMERGENCY" or lvl == "WARNING"
+    return { text = a.text, icon = bad and "triangle-alert" or "info", right = lvl:sub(1, 1) .. lvl:sub(2):lower() }
+end
+
 local function appRow(plugin, host, a)
-    return { text = a.name, icon = "package", right = upText(a.state),
+    local sub = a.version ~= "" and a.version or nil
+    if a.upgrade then sub = (sub and (sub .. " · ") or "") .. _("Update available")
+    elseif a.images then sub = (sub and (sub .. " · ") or "") .. _("Newer image available") end
+    return { text = a.name, sub = sub, icon = a.upgrade and "circle-arrow-up" or "package", right = upText(a.state),
         callback = function() appMenu(plugin, host, a) end, hold_callback = function() appMenu(plugin, host, a) end }
 end
 
@@ -460,13 +502,46 @@ local function guestMenu(plugin, host, g)
         { text = _("Back up now"), fn = function()
             Screens.runCommand(plugin, host, S.proxmoxBackup(g.id), { ask = true, name = T(_("Back up %1 now"), label) })
         end },
+        { text = g.kind == "lxc" and _("Open a shell") or _("Open its console"), enabled = up, fn = function()
+            if g.kind == "lxc" then return UI().session(plugin, host, S.proxmoxShell(g.kind, g.id)) end
+            KO.confirm{ title = T(_("Console of %1"), label), ok = _("Open"),
+                text = _("A VM's console needs a serial port set up in the VM (serial0 in its hardware, and a console on ttyS0 inside). Ctrl+O leaves it."),
+                onOk = function() UI().session(plugin, host, S.proxmoxShell(g.kind, g.id)) end }
+        end },
+        { text = _("Run a command in it"), enabled = up, fn = function()
+            UI().runDialogText(plugin, host, T(_("Run in %1"), label), "", function(cmd)
+                Run().command(plugin, host, S.proxmoxExec(g.kind, g.id, cmd))
+            end)
+        end },
+        { text = _("Memory"), fn = function()
+            UI().ask(T(_("Memory of %1 (MB)"), label), g.maxmem and tostring(math.floor(g.maxmem / 1024 + 0.5)) or "", function(mb)
+                local cmd = S.proxmoxSet(g.kind, g.id, mb, nil)
+                if not cmd then return KO.toast(_("Type the memory in MB, such as 2048."), 3) end
+                Screens.runCommand(plugin, host, cmd, { ask = true, name = T(_("Set %1's memory to %2 MB"), label, mb) })
+            end, { number = true, ok = _("Set") })
+        end },
+        { text = _("CPU cores"), fn = function()
+            UI().ask(T(_("CPU cores of %1"), label), g.cpus and tostring(g.cpus) or "", function(n)
+                local cmd = S.proxmoxSet(g.kind, g.id, nil, n)
+                if not cmd then return KO.toast(_("Type a number of cores, such as 2."), 3) end
+                Screens.runCommand(plugin, host, cmd, { ask = true, name = T(_("Set %1's CPU cores to %2"), label, n) })
+            end, { number = true, ok = _("Set") })
+        end },
         { text = _("Status"), fn = function() Run().command(plugin, host, S.proxmoxGuest(g.kind, g.id, "status")) end },
         { text = _("Its settings"), fn = function() Run().command(plugin, host, S.proxmoxGuest(g.kind, g.id, "config")) end },
     })
 end
 
 local function guestRow(plugin, host, g)
-    return { text = T("%1 %2", g.id, g.name), sub = g.kind == "lxc" and _("Container") or _("VM"),
+    local sub = { g.kind == "lxc" and _("Container") or _("VM") }
+    if g.status == "running" and g.cpu then sub[#sub + 1] = T(_("CPU %1 %"), g.cpu) .. (g.cpus and (" " .. T(_("of %1"), g.cpus)) or "") end
+    if g.maxmem and g.maxmem > 0 then
+        sub[#sub + 1] = g.status == "running" and g.mem and T(_("RAM %1 / %2"), S.size(g.mem), S.size(g.maxmem)) or T(_("RAM %1"), S.size(g.maxmem))
+    end
+    if g.maxdisk and g.maxdisk > 0 then
+        sub[#sub + 1] = (g.disk and g.disk > 0) and T(_("Disk %1 / %2"), S.size(g.disk), S.size(g.maxdisk)) or T(_("Disk %1"), S.size(g.maxdisk))
+    end
+    return { text = T("%1 %2", g.id, g.name), sub = table.concat(sub, " · "),
         icon = g.kind == "lxc" and "box" or "monitor", right = upText(g.status),
         callback = function() guestMenu(plugin, host, g) end, hold_callback = function() guestMenu(plugin, host, g) end }
 end
@@ -606,8 +681,16 @@ function Screens.hostItems(plugin, host)
             t[#t + 1] = { band = _("TRUENAS"), right = _("needs sudo"), callback = open }
             t[#t + 1] = { note = _("TrueNAS's apps, shares and rsync tasks need sudo without a password here (or sign in as root), so they can be read.") }
         else
-            t[#t + 1] = { band = _("APPS"), right = T(_("%1 of %2 running"), S.upCount(tn.apps), #tn.apps), callback = open }
+            if tn.alerts and #tn.alerts > 0 then
+                t[#t + 1] = { band = _("ALERTS"), right = tostring(#tn.alerts), callback = open }
+                some(t, tn.alerts, alertRow, open, 2)
+            end
+            t[#t + 1] = { band = _("APPS"), right = T(_("%1 of %2 running"), S.upCount(tn.apps), #tn.apps) .. ((tn.updates or 0) > 0 and (" · " .. (tn.updates == 1 and _("1 update") or T(_("%1 updates"), tn.updates))) or ""), callback = open }
             some(t, tn.apps, function(a) return appRow(plugin, host, a) end, open)
+            if tn.guests and #tn.guests > 0 then
+                t[#t + 1] = { band = _("VMS AND CONTAINERS"), right = T(_("%1 of %2 running"), S.upCount(tn.guests), #tn.guests), callback = open }
+                some(t, tn.guests, function(g) return tnGuestRow(plugin, host, g) end, open)
+            end
             t[#t + 1] = { band = _("SMB SHARES"), right = tostring(#tn.shares), callback = open }
             some(t, tn.shares, shareRow, open)
             t[#t + 1] = { band = _("RSYNC TASKS"), right = tostring(#tn.rsync), callback = open }
@@ -1157,8 +1240,16 @@ function Screens.truenas(plugin, host)
         local tn = vals(host) and vals(host).truenas
         if not tn then return { { message = _("TrueNAS wasn't found on this host.") } } end
         if tn.denied then return { { message = _("TrueNAS's apps, shares and rsync tasks need sudo without a password here (or sign in as root).") } } end
-        t[#t + 1] = { band = _("APPS"), right = T(_("%1 of %2 running"), S.upCount(tn.apps), #tn.apps) }
+        if tn.alerts and #tn.alerts > 0 then
+            t[#t + 1] = { band = _("ALERTS"), right = tostring(#tn.alerts) }
+            for __, a in ipairs(tn.alerts) do t[#t + 1] = alertRow(a) end
+        end
+        t[#t + 1] = { band = _("APPS"), right = T(_("%1 of %2 running"), S.upCount(tn.apps), #tn.apps) .. ((tn.updates or 0) > 0 and (" · " .. (tn.updates == 1 and _("1 update") or T(_("%1 updates"), tn.updates))) or "") }
         for __, a in ipairs(tn.apps) do t[#t + 1] = appRow(plugin, host, a) end
+        if tn.guests and #tn.guests > 0 then
+            t[#t + 1] = { band = _("VMS AND CONTAINERS"), right = T(_("%1 of %2 running"), S.upCount(tn.guests), #tn.guests) }
+            for __, g in ipairs(tn.guests) do t[#t + 1] = tnGuestRow(plugin, host, g) end
+        end
         t[#t + 1] = { band = _("SMB SHARES"), right = tostring(#tn.shares) }
         for __, x in ipairs(tn.shares) do t[#t + 1] = shareRow(x) end
         t[#t + 1] = { band = _("RSYNC TASKS"), right = tostring(#tn.rsync) }

@@ -1208,6 +1208,7 @@ function View:render()
     if self.canvas then self.canvas:release() end
     self.dithered = nil
     local c = Canvas.new(self.w, self.h, false)
+    c.turn = function(d) self:turn(d) end
     self.canvas = c
     self.renderedAt = os.time()
     if self.mode == "arrange" then self:drawArrange(c)

@@ -165,19 +165,22 @@ fi
 if command -v midclt >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
 M=midclt; [ "$(id -u)" != 0 ] && M="sudo -n midclt"
 if out=$($M call app.query 2>/dev/null); then echo nas_ok=1
-echo "$out" | python3 -c 'import json,sys;[print("app="+str(a.get("name",""))+"|"+str(a.get("state",""))) for a in json.load(sys.stdin)]' 2>/dev/null
+echo "$out" | python3 -c 'import json,sys;[print("app="+str(a.get("name",""))+"|"+str(a.get("state",""))+"|"+("1" if a.get("upgrade_available") else "")+"|"+("1" if a.get("image_updates_available") else "")+"|"+str(a.get("human_version") or a.get("version") or "")) for a in json.load(sys.stdin)]' 2>/dev/null
 $M call sharing.smb.query 2>/dev/null | python3 -c 'import json,sys;[print("share="+str(x.get("name",""))+"|"+str(x.get("path",""))+"|"+("on" if x.get("enabled",True) else "off")) for x in json.load(sys.stdin)]' 2>/dev/null
 $M call rsynctask.query 2>/dev/null | python3 -c 'import json,sys
 def sc(t):
   c=t.get("schedule") or {}
   return " ".join(str(c.get(k,"*")) for k in ("minute","hour","dom","month","dow"))
 [print("rsync="+str(t.get("id"))+"|"+str(t.get("path",""))+"|"+str(t.get("remotehost","") or "")+"|"+("on" if t.get("enabled",True) else "off")+"|"+sc(t)+"|"+str(((t.get("job") or {}).get("state")) or "")) for t in json.load(sys.stdin)]' 2>/dev/null
+$M call vm.query 2>/dev/null | python3 -c 'import json,sys;[print("tvm=vm|"+str(v.get("id"))+"|"+str(v.get("name",""))+"|"+str((v.get("status") or {}).get("state",""))+"|"+str((v.get("vcpus") or 1)*(v.get("cores") or 1)*(v.get("threads") or 1))+"|"+str(v.get("memory") or "")) for v in json.load(sys.stdin)]' 2>/dev/null
+$M call virt.instance.query 2>/dev/null | python3 -c 'import json,sys;[print("tvm="+("ct" if str(v.get("type","")).upper()=="CONTAINER" else "ivm")+"|"+str(v.get("id") or v.get("name",""))+"|"+str(v.get("name",""))+"|"+str(v.get("status",""))+"|"+str(v.get("cpu") or "")+"|"+(str(int(v["memory"]/1048576)) if isinstance(v.get("memory"),(int,float)) else "")) for v in json.load(sys.stdin)]' 2>/dev/null
+$M call alert.list 2>/dev/null | python3 -c 'import json,sys;[print("talert="+str(a.get("level",""))+"|"+" ".join(str(a.get("formatted") or a.get("text") or "").split())[:200]) for a in json.load(sys.stdin) if not a.get("dismissed")]' 2>/dev/null
 else echo nas_ok=denied; fi
 fi
 if command -v pvesh >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
 P=pvesh; [ "$(id -u)" != 0 ] && P="sudo -n pvesh"
 if out=$($P get /cluster/resources --type vm --output-format json 2>/dev/null); then echo pve_ok=1
-echo "$out" | python3 -c 'import json,sys;[print("vm="+str(r.get("vmid",""))+"|"+str(r.get("type",""))+"|"+str(r.get("name",""))+"|"+str(r.get("status",""))) for r in json.load(sys.stdin)]' 2>/dev/null
+echo "$out" | python3 -c 'import json,sys;[print("vm="+"|".join(str(r.get(k,"") if r.get(k) is not None else "") for k in ("vmid","type","name","status","cpu","maxcpu","mem","maxmem","disk","maxdisk","node"))) for r in json.load(sys.stdin)]' 2>/dev/null
 $P get /cluster/backup --output-format json 2>/dev/null | python3 -c 'import json,sys;[print("bjob="+str(j.get("id",""))+"|"+str(j.get("schedule","") or j.get("starttime",""))+"|"+("off" if str(j.get("enabled",1))=="0" else "on")+"|"+str(j.get("storage",""))+"|"+("all" if j.get("all") else str(j.get("vmid","")))) for j in json.load(sys.stdin)]' 2>/dev/null
 $P get /nodes/$(hostname)/storage --output-format json 2>/dev/null | python3 -c 'import json,sys;[print("pst="+str(x.get("storage",""))+"|"+str(x.get("type",""))+"|"+str(int(x.get("total",0) or 0))+"|"+str(int(x.get("used",0) or 0))+"|"+("on" if x.get("active",1) else "off")) for x in json.load(sys.stdin)]' 2>/dev/null
 $P get /nodes/$(hostname)/tasks --typefilter vzdump --limit 5 --output-format json 2>/dev/null | python3 -c 'import json,sys;[print("bk="+str(t.get("starttime",""))+"|"+str(t.get("status","") or "running")+"|"+str(t.get("id","") or "")) for t in json.load(sys.stdin)]' 2>/dev/null
@@ -336,7 +339,7 @@ end
 function S.parse(text)
     local raw = { failed = {}, ct = {}, svc = {}, app = {}, share = {}, rsync = {}, vm = {}, bjob = {}, bk = {}, pst = {},
         tdisk = {}, dtemp = {}, snap = {}, repl = {}, pool = {}, pcl = {}, ptask = {}, md = {}, vol = {}, sd = {},
-        jline = {}, gw = {}, pif = {}, vpn = {} }
+        jline = {}, gw = {}, pif = {}, vpn = {}, tvm = {}, talert = {} }
     for line in (tostring(text or "") .. "\n"):gmatch("(.-)\r?\n") do
         local k, v = line:match("^([%w_]+)=(.*)$")
         if k then
@@ -426,9 +429,15 @@ function S.values(raw)
     if raw.nas_ok == "1" then
         v.truenas = { ok = true, apps = {}, shares = shares, rsync = {} }
         for __, x in ipairs(raw.app) do
-            local name, state = x:match("^([^|]*)|(.*)$")
-            if name and name ~= "" then v.truenas.apps[#v.truenas.apps + 1] = { name = name, state = state } end
+            -- name|state|upgrade available|image updates|version
+            local f = {}
+            for part in (x .. "|"):gmatch("([^|]*)|") do f[#f + 1] = part end
+            if f[1] and f[1] ~= "" then
+                v.truenas.apps[#v.truenas.apps + 1] = { name = f[1], state = f[2] or "", upgrade = f[3] == "1", images = f[4] == "1", version = f[5] or "" }
+            end
         end
+        v.truenas.updates = 0
+        for __, a in ipairs(v.truenas.apps) do if a.upgrade or a.images then v.truenas.updates = v.truenas.updates + 1 end end
         for __, x in ipairs(raw.rsync) do
             local id, path, remote, on, sched, last = x:match("^([^|]*)|([^|]*)|([^|]*)|([^|]*)|([^|]*)|(.*)$")
             if id then v.truenas.rsync[#v.truenas.rsync + 1] = { id = id, path = path, remote = remote, on = on ~= "off", schedule = sched, last = last } end
@@ -449,9 +458,15 @@ function S.values(raw)
             end
         end
         for __, x in ipairs(raw.vm) do
-            local id, kind, name, status = x:match("^([^|]*)|([^|]*)|([^|]*)|(.*)$")
+            -- id|type|name|status|cpu|maxcpu|mem|maxmem|disk|maxdisk|node (bytes; cpu 0-1 of maxcpu)
+            local f = {}
+            for part in (x .. "|"):gmatch("([^|]*)|") do f[#f + 1] = part end
+            local id, kind = f[1], f[2]
             if id and id ~= "" then
-                v.proxmox.guests[#v.proxmox.guests + 1] = { id = id, kind = kind == "lxc" and "lxc" or "qemu", name = name, status = status }
+                local function kb(n) return tonumber(n) and tonumber(n) / 1024 or nil end
+                v.proxmox.guests[#v.proxmox.guests + 1] = { id = id, kind = kind == "lxc" and "lxc" or "qemu", name = f[3] or "", status = f[4] or "",
+                    cpu = tonumber(f[5]) and math.floor(tonumber(f[5]) * 100 + 0.5), cpus = tonumber(f[6]),
+                    mem = kb(f[7]), maxmem = kb(f[8]), disk = kb(f[9]), maxdisk = kb(f[10]), node = f[11] or "" }
             end
         end
         table.sort(v.proxmox.guests, function(a, b) return (tonumber(a.id) or 0) < (tonumber(b.id) or 0) end)
@@ -553,7 +568,19 @@ function S.moreValues(raw, v)
     if #disks > 0 then v.disks = disks end
     -- TrueNAS: snapshot and replication tasks
     if v.truenas and v.truenas.ok then
-        v.truenas.snaps, v.truenas.repl = {}, {}
+        v.truenas.snaps, v.truenas.repl, v.truenas.guests, v.truenas.alerts = {}, {}, {}, {}
+        for __, x in ipairs(raw.tvm) do
+            -- kind|id|name|state|cpus|memory MB (kind: vm, ivm = a 25.04 instance VM, ct = a container)
+            local f = split(x, 6)
+            if f[2] ~= "" then
+                v.truenas.guests[#v.truenas.guests + 1] = { kind = f[1], id = f[2], name = f[3] ~= "" and f[3] or f[2],
+                    state = f[4]:lower(), cpus = tonumber(f[5]), memory = tonumber(f[6]) }
+            end
+        end
+        for __, x in ipairs(raw.talert) do
+            local f = split(x, 2)
+            if f[2] ~= "" then v.truenas.alerts[#v.truenas.alerts + 1] = { level = f[1], text = f[2] } end
+        end
         for __, x in ipairs(raw.snap) do
             local f = split(x, 5)
             if f[1] ~= "" then v.truenas.snaps[#v.truenas.snaps + 1] = { id = f[1], dataset = f[2], schedule = f[3], on = f[4] ~= "off", state = f[5] } end
@@ -640,7 +667,7 @@ end
 -- system's own tools: midclt, qm, pct, vzdump). sudo when not root, where they need it.
 local function idOk(x) return tostring(x):match("^[%w%._%-]+$") ~= nil end
 function S.truenasApp(name, action)
-    if not idOk(name) or not (action == "start" or action == "stop" or action == "redeploy") then return nil end
+    if not idOk(name) or not (action == "start" or action == "stop" or action == "redeploy" or action == "upgrade") then return nil end
     return "sudo midclt call -j app." .. action .. " " .. name
 end
 function S.truenasRsync(id)
@@ -654,9 +681,60 @@ function S.proxmoxGuest(kind, id, action)
     local tool = kind == "lxc" and "pct" or "qm"
     return tool .. " " .. action .. " " .. id
 end
+--- Memory (MB) and CPU cores of a VM or container: "qm|pct set <id> --memory N --cores N".
+function S.proxmoxSet(kind, id, memory, cores)
+    if not tostring(id):match("^%d+$") then return nil end
+    local parts = {}
+    if memory ~= nil then
+        if not tostring(memory):match("^%d+$") or tonumber(memory) < 16 then return nil end
+        parts[#parts + 1] = "--memory " .. memory
+    end
+    if cores ~= nil then
+        if not tostring(cores):match("^%d+$") or tonumber(cores) < 1 then return nil end
+        parts[#parts + 1] = "--cores " .. cores
+    end
+    if #parts == 0 then return nil end
+    return (kind == "lxc" and "pct" or "qm") .. " set " .. id .. " " .. table.concat(parts, " ")
+end
+--- A command inside a container (pct exec) or a VM (qm guest exec: needs the QEMU guest agent).
+function S.proxmoxExec(kind, id, cmd)
+    if not tostring(id):match("^%d+$") or not tostring(cmd or ""):match("%S") then return nil end
+    if kind == "lxc" then return "pct exec " .. id .. " -- sh -c " .. shq(cmd) end
+    return "qm guest exec " .. id .. " -- sh -c " .. shq(cmd)
+end
+--- A shell in a container (pct enter), or a VM's serial console (qm terminal).
+function S.proxmoxShell(kind, id)
+    if not tostring(id):match("^%d+$") then return nil end
+    return kind == "lxc" and ("pct enter " .. id) or ("qm terminal " .. id)
+end
 function S.proxmoxBackup(id)
     if not tostring(id):match("^%d+$") then return nil end
     return "vzdump " .. id
+end
+--- A TrueNAS VM's or instance's start, stop or restart (midclt: vm.* for VMs, virt.instance.* for 25.04's).
+function S.truenasGuest(kind, id, action)
+    if not (action == "start" or action == "stop" or action == "restart") then return nil end
+    if kind == "vm" then
+        if not tostring(id):match("^%d+$") then return nil end
+        return "sudo midclt call -j vm." .. action .. " " .. id
+    end
+    if not idOk(id) then return nil end
+    return "sudo midclt call -j virt.instance." .. action .. " " .. id
+end
+--- A shell in a TrueNAS container (incus) or an app's first container (docker).
+function S.truenasShell(kind, id)
+    if not idOk(id) then return nil end
+    if kind == "app" then
+        return "sudo docker exec -it $(sudo docker ps -q --filter label=com.docker.compose.project=ix-" .. id
+            .. " | head -n 1) sh -c 'command -v bash >/dev/null && exec bash || exec sh'"
+    end
+    return "sudo incus exec " .. id .. " -- sh -c 'command -v bash >/dev/null && exec bash || exec sh'"
+end
+--- An app's latest log lines (each of its containers).
+function S.truenasAppLogs(name)
+    if not idOk(name) then return nil end
+    return "for c in $(sudo docker ps -aq --filter label=com.docker.compose.project=ix-" .. name
+        .. "); do sudo docker logs --tail 50 \"$c\" 2>&1; done"
 end
 function S.truenasSnapshot(id)
     if not tostring(id):match("^%d+$") then return nil end

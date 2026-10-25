@@ -129,7 +129,7 @@ function SSH:onRunSSHCommand(ref)
         UIManager:show(require("ui/widget/infomessage"):new{ text = _("This SSH command was deleted. Choose another for the gesture.") })
         return true
     end
-    require("sshrun").command(self, h, c.cmd)
+    require("sshui").withPin(h, function() require("sshrun").command(self, h, c.cmd) end)
     return true
 end
 
@@ -156,8 +156,10 @@ function SSH.search(q)
             if has(c.name) or has(c.cmd) then
                 out[#out + 1] = { title = M.commandName(c), sub = T("%1: %2", M.hostName(h), c.cmd), open = function()
                     UI.show(UI.plugin)
-                    UI.host(UI.plugin, h)
-                    UI.runDialog(UI.plugin, h, c.cmd, function(cmd) require("sshrun").command(UI.plugin, h, cmd) end)
+                    UI.withPin(h, function()
+                        UI.host(UI.plugin, h)
+                        UI.runDialog(UI.plugin, h, c.cmd, function(cmd) require("sshrun").command(UI.plugin, h, cmd) end)
+                    end)
                 end }
             end
         end
@@ -213,7 +215,7 @@ function SSH.quickItem(id)
         icon = "terminal",
         tap = function(done)
             -- as from the host's page: in the background, then its output
-            require("sshrun").command(UI.plugin, h, c.cmd)
+            UI.withPin(h, function() require("sshrun").command(UI.plugin, h, c.cmd) end)
             if done then done() end
         end,
         hold = function()

@@ -219,5 +219,85 @@ eq(p.print_pages, 288, "print length")
 eq(p.publisher, "Cassell", "publisher")
 eq(p.title, nil, "unticked not saved")
 
+-- ------------------------------------------------------------------ FTP and WebDAV servers
+local R = require("libraryservers")
+local a1, p1 = R.splitPort("ftp://nas.local:2121/books")
+eq(a1, "ftp://nas.local/books", "port taken out")
+eq(p1, 2121, "the port")
+a1, p1 = R.splitPort("192.168.1.20:21")
+eq(a1 .. tostring(p1), "192.168.1.2021", "port without a scheme")
+eq(select(2, R.splitPort("https://dav.example.org/webdav")), nil, "no port")
+eq(R.normalize("ftp", "192.168.1.20", "21"), "ftp://192.168.1.20", "ftp:// added, usual port left out")
+eq(R.normalize("ftp", "nas.local/", 2121), "ftp://nas.local:2121", "other port written in")
+eq(R.normalize("webdav", "dav.example.org/remote.php/webdav/", nil), "https://dav.example.org/remote.php/webdav", "https:// added")
+eq(R.normalize("webdav", "http://192.0.2.1/dav", 8080), "http://192.0.2.1:8080/dav", "port before the path")
+eq(R.normalize("webdav", "http://192.0.2.1:80/dav", 80), "http://192.0.2.1/dav", "http's usual port")
+eq(R.normalize("ftp", "  ", "21"), "", "nothing typed")
+eq(R.normalize("webdav", "http://127.0.0.1:8088", ""), "http://127.0.0.1:8088", "a port in the address, the Port field empty")
+eq(R.normalize("ftp", "nas:2121", "2200"), "ftp://nas:2200", "the Port field wins")
+eq(R.defaultPort("webdav", "http://x"), 80, "http port")
+eq(R.defaultPort("webdav", "https://x"), 443, "https port")
+eq(R.folder("Books/"), "/Books", "starting folder with /")
+eq(R.folder("/"), "", "the top")
+eq(R.folder(nil), "", "no starting folder")
+eq(R.label({ type = "ftp", address = "ftp://192.168.1.20", url = "/Books" }), "FTP · 192.168.1.20 · /Books", "a server's line")
+eq(R.label({ type = "webdav", address = "https://dav.example.org/ebooks/", url = "" }), "WebDAV · dav.example.org/ebooks", "no starting folder shown")
+eq(R.name({ name = "", address = "ftp://nas.local:2121" }), "nas.local", "name from the host")
+eq(R.name({ name = "Home NAS", address = "x" }), "Home NAS", "own name")
+eq(R.parent("/Books/Classics", "/Books"), "/Books", "up a folder")
+eq(R.parent("/Books", "/Books"), nil, "not above the start")
+eq(R.parent("/Books", ""), "", "up to the top")
+eq(R.basename("/Books/Classics/"), "Classics", "basename")
+local l = R.normalizeList({
+    { is_file = true, text = "b.epub", url = "/x/b.epub", filesize = 120 },
+    { is_folder = true, text = "Poetry/", url = "/x/Poetry" },
+    { type = "file", text = "A.epub", url = "/x/A.epub" },
+    { type = "folder", text = "Adventure/", url = "/x/Adventure" },
+    { type = "folder_long_press", text = "Long-press", url = "/x" },
+})
+eq(#l, 4, "folders and files, nothing else")
+eq(l[1].name .. l[2].name .. l[3].name .. l[4].name, "AdventurePoetryA.epubb.epub", "folders first, by name")
+eq(l[1].dir, true, "a folder")
+eq(l[4].size, 120, "a file's size")
+local ml = R.parseMlsd("type=dir;size=4096;modify=20261025120000; Adventure")
+eq(ml.name .. tostring(ml.dir), "Adventuretrue", "MLSD folder with a size is a folder")
+ml = R.parseMlsd("type=file;size=32692;modify=20261025120000; Little Women.epub")
+eq(ml.name .. tostring(ml.dir) .. ml.size, "Little Women.epubfalse32692", "MLSD file")
+eq(R.parseMlsd("type=cdir;modify=20261025120000; ."), nil, "MLSD this folder left out")
+eq(R.parseMlsd("Type=pdir; .."), nil, "MLSD the folder above left out")
+-- ------------------------------------------------------------------ OPDS catalogs
+local Cat = require("libraryopds")
+eq(#Cat.SUGGESTED, 6, "six suggested catalogs")
+eq(Cat.host("https://www.standardebooks.org/feeds/opds"), "standardebooks.org", "host without www.")
+eq(Cat.host("https://m.gutenberg.org/ebooks.opds/?format=opds"), "gutenberg.org", "host without m.")
+eq(Cat.has({ { url = "https://m.gutenberg.org/ebooks.opds/?format=opds" } }, "https://m.gutenberg.org/ebooks.opds/"), true, "KOReader's Gutenberg counts")
+eq(Cat.has({ { url = "http://manybooks.net/opds/index.php" } }, "https://manybooks.net/opds/index.php"), true, "http or https the same")
+local miss = Cat.missing({ { url = "https://bookserver.archive.org/" }, { url = "https://standardebooks.org/feeds/opds" } })
+eq(#miss, 4, "four missing")
+eq(miss[1].title, "Project Gutenberg", "in the suggested order")
+eq(Cat.normalize("example.org/opds"), "https://example.org/opds", "https:// added")
+eq(Cat.normalize(" http://192.0.2.1:8080/opds "), "http://192.0.2.1:8080/opds", "kept as typed")
+eq(Cat.label({ url = "https://library.oapen.org/opds" }), "Open access academic books", "a suggested one's line")
+eq(Cat.label({ url = "http://192.168.1.20:8080/opds" }), "192.168.1.20", "another one's line")
+local fm = Cat.formats({
+    { type = "application/pdf", href = "/b.pdf" },
+    { type = "application/epub+zip", href = "/b.epub", title = "EPUB" },
+    { type = "application/epub+zip", href = "/b2.epub", title = "EPUB" },
+    { type = "borrow" },
+    { type = "application/x-unknown", href = "/b.xyz" },
+    { type = "application/kepub+zip", href = "/b.kepub.epub", title = "Kobo" },
+}, function(a)
+    if a.href:find("kepub") then return "kepub" end
+    return ({ ["/b.pdf"] = "pdf", ["/b.epub"] = "epub", ["/b2.epub"] = "epub" })[a.href]
+end)
+eq(#fm, 3, "formats KOReader opens, once each")
+eq(fm[1].ext .. fm[2].ext .. fm[3].ext, "epubkepubpdf", "EPUB first, PDF last")
+eq(Cat.fileName("Pride and Prejudice", "Jane Austen", "epub"), "Pride and Prejudice - Jane Austen.epub", "file name")
+eq(Cat.fileName("What: a/b?", "Unknown Author", "pdf"), "What_ a_b_.pdf", "no author, no odd characters")
+eq(Cat.plain("<p>One &amp; two</p><p>Three<br/>four</p>"), "One & two\n\nThree\nfour", "description as text")
+eq(Cat.plain("  "), nil, "an empty description")
+eq(R.okCode(200) and R.okCode(204) and R.okCode(true), true, "ok answers")
+eq(R.okCode(550) or R.okCode(nil), false, "failed answers")
+
 print(string.format("%d passed, %d failed", passed, failed))
 if failed > 0 then os.exit(1) end

@@ -240,15 +240,21 @@ end
 local Flow = {}
 Flow.__index = Flow
 
---- Blocks from `top` to `bottom`; only page `want` is drawn.
+-- The bar at the foot of a page with more after it: "More on page 2 of 3 ›".
+local MORE_H = 48
+
+--- Blocks from `top` to `bottom`; only page `want` is drawn. With the canvas's
+-- `turn` (fn(delta), set by the page that draws it), a page with more after it
+-- ends in a bar that turns to the next one (room kept for it at the foot).
 function Canvas:flow(top, bottom, want)
-    return setmetatable({ c = self, top = top, bottom = bottom, y = top, page = 1, want = want or 1 }, Flow)
+    return setmetatable({ c = self, top = top, bottom = bottom, y = top, page = 1, want = want or 1,
+        room = self.turn and MORE_H or 0 }, Flow)
 end
 
 --- A block `h` tall, drawn by draw(y); `keep` more units must fit after it
 -- on the same page (a heading stays with what it heads).
 function Flow:block(h, draw, keep)
-    if self.y + h + (keep or 0) > self.bottom and self.y > self.top then
+    if self.y + h + (keep or 0) > self.bottom - self.room and self.y > self.top then
         self.page = self.page + 1
         self.y = self.top
     end
@@ -260,6 +266,18 @@ function Flow:gap(h)
     if self.y > self.top then self.y = self.y + h end
 end
 
-function Flow:pages() return self.page end
+--- How many pages (once every block is in); draws the bar to the next page on one with more after it.
+function Flow:pages()
+    if self.room > 0 and self.want < self.page and not self.barDone then
+        self.barDone = true
+        local c = self.c
+        local y = self.bottom - MORE_H + 6
+        local label = require("ffi/util").template(require("gettext")("More on page %1 of %2"), self.want + 1, self.page) .. "  \u{203A}"
+        c:box(14, y, c.W - 28, MORE_H - 10, { r = 8, border = Canvas.BLACK, bw = 1.5 })
+        c:text(c.W / 2, y + 25, label, 12, { align = "middle", bold = true })
+        c:hit(14, y, c.W - 28, MORE_H - 10, function() c.turn(1) end)
+    end
+    return self.page
+end
 
 return Canvas

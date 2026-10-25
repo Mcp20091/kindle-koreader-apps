@@ -276,6 +276,7 @@ end
 function List:render()
     if self.canvas then self.canvas:release() end
     local c = Canvas.new(self.w, self.h, false)
+    c.turn = function(d) self:turn(d) end
     self.canvas = c
     local list = entries()
     local F = c:flow(Bar.H + 8, c.H - 8, self.pageNo)

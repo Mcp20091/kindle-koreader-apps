@@ -49,6 +49,7 @@ The same guide as [Kindle Apps Guide.pdf](../Kindle%20Apps%20Guide.pdf), one pag
 - [Books](library.md#books)
 - [A book's page](library.md#a-books-page)
 - [Folders](library.md#folders)
+- [Servers and catalogs](library.md#servers-and-catalogs)
 - [Search](library.md#search)
 - [Settings](library.md#settings)
 - [Where it comes from](library.md#where-it-comes-from)

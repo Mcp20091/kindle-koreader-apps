@@ -91,6 +91,18 @@ function Library:init()
                     { label = _("KOReader's file browser"), value = "koreader" },
                 }, S.get("browser", "library"), function(val) S.set("browser", val) end)
             end }
+        -- Then books from elsewhere: an FTP or WebDAV server, and the online catalogs.
+        PS.registerSetup{ key = "libraryservers", order = 16, icon = "cloud", title = _("Book servers and catalogs"),
+            text = _("Open books from an FTP or WebDAV server (a NAS or computer at home), or download free books from online catalogs such as Project Gutenberg. They're on the Library's Home and under Folders."),
+            done = function()
+                local ok, R = pcall(require, "libraryservers")
+                return ok and #R.servers() > 0
+            end,
+            -- (only with the Library: KOReader's file browser has its own Cloud storage)
+            when = function() return S.isBrowser() end,
+            action = _("Add a server"),
+            skipped = _("Add one any time: Library > Folders > Add a server. The catalogs are there too."),
+            run = function() V().editServer() end }
     end
     PS.backupApps = PS.backupApps or {}
     PS.backupApps.library = { key = "library", name = _("Library"), files = { "^library%.lua$" } }

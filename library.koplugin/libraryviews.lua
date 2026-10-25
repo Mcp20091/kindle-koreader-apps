@@ -109,7 +109,12 @@ function V.open(plugin, view)
         back = function() V.back() end,
         home = function() V.goHome() end,
         menu = function() V.more() end,
-        refresh = function() M.forget() Covers.release() end,
+        refresh = function()
+            M.forget()
+            Covers.release()
+            local v = top()
+            if v then v.list, v.rlist, v.err, v.page = nil, nil, nil, nil end
+        end,
         close_callback = function(page)
             if V.screen == page then V.screen = nil end
             if V.plugin and V.plugin.screen == page then V.plugin.screen = nil end
@@ -216,7 +221,7 @@ function V.build(page)
     local fn = V["view_" .. v.kind]
     page.items = {}
     if fn then fn(page, v) end
-    if nav.select then V.selectBar(page, v) end
+    if nav.select and v.kind ~= "server" then V.selectBar(page, v) end
 end
 
 local function chips(items)
@@ -414,6 +419,23 @@ function V.view_home(page, v)
         for i = 2, #recent do table.insert(strip, recent[i]) end
         table.insert(items, { strip = strip, tap = function(b) V.push({ kind = "book", path = b.path }) end, hold = function(b) V.bookMenu(b) end })
     end
+    -- Servers and catalogs, then the folders: above the books (on the first page), or after
+    -- them (Library settings > Home starts with).
+    local function places()
+        V.serverItems(items)
+        table.insert(items, { band = _("FOLDERS") })
+        local home = M.home()
+        table.insert(items, { icon = "folder", text = _("Home folder"), sub = M.folderSummary(home), chevron = true,
+            tap = function() V.switchTab("folders") end })
+        for __, f in ipairs(M.shortcuts()) do
+            if f.path ~= home then
+                table.insert(items, { icon = "folder-heart", text = f.name, sub = M.shortPath(f.path), chevron = true,
+                    tap = function() V.push({ kind = "folder", path = f.path }) end })
+            end
+        end
+    end
+    local placesFirst = S.get("home_first", "places") == "places"
+    if placesFirst then places() end
     table.insert(items, { band = _("BOOKS"), right = plural(#books, _("1 book"), _("%1 books")) })
     local function titles(list)
         local t = {}
@@ -453,16 +475,7 @@ function V.view_home(page, v)
     for i = 1, math.min(3, #colls) do table.insert(names, colls[i].label) end
     table.insert(items, { icon = "library", text = _("Collections"), sub = #colls > 0 and table.concat(names, ", ") or _("None yet"), chevron = true,
         tap = function() V.switchTab("collections") end })
-    table.insert(items, { band = _("FOLDERS") })
-    local home = M.home()
-    table.insert(items, { icon = "folder", text = _("Home folder"), sub = M.folderSummary(home), chevron = true,
-        tap = function() V.switchTab("folders") end })
-    for __, f in ipairs(M.shortcuts()) do
-        if f.path ~= home then
-            table.insert(items, { icon = "folder-heart", text = f.name, sub = M.shortPath(f.path), chevron = true,
-                tap = function() V.push({ kind = "folder", path = f.path }) end })
-        end
-    end
+    if not placesFirst then places() end
     local pdfs = 0
     for __, b in ipairs(books) do if M.ext(b.name) == "pdf" then pdfs = pdfs + 1 end end
     page.status = function()
@@ -668,6 +681,7 @@ function V.view_folder(page, v)
         if not nav.select then return nil end
         return nav.select[p] == true
     end
+    if dir == home and not nav.select then V.serverItems(items, true) end
     if #f.dirs > 0 then
         table.insert(items, { band = _("FOLDERS"), right = tostring(#f.dirs) })
         for __, d in ipairs(f.dirs) do
@@ -768,25 +782,45 @@ end
 -- ------------------------------------------------------------------ the folder picker
 
 --- Move to… / Copy to…: folders only, then Move here (Copy here).
-function V.pickFolder(mode, paths, start)
-    local from = paths[1] and paths[1]:match("^(.*)/[^/]+$")
-    V.push({ kind = "pick", mode = mode, paths = paths, path = start or from or M.home() })
+-- (mode "download": paths are a server's books, `server` the server; "choose":
+-- the download folder, no paths)
+function V.pickFolder(mode, paths, start, server)
+    local from = type(paths[1]) == "string" and paths[1]:match("^(.*)/[^/]+$")
+    V.push({ kind = "pick", mode = mode, paths = paths, path = start or from or M.home(), from = server })
 end
 
 function V.view_pick(page, v)
+    if v.server then return V.view_pickServer(page, v) end
     local n = #v.paths
-    page.title = v.mode == "move" and plural(n, _("Move 1 item"), _("Move %1 items")) or plural(n, _("Copy 1 item"), _("Copy %1 items"))
+    page.title = v.mode == "move" and plural(n, _("Move 1 item"), _("Move %1 items")) or v.mode == "choose" and _("Download folder")
+        or plural(n, _("Copy 1 item"), _("Copy %1 items"))
     page.subtitle = M.shortPath(v.path)
     local f = M.folder(v.path)
     local parent = v.path:match("^(.*)/[^/]+$")
     local moving = {}
-    for __, p in ipairs(v.paths) do moving[p] = true end
+    if v.mode == "copy" or v.mode == "move" then
+        for __, p in ipairs(v.paths) do moving[p] = true end
+    end
     local locked = G_reader_settings:isTrue("lock_home_folder") and v.path == M.home()
     if parent and parent ~= "" and not locked then
         table.insert(page.items, { icon = "folder-up", text = _("Up one folder"), tap = function()
             v.path = parent
             V.show(true)
         end })
+    end
+    -- (books from here can go onto a server)
+    local servers = (v.mode == "copy" or v.mode == "move") and v.path == M.home() and require("libraryservers").servers() or {}
+    if #servers > 0 then
+        local R = require("libraryservers")
+        table.insert(page.items, { band = _("SERVERS") })
+        for __, s in ipairs(servers) do
+            table.insert(page.items, { icon = s.type == "ftp" and "server" or "globe", text = R.name(s), sub = R.label(s), chevron = true,
+                tap = function()
+                    v.server, v.rpath, v.rlist, v.err = s, R.folder(s.url), nil, nil
+                    V.show(true)
+                end })
+        end
+        table.insert(page.items, { band = _("FOLDERS") })
     end
     for __, d in ipairs(f.dirs) do
         -- (a folder can't go inside itself)
@@ -805,12 +839,23 @@ function V.view_pick(page, v)
             V.newFolder(v.path, function(to) v.path = to V.show(true) end)
         end },
         { icon = "x", text = _("Cancel"), fn = function() V.back() end },
-        { icon = v.mode == "move" and "folder-input" or "copy", text = v.mode == "move" and _("Move here") or _("Copy here"), primary = true,
+        { icon = v.mode == "move" and "folder-input" or v.mode == "choose" and "check" or "copy",
+            text = v.mode == "move" and _("Move here") or v.mode == "choose" and _("Choose here") or _("Copy here"), primary = true,
             fn = function() V.doPick(v) end },
     }
 end
 
 function V.doPick(v)
+    if v.mode == "download" or v.mode == "choose" then
+        table.remove(nav.stack)
+        nav.select = nil
+        if v.mode == "choose" then
+            require("libraryservers").setDownloadDir(v.path)
+            V.show()
+            return KO.toast(T(_("Downloads go to %1"), v.path:match("[^/]+$") or v.path))
+        end
+        return V.download(v.from, v.paths, v.path)
+    end
     local done, failed, same = 0, {}, 0
     for __, p in ipairs(v.paths) do
         local dir = p:match("^(.*)/[^/]+$")
@@ -1543,6 +1588,11 @@ function V.settings()
             KO.choose(_("Open on"), { { label = _("Home"), value = "home" }, { label = _("Where you left off"), value = "last" } }, S.get("start", "home"),
                 function(val) S.set("start", val) page:redraw() end)
         end })
+        table.insert(items, { setting = _("Home starts with"), value = S.get("home_first", "places") == "places" and _("Servers and folders") or _("Books"),
+            hint = _("What comes first on Home, after Continue reading and Recent"), tap = function()
+                KO.choose(_("Home starts with"), { { label = _("Servers and folders"), value = "places" }, { label = _("Books"), value = "books" } },
+                    S.get("home_first", "places"), function(val) S.set("home_first", val) page:redraw() end)
+            end })
         table.insert(items, { band = _("FOLDERS") })
         table.insert(items, { toggle = S.get("hidden", false) == true, text = _("Show hidden files"), sub = _("Names starting with a dot"), tap = function()
             S.set("hidden", not S.get("hidden", false))
@@ -1555,6 +1605,14 @@ function V.settings()
             V.open(V.plugin, { kind = "folder", path = M.home(), tab = "folders" })
             KO.toast(_("Hold a folder, then Set as Home folder"), 3)
         end })
+        table.insert(items, { band = _("SERVERS") })
+        table.insert(items, { setting = _("Download folder"), value = M.shortPath(require("libraryservers").downloadDir()),
+            hint = _("Where books from FTP and WebDAV servers go"), tap = function()
+                page:onClose()
+                V.open(V.plugin, { kind = "folder", path = M.home(), tab = "folders" })
+                local d = require("libraryservers").downloadDir()
+                V.pickFolder("choose", {}, lfs.attributes(d, "mode") == "directory" and d or M.home())
+            end })
         table.insert(items, { band = _("KOREADER") })
         table.insert(items, { setting = _("Browse books with"), value = S.isBrowser() and _("Library") or _("KOReader's file browser"),
             hint = _("What Back from a book and the launcher's Library open"), tap = function()
@@ -1574,5 +1632,7 @@ function V.settings()
     UIManager:show(page, "full")
     return page
 end
+
+require("libraryserverviews")(V)
 
 return V

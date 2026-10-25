@@ -318,6 +318,7 @@ end
 function Page:render()
     if self.canvas then self.canvas:release() end
     local c = Canvas.new(self.w, self.h)
+    c.turn = function(d) self:turn(d) end
     self.canvas = c
     local foot = self.status and 30 or 0
     local F = c:flow(Bar.H + 4, c.H - 6 - foot, self.page)

@@ -162,6 +162,7 @@ end
 
 --- A text box: { title, subtitle, text, hint, ok (the main button's label),
 -- okIcon, rows = { { text, fn(box) } } (filled in with a tap; heading: rowsTitle),
+-- password (dots), number (the number keys), empty (an empty text is fine too),
 -- done(text) }. The launcher's box (a pen for handwriting, icon buttons);
 -- KOReader's InputDialog without it.
 function KO.ask(o)
@@ -176,10 +177,10 @@ function KO.ask(o)
             sections = { { heading = o.rowsTitle, items = items } }
         end
         local box = P.request{ title = o.title, subtitle = o.subtitle, text = o.text, hint = o.hint, sections = sections,
-            pen = true, penKind = "name", typing = o.typing,
+            pen = not o.password, penKind = "name", typing = o.typing or o.password, password = o.password, number = o.number,
             buttons = {
                 { icon = "x", text = _("Cancel"), cancel = true },
-                { icon = o.okIcon or "check", text = o.ok or _("Save"), primary = true, needsText = true,
+                { icon = o.okIcon or "check", text = o.ok or _("Save"), primary = true, needsText = not o.empty,
                     fn = function(text) o.done(text) end },
             } }
         if type(box) == "table" then box.is_always_active = true end
@@ -189,12 +190,13 @@ function KO.ask(o)
     local dialog
     dialog = InputDialog:new{
         title = o.title, input = o.text or "", input_hint = o.hint,
+        text_type = o.password and "password" or nil, input_type = o.number and "number" or nil,
         buttons = { {
             { text = _("Cancel"), id = "close", callback = function() UIManager:close(dialog) end },
             { text = o.ok or _("Save"), is_enter_default = true, callback = function()
                 local text = dialog:getInputText()
                 UIManager:close(dialog)
-                if text and text ~= "" then o.done(text) end
+                if text and (text ~= "" or o.empty) then o.done(text) end
             end },
         } },
     }

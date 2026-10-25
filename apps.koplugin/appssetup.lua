@@ -276,7 +276,8 @@ function Screen_:render()
         end
         local explain = y + need < bottom - 140
         for i, e in ipairs(self.steps) do
-          if not e.info then
+          local shown = not e.when or (select(2, pcall(e.when)) ~= false)
+          if not e.info and shown then
             local ok = done(e)
             local top = y - 26
             c:icon(ok and "check" or "minus", 60, y - 16, 20)
@@ -527,6 +528,16 @@ end
 function Screen_:go(step)
     self.guideOpen = false
     self.helpFor = nil
+    -- (a step with `when` that says no now, such as the Library's servers with KOReader's
+    -- file browser picked, is passed over in the way it was going)
+    local dir = step < (self.step or 0) and -1 or 1
+    local function off(i)
+        local e = self.steps[i]
+        if not (e and e.when) then return false end
+        local ok, yes = pcall(e.when)
+        return ok and yes == false
+    end
+    while off(step) do step = step + dir end
     self.step = math.max(0, math.min(#self.steps + 1, step))
     self:render()
     UIManager:setDirty(self, "full")

@@ -159,6 +159,7 @@ end
 function View:render()
     if self.canvas then self.canvas:release() end
     local c = Canvas.new(self.w, self.h)
+    c.turn = function(d) self:turn(d) end
     local seen = {}
     local txt = texter(c, seen)
     self.canvas = c

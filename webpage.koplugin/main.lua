@@ -297,7 +297,24 @@ local function stayAwake(who, on)
             PluginShare.keepalive_ours = nil
             PluginShare.keepalive = false
         end
-        os.execute("lipc-set-prop com.lab126.powerd preventScreenSaver " .. (any and "1" or "0") .. " >/dev/null 2>&1")
+        -- The power manager's own sleep timer (t1) put back every 4 minutes, as KOReader's sleep
+        -- timer does, so the cover and the power button still put it to sleep (its
+        -- preventScreenSaver, used before, made it ignore them). Not while charging, as KOReader.
+        -- (preventScreenSaver 0: undoes it, if an older copy of this left it on.)
+        os.execute("lipc-set-prop com.lab126.powerd preventScreenSaver 0 >/dev/null 2>&1")
+        if PluginShare.kindle_t1_task then UIManager:unschedule(PluginShare.kindle_t1_task) end
+        PluginShare.kindle_t1_task = nil
+        if any then
+            local task
+            task = function()
+                if PluginShare.kindle_t1_task ~= task then return end
+                local p = Device.powerd
+                if p and p.resetT1Timeout and not (p.isCharging and p:isCharging()) then pcall(p.resetT1Timeout, p) end
+                UIManager:scheduleIn(240, task)
+            end
+            PluginShare.kindle_t1_task = task
+            task()
+        end
         require("logger").info("Kindle", any and "kept awake" or "may sleep again")
     end
 end
@@ -338,6 +355,7 @@ function WebPage:routes(server)
     require("webhome").routes(server, self)
     require("webfiles").routes(server)
     require("weblibrary").routes(server)
+    require("webservers").routes(server)
     require("webdiag").routes(server)
     require("webha").routes(server)
     require("webdash").routes(server)

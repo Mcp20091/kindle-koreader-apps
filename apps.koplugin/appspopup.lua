@@ -135,6 +135,8 @@ function Box:render()
         self.rect = { x, y, w, h }
         return
     end
+    -- (A box asked to be narrower, such as a PIN's.)
+    if self.narrow then bw = math.min(bw, self.narrow) end
     -- (Menus, read boxes and questions only as wide as what's in them.)
     if self.kind == "menu" or self.kind == "read" or self.kind == "confirm" or self.kind == "message" then
         bw = self:fitWidth(c, bw)
@@ -1047,7 +1049,7 @@ end
 -- penTitle, penKind) or fn (the box closes and fn runs), buttons = { { icon, text,
 -- primary, needsText, keep, cancel, aiJob (hold: AI for this), enabled = false (greyed), fn(text, box) } }, onCancel, number,
 -- password, typing (the keyboard up at once), lines (a text of several
--- lines: the field that tall) }. The keyboard's Enter is the primary button
+-- lines: the field that tall), width (narrower than usual, such as a PIN's) }. The keyboard's Enter is the primary button
 -- (a new line with `lines`). sections may hold { chips = { { text, on,
 -- tap(box), font = { bold, italic, serif } } } }: on/off switches under the
 -- field, each label in its font when given. box:getText(), box:setText(t).
@@ -1056,7 +1058,7 @@ function Popup.request(o)
     -- goes on to such widgets (as KOReader's InputDialog has it); without it the buttons don't answer.
     local box = Box:new{ kind = "request", is_always_active = true, title = o.title, subtitle = o.subtitle, sections = o.sections,
         rows = o.rows, pen = o.pen, penTitle = o.penTitle, penKind = o.penKind, buttons = o.buttons, lines = o.lines,
-        onCancel = o.onCancel, moreText = o.more }
+        onCancel = o.onCancel, moreText = o.more, narrow = o.width }
     local Font = require("ui/font")
     local c = box.canvas
     box.field = require("ui/widget/inputtext"):new{

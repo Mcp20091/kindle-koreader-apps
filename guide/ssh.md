@@ -62,8 +62,8 @@ Tap a host to open its page. Its first line is its address, its system, how it s
 - **Docker**: when the host has Docker, its containers, stopped ones first (see **Docker**).
 - **Services**: failed services, and the ones you show here (see **Services**).
 - **Your system's own sections**, when the host has them (each can be turned off in **Stats and alerts**):
-  - **TrueNAS**: **Apps** (Start, Stop, Redeploy), **SMB shares**, **Rsync tasks** (Run now), **Snapshot tasks** (Take a snapshot now) and **Replication** (Run now).
-  - **Proxmox**: **VMs and containers** (Start, Shut down, Reboot, Stop, Back up now), **Storage**, **Backups**, the **Node** (CPU, memory, version, cluster and quorum) and **Failed tasks**.
+  - **TrueNAS**: **Alerts**, **Apps** with their version and updates (Update, Get the newer image, Start, Stop, Redeploy, Open a shell, Logs), **VMs and containers** (Start, Stop, Restart; Open a shell in a container), **SMB shares**, **Rsync tasks** (Run now), **Snapshot tasks** (Take a snapshot now) and **Replication** (Run now).
+  - **Proxmox**: **VMs and containers** with each one's CPU, memory and disk (Start, Shut down, Reboot, Stop, Back up now, **Open a shell** in a container or a VM's console, **Run a command in it** (a VM needs the QEMU guest agent), **Memory** and **CPU cores**), **Storage**, **Backups**, the **Node** (CPU, memory, version, cluster and quorum) and **Failed tasks**.
   - **ReadyNAS**: its **SMB shares**.
   - **Pools and disks** (ZFS, ReadyNAS volumes, SMART): each pool's health, space and last scrub; each disk's model, size and temperature.
   - **Updates and logs** (Debian, Arch and others): updates waiting (**Update everything**), the package cache (**Empty it**), errors since it started, and the log size (**Remove logs older than 2 weeks**).
@@ -75,7 +75,9 @@ Tap a host to open its page. Its first line is its address, its system, how it s
 - **Files** and **Stats and alerts**.
 - **Wake**: when the host doesn't answer and its MAC address is known, a **Wake** tile sends Wake on LAN (see **Wake on LAN**).
 
-The pencil in the title bar is **Edit host**: name, address, user, port, system, sign-in and password; **Groups**; **Stats and alerts** and **Quick commands**; **MAC address** and **Wake it now**; **Forget host key** and **Delete host**.
+The pencil in the title bar is **Edit host**: name, address, user, port, system, sign-in and password; **PIN**; **Groups**; **Stats and alerts** and **Quick commands**; **MAC address** and **Wake it now**; **Forget host key** and **Delete host**.
+
+**PIN** (optional, off until you set one): **Set a PIN** (4 to 8 digits) in **Edit host**. The host then asks for it before its page or a live session opens, and before its saved commands run from a gesture or the launcher; once typed, it's open for 5 minutes. After 5 wrong tries, wait a minute. **Remove PIN** turns it off.
 
 **Run a command**: type a command and tap **Run**. **Commands** pastes one from your lists (see below), and **Save** keeps the command on this host. With handwriting set up (**Settings > AI**), tap the pen at the end of the box to write the command instead; without the launcher, it's **Write it**. Names and the AI's question boxes have the pen too; addresses, user names, ports and passwords don't, as they need exact values.
 

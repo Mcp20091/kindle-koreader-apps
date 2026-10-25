@@ -654,5 +654,39 @@ eq(pfv.pfsense.states .. "," .. pfv.pfsense.dhcp .. "," .. pfv.pfsense.gateways[
     "842,17,online,1024,2", "pfSense: states, leases, gateways, interfaces, VPNs")
 eq(tostring(has({ os = "pfsense" }, "pfsense")) .. tostring(has(deb, "pfsense")) .. tostring(has({ os = "raspberrypi" }, "pi")), "truefalsetrue", "sections only on their systems")
 
+-- Proxmox: each guest's use; memory, cores, commands and a shell in it
+local gv = Stt.values(Stt.parse("pve_ok=1\nvm=101|lxc|pihole|running|0.034|2|268435456|1073741824|1610612736|8589934592|pve1\nvm=100|qemu|win|stopped||4||8589934592|0|68719476736|pve1"))
+local g1, g2 = gv.proxmox.guests[1], gv.proxmox.guests[2]
+eq(g2.id .. "," .. g2.cpu .. "," .. g2.cpus .. "," .. math.floor(g2.maxmem / 1024) .. "," .. g2.node, "101,3,2,1024,pve1", "Proxmox: a guest's CPU, cores and memory")
+eq(tostring(g1.cpu) .. "," .. g1.cpus, "nil,4", "Proxmox: a stopped VM")
+eq(Stt.proxmoxSet("lxc", "101", "2048", "2"), "pct set 101 --memory 2048 --cores 2", "Proxmox: memory and cores")
+eq(tostring(Stt.proxmoxSet("qemu", "100", "lots", nil)) .. "," .. Stt.proxmoxSet("qemu", "100", nil, "4"), "nil,qm set 100 --cores 4", "Proxmox: only numbers")
+eq(Stt.proxmoxExec("lxc", "101", "df -h; it's"), "pct exec 101 -- sh -c 'df -h; it'\\''s'", "Proxmox: a command in a container, quoted")
+eq(Stt.proxmoxShell("lxc", "101") .. "|" .. Stt.proxmoxShell("qemu", "100"), "pct enter 101|qm terminal 100", "Proxmox: a shell")
+
+-- TrueNAS: app updates
+local tu = Stt.values(Stt.parse("nas_ok=1\napp=plex|RUNNING|1||1.40.1|\napp=immich|RUNNING||1|1.119\napp=old|STOPPED"))
+eq(tostring(tu.truenas.apps[1].upgrade) .. tostring(tu.truenas.apps[2].images) .. tostring(tu.truenas.apps[3].upgrade) .. tu.truenas.updates .. tu.truenas.apps[1].version,
+    "truetruefalse21.40.1", "TrueNAS: apps with updates")
+eq(Stt.truenasApp("plex", "upgrade"), "sudo midclt call -j app.upgrade plex", "TrueNAS: update an app")
+
+-- TrueNAS: VMs and containers, alerts; their commands
+local tv = Stt.values(Stt.parse("nas_ok=1\ntvm=vm|1|win11|RUNNING|4|8192\ntvm=ct|pihole|pihole|RUNNING|2|1024\ntvm=ivm|deb|deb|STOPPED||\ntalert=WARNING|Pool tank is 85% full"))
+eq(#tv.truenas.guests .. "," .. Stt.upCount(tv.truenas.guests) .. "," .. tv.truenas.guests[1].memory .. "," .. tv.truenas.alerts[1].level, "3,2,8192,WARNING", "TrueNAS: VMs, containers and alerts")
+eq(Stt.truenasGuest("vm", "1", "restart") .. "|" .. Stt.truenasGuest("ct", "pihole", "stop"), "sudo midclt call -j vm.restart 1|sudo midclt call -j virt.instance.stop pihole", "TrueNAS: a VM's and a container's commands")
+eq(tostring(Stt.truenasGuest("vm", "1;x", "start")) .. tostring(Stt.truenasShell("ct", "a b")), "nilnil", "TrueNAS: nothing odd in a command")
+eq(Stt.truenasShell("ct", "pihole"):sub(1, 25), "sudo incus exec pihole --", "TrueNAS: a container's shell")
+
+-- A host's PIN: kept hashed, asked again after 5 minutes
+local ph = { id = "h9" }
+eq(tostring(M.pinOk("1234")) .. tostring(M.pinOk("12345678")) .. tostring(M.pinOk("123")) .. tostring(M.pinOk("12a4")), "truetruefalsefalse", "a PIN is 4 to 8 digits")
+ph.pin = M.pinHash(ph, "2468")
+eq(ph.pin:find("2468", 1, true) == nil and #ph.pin > 10, true, "the PIN isn't kept as typed")
+eq(tostring(M.needsPin(ph, 1000)), "true", "a host with a PIN asks for it")
+eq(tostring(M.unlock(ph, "1111", 1000)) .. tostring(M.unlock(ph, "2468", 1000)), "falsetrue", "the wrong PIN, then the right one")
+eq(tostring(M.needsPin(ph, 1000 + 60)) .. tostring(M.needsPin(ph, 1000 + 301)), "falsetrue", "open for 5 minutes, then asked again")
+eq(M.needsPin({ id = "h10" }), false, "no PIN, nothing asked")
+eq(M.pinHash({ id = "a" }, "1234") ~= M.pinHash({ id = "b" }, "1234"), true, "the same PIN differs per host")
+
 print(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)

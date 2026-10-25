@@ -233,6 +233,7 @@ end
 function Home:render()
     if self.canvas then self.canvas:release() end
     local c = Canvas.new(self.w, self.h, false)
+    c.turn = function(d) self:turn(d) end
     self.canvas = c
     self.savedList = nil
     -- (each screen says how many pages it has; settings has one)

@@ -25,7 +25,9 @@ updates, backups and every app's setup, with a keyboard and a big screen.
     `webai` (the AI tab, `web/ai.js`: the routes `/api/ai…`; the work is the launcher's `appsai.lua`:
     services, keys, jobs, Try a prompt in a child process, Advanced and its preview).
   - For the other plugins: `webha`, `webtodo`, `webnotes`, `webcrosswords`, `webwikipedia`,
-    `websyncthing`, `webssh`.
+    `websyncthing`, `webssh`, `webservers` (the Files tab's Servers and catalogs card, `web/servers.js`:
+    the Library's FTP, WebDAV and OPDS lists and download folder; `library.koplugin/libraryweb.lua` does
+    the work; Test runs in a child process and is polled; passwords never come back).
   - `webbooks` fixes reading sessions (`/api/reading/day`, `/forget`, `/edit`) through the
     launcher's `appssessions.lua`, the same code as the Kindle's Reading statistics; without the
     launcher those three answer that it's needed.

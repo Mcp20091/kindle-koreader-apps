@@ -105,7 +105,7 @@ local function ask(title, value, cb, opts)
     local request = KO.request()
     if request then
         return request{ title = title, subtitle = opts.description, text = value or "",
-            number = opts.number, password = opts.password,
+            number = opts.number, password = opts.password, width = opts.width,
             pen = opts.kind and KO.pen() or nil, penTitle = title, penKind = opts.kind, typing = true,
             buttons = {
                 { icon = "x", text = _("Cancel"), cancel = true },
@@ -133,6 +133,9 @@ local function ask(title, value, cb, opts)
     UIManager:show(dialog)
     dialog:onShowKeyboard()
 end
+
+--- A text box (a number with opts.number); cb(text).
+UI.ask = function(...) return ask(...) end
 
 -- ------------------------------------------------------------------ commands
 
@@ -939,6 +942,30 @@ function UI.editHost(plugin, host)
                 end, { password = true, description = _("Saved on this Kindle, in KOReader's settings folder.") })
             end }
         end
+        t[#t + 1] = { band = _("PIN") }
+        t[#t + 1] = { setting = true, text = host.pin and _("Change PIN") or _("Set a PIN"), value = host.pin and _("On") or _("Off"),
+            hint = _("Asked before this host's page or a live session opens (again after 5 minutes)"), callback = function()
+                ask(_("New PIN (4 to 8 digits)"), "", function(pin)
+                    if not M.pinOk(pin) then return info(_("A PIN is 4 to 8 digits.")) end
+                    ask(_("The same PIN again"), "", function(again)
+                        if again ~= pin then return info(_("The PINs don't match.")) end
+                        host.pin = M.pinHash(host, pin)
+                        M.unlocked[host.id] = os.time()
+                        plugin:saved()
+                        redo()
+                        KO.toast(_("PIN set"), 2)
+                    end, { number = true, password = true, width = 230, ok = _("Set") })
+                end, { number = true, password = true, width = 230, ok = _("Next") })
+            end }
+        if host.pin then
+            t[#t + 1] = { setting = true, text = _("Remove PIN"), callback = function()
+                host.pin = nil
+                M.unlocked[host.id] = nil
+                plugin:saved()
+                redo()
+                KO.toast(_("PIN removed"), 2)
+            end }
+        end
         t[#t + 1] = { band = _("ON THE SSH PAGE") }
         t[#t + 1] = { setting = true, text = _("Groups"), value = #(host.groups or {}) > 0 and table.concat(host.groups, ", ") or _("None"),
             hint = _("Home, Servers…: they filter the SSH page and Run on several hosts"), callback = function()
@@ -1008,8 +1035,30 @@ function UI.refreshHost(plugin, host)
     if UI.hostMenu then refresh(UI.hostMenu, hostItems(plugin, host), M.hostName(host)) end
 end
 
+--- done() once the host's PIN is typed (at once when it has none, or was
+-- opened with it in the last 5 minutes). Five wrong tries: a minute's wait.
+UI.pinFails = {}
+function UI.withPin(host, done)
+    if not M.needsPin(host) then return done() end
+    local f = UI.pinFails[host.id]
+    if f and f.n >= 5 and os.time() - f.at < 60 then
+        return info(T(_("Too many wrong PINs. Try again in %1 s."), 60 - (os.time() - f.at)))
+    end
+    ask(T(_("PIN for %1"), M.hostName(host)), "", function(pin)
+        if M.unlock(host, pin) then
+            UI.pinFails[host.id] = nil
+            return done()
+        end
+        f = UI.pinFails[host.id] or { n = 0 }
+        f.n, f.at = f.n + 1, os.time()
+        UI.pinFails[host.id] = f
+        KO.toast(_("Wrong PIN"), 2)
+    end, { number = true, password = true, width = 230, ok = _("Open") })
+end
+
 function UI.host(plugin, host)
     if not host then return end
+    if M.needsPin(host) then return UI.withPin(host, function() UI.host(plugin, host) end) end
     if UI.hostMenu then UIManager:close(UI.hostMenu) end
     UI.plugin = plugin
     local Screens = require("sshscreens")
@@ -1027,6 +1076,7 @@ end
 --- A live session; cmd (optional): typed in once it's open. An open session
 -- to the same host is used again (brought to the front) instead.
 function UI.session(plugin, host, cmd)
+    if M.needsPin(host) then return UI.withPin(host, function() UI.session(plugin, host, cmd) end) end
     local S = require("sshsession")
     local cur = S.current
     if cmd and cur and cur.open and cur.host == host then
@@ -1057,7 +1107,8 @@ function UI.several(plugin)
                 end
                 chips[#chips + 1] = { text = g, on = all, fn = function()
                     for __, h in ipairs(data.hosts) do
-                        for __, x in ipairs(h.groups or {}) do if x == g then picked[h.id] = not all or nil end end
+                        -- (one with a PIN that wasn't typed: left out; tick it to type it)
+                        for __, x in ipairs(h.groups or {}) do if x == g then picked[h.id] = (not all and not M.needsPin(h)) or nil end end
                     end
                     refresh(m, items())
                 end }
@@ -1070,14 +1121,20 @@ function UI.several(plugin)
         for __, h in ipairs(data.hosts) do
             t[#t + 1] = { toggle = picked[h.id] == true, text = M.hostName(h), sub = M.hostLabel(h), icon = "square-terminal",
                 callback = function()
-                    picked[h.id] = not picked[h.id] or nil
-                    refresh(m, items())
+                    if picked[h.id] then
+                        picked[h.id] = nil
+                        return refresh(m, items())
+                    end
+                    UI.withPin(h, function()
+                        picked[h.id] = true
+                        refresh(m, items())
+                    end)
                 end }
         end
         t[#t + 1] = { tiles = { { icon = "terminal", text = _("Run a command"), sub = T(_("On the %1 ticked"), n), primary = true, fn = function()
             local hosts = {}
             for __, h in ipairs(data.hosts) do
-                if picked[h.id] then hosts[#hosts + 1] = h end
+                if picked[h.id] and not M.needsPin(h) then hosts[#hosts + 1] = h end
             end
             if #hosts == 0 then return info(_("Tick the hosts to run on.")) end
             UI.runDialog(plugin, nil, "", function(cmd) Run.many(plugin, hosts, cmd) end)

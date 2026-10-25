@@ -177,6 +177,7 @@ end
 function View:render()
     if self.canvas then self.canvas:release() end
     local c = Canvas.new(self.w, self.h, self:isDark())
+    c.turn = function(d) self:turn(d) end
     self.canvas = c
     self.wantPictures, self.hasPictures, self.pictureRects = {}, false, {}
     local draw = View.screens[self.route.kind] or View.screens.home
