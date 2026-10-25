@@ -64,7 +64,7 @@ local function docker(host)
 end
 
 local function wants(host, id)
-    for __, s in ipairs(S.shown(host)) do if s == id then return true end end
+    for __, s in ipairs(S.shown(host, true)) do if s == id then return true end end
     return false
 end
 
@@ -398,6 +398,104 @@ local function containerRow(plugin, host, c)
         hold_callback = function() containerMenu(plugin, host, c) end }
 end
 
+-- ------------------------------------------------------------------ TrueNAS, Proxmox, ReadyNAS
+
+local function vals(host) return host.last and host.last.v or nil end
+
+-- "Daily at 03:00" for a cron line "0 3 * * *"; else the line as it is.
+local function cronText(c)
+    local m, h, rest = tostring(c or ""):match("^(%d+) (%d+) (.*)$")
+    if m and rest == "* * *" then return T(_("Daily at %1"), string.format("%02d:%02d", tonumber(h), tonumber(m))) end
+    return c ~= "" and T(_("Schedule: %1"), c) or ""
+end
+
+local function upText(state)
+    local st = tostring(state or ""):lower()
+    if st == "running" then return _("Running") end
+    if st == "stopped" or st == "stop" then return _("Stopped") end
+    return st ~= "" and (st:sub(1, 1):upper() .. st:sub(2)) or "?"
+end
+
+local function appMenu(plugin, host, a)
+    local up = tostring(a.state):lower() == "running"
+    KO.list(a.name, {
+        { text = _("Start"), enabled = not up, fn = function() Screens.runCommand(plugin, host, S.truenasApp(a.name, "start")) end },
+        { text = _("Stop"), enabled = up, fn = function() Screens.runCommand(plugin, host, S.truenasApp(a.name, "stop"), { ask = true, name = T(_("Stop %1"), a.name) }) end },
+        { text = _("Redeploy"), fn = function() Screens.runCommand(plugin, host, S.truenasApp(a.name, "redeploy"), { ask = true, name = T(_("Redeploy %1"), a.name) }) end },
+    })
+end
+
+local function appRow(plugin, host, a)
+    return { text = a.name, icon = "package", right = upText(a.state),
+        callback = function() appMenu(plugin, host, a) end, hold_callback = function() appMenu(plugin, host, a) end }
+end
+
+local function shareRow(x)
+    return { text = x.name, sub = x.path, icon = "folder", right = x.on and _("On") or _("Off") }
+end
+
+local function rsyncRow(plugin, host, t)
+    local sub = cronText(t.schedule)
+    if t.last ~= "" then sub = sub .. " · " .. T(_("Last: %1"), upText(t.last)) end
+    return { text = t.path .. (t.remote ~= "" and (" → " .. t.remote) or ""), sub = sub, icon = "arrow-right-left",
+        right = t.on and _("On") or _("Off"),
+        callback = function()
+            KO.list(t.path, {
+                { text = _("Run now"), fn = function() Screens.runCommand(plugin, host, S.truenasRsync(t.id), { ask = true, name = _("Run this rsync task now") }) end },
+            })
+        end }
+end
+
+local function guestMenu(plugin, host, g)
+    local up = g.status == "running"
+    local label = g.name ~= "" and g.name or g.id
+    local function go(action, ask)
+        Screens.runCommand(plugin, host, S.proxmoxGuest(g.kind, g.id, action), { ask = ask, name = T("%1: %2", label, action) })
+    end
+    KO.list(T("%1 %2", g.id, label), {
+        { text = _("Start"), enabled = not up, fn = function() go("start") end },
+        { text = _("Shut down"), enabled = up, fn = function() go("shutdown", true) end },
+        { text = _("Reboot"), enabled = up, fn = function() go("reboot", true) end },
+        { text = _("Stop (at once)"), enabled = up, fn = function() go("stop", true) end },
+        { text = _("Back up now"), fn = function()
+            Screens.runCommand(plugin, host, S.proxmoxBackup(g.id), { ask = true, name = T(_("Back up %1 now"), label) })
+        end },
+        { text = _("Status"), fn = function() Run().command(plugin, host, S.proxmoxGuest(g.kind, g.id, "status")) end },
+        { text = _("Its settings"), fn = function() Run().command(plugin, host, S.proxmoxGuest(g.kind, g.id, "config")) end },
+    })
+end
+
+local function guestRow(plugin, host, g)
+    return { text = T("%1 %2", g.id, g.name), sub = g.kind == "lxc" and _("Container") or _("VM"),
+        icon = g.kind == "lxc" and "box" or "monitor", right = upText(g.status),
+        callback = function() guestMenu(plugin, host, g) end, hold_callback = function() guestMenu(plugin, host, g) end }
+end
+
+local function storageRow(x)
+    local pct = x.total > 0 and math.floor(x.used * 100 / x.total + 0.5) or nil
+    return { text = x.name, icon = "hard-drive", right = not x.on and _("Inactive") or (pct and (pct .. " %") or ""),
+        sub = x.kind .. (x.total > 0 and (" · " .. S.size(x.used) .. " / " .. S.size(x.total)) or "") }
+end
+
+local function jobRow(j)
+    return { text = j.which == "all" and _("All guests") or T(_("Guests %1"), j.which), icon = "clock",
+        sub = j.schedule .. (j.storage ~= "" and (" · " .. j.storage) or ""), right = j.on and _("On") or _("Off") }
+end
+
+local function backupRow(b)
+    local ok = b.status == "OK"
+    return { text = b.at and os.date("%b %d, %H:%M", b.at) or "?", sub = b.guest ~= "" and T(_("Guest %1"), b.guest) or _("All guests"),
+        icon = ok and "circle-check" or "triangle-alert", right = ok and _("OK") or b.status }
+end
+
+-- A list's first few on the host's page, then "N more" to its page.
+local function some(t, list, row, open, n)
+    n = n or 3
+    for i = 1, math.min(n, #list) do t[#t + 1] = row(list[i]) end
+    if #list > n then t[#t + 1] = { text = T(_("%1 more"), #list - n), icon = "chevron-down", callback = open } end
+    if #list == 0 then t[#t + 1] = { line = _("None.") } end
+end
+
 local function serviceMenu(plugin, host, name, state)
     local pinned = false
     for __, s in ipairs(host.services or {}) do if s == name then pinned = true end end
@@ -500,6 +598,46 @@ function Screens.hostItems(plugin, host)
             end
         end
     end
+    -- TrueNAS: apps, SMB shares, rsync tasks
+    local tn = v and v.truenas
+    if tn and wants(host, "truenas") then
+        local open = function() Screens.truenas(plugin, host) end
+        if tn.denied then
+            t[#t + 1] = { band = _("TRUENAS"), right = _("needs sudo"), callback = open }
+            t[#t + 1] = { note = _("TrueNAS's apps, shares and rsync tasks need sudo without a password here (or sign in as root), so they can be read.") }
+        else
+            t[#t + 1] = { band = _("APPS"), right = T(_("%1 of %2 running"), S.upCount(tn.apps), #tn.apps), callback = open }
+            some(t, tn.apps, function(a) return appRow(plugin, host, a) end, open)
+            t[#t + 1] = { band = _("SMB SHARES"), right = tostring(#tn.shares), callback = open }
+            some(t, tn.shares, shareRow, open)
+            t[#t + 1] = { band = _("RSYNC TASKS"), right = tostring(#tn.rsync), callback = open }
+            some(t, tn.rsync, function(x) return rsyncRow(plugin, host, x) end, open)
+        end
+    end
+    -- Proxmox: VMs and containers, backups
+    local pv = v and v.proxmox
+    if pv and wants(host, "proxmox") then
+        local open = function() Screens.proxmox(plugin, host) end
+        if pv.denied then
+            t[#t + 1] = { band = _("PROXMOX"), right = _("needs root"), callback = open }
+            t[#t + 1] = { note = _("Proxmox's VMs, containers and backups are read as root: sign in as root, or allow sudo without a password.") }
+        else
+            t[#t + 1] = { band = _("VMS AND CONTAINERS"), right = T(_("%1 of %2 running"), S.upCount(pv.guests), #pv.guests), callback = open }
+            some(t, pv.guests, function(g) return guestRow(plugin, host, g) end, open, 4)
+            t[#t + 1] = { band = _("STORAGE"), right = tostring(#pv.storage), callback = open }
+            some(t, pv.storage, storageRow, open, 4)
+            t[#t + 1] = { band = _("BACKUPS"), right = #pv.jobs == 1 and _("1 job") or T(_("%1 jobs"), #pv.jobs), callback = open }
+            some(t, pv.backups, backupRow, open, 2)
+        end
+    end
+    -- ReadyNAS: its SMB shares
+    if v and v.shares and wants(host, "shares") then
+        local open = function() Screens.shares(plugin, host) end
+        t[#t + 1] = { band = _("SMB SHARES"), right = tostring(#v.shares), callback = open }
+        some(t, v.shares, shareRow, open)
+    end
+    -- Pools and disks, snapshots, Proxmox's node, updates, Raspberry Pi, pfSense, the printer
+    if v then Screens.moreItems(plugin, host, v, t, false) end
     -- Services (failed ones and the ones you picked)
     if v and v.hasSystemd and wants(host, "services") then
         t[#t + 1] = { band = _("SERVICES"), right = v.running and T(_("%1 running"), v.running) or nil,
@@ -626,7 +764,7 @@ end
 function Screens.statsItems(plugin, host, save)
     local t = {}
     local shown = {}
-    for __, id in ipairs(S.shown(host)) do shown[id] = true end
+    for __, id in ipairs(S.shown(host, true)) do shown[id] = true end
     local os_id = hostOS(host)
     t[#t + 1] = { band = _("SHOWN"), right = osLabel(host) }
     for __, st in ipairs(S.STATS) do
@@ -997,6 +1135,326 @@ function Screens.docker(plugin, host)
     m.items_fn = items
     m.on_refresh = function()
         Net.status(plugin, host, function() H().refresh(m, items()) end)
+    end
+end
+
+-- ------------------------------------------------------------------ TrueNAS, Proxmox, ReadyNAS pages
+
+local function updated(t, host)
+    if host.last then t[#t + 1] = { line = T(_("Updated %1 · ⟳ reads it again"), Screens.ago(host.last.at)) } end
+end
+
+local function page(plugin, host, title, items)
+    local m = H().list(title, items(), M.hostName(host))
+    m.items_fn = items
+    m.on_refresh = function() Net.status(plugin, host, function() H().refresh(m, items()) end) end
+    return m
+end
+
+function Screens.truenas(plugin, host)
+    page(plugin, host, _("TrueNAS"), function()
+        local t = {}
+        local tn = vals(host) and vals(host).truenas
+        if not tn then return { { message = _("TrueNAS wasn't found on this host.") } } end
+        if tn.denied then return { { message = _("TrueNAS's apps, shares and rsync tasks need sudo without a password here (or sign in as root).") } } end
+        t[#t + 1] = { band = _("APPS"), right = T(_("%1 of %2 running"), S.upCount(tn.apps), #tn.apps) }
+        for __, a in ipairs(tn.apps) do t[#t + 1] = appRow(plugin, host, a) end
+        t[#t + 1] = { band = _("SMB SHARES"), right = tostring(#tn.shares) }
+        for __, x in ipairs(tn.shares) do t[#t + 1] = shareRow(x) end
+        t[#t + 1] = { band = _("RSYNC TASKS"), right = tostring(#tn.rsync) }
+        for __, x in ipairs(tn.rsync) do t[#t + 1] = rsyncRow(plugin, host, x) end
+        updated(t, host)
+        return t
+    end)
+end
+
+function Screens.proxmox(plugin, host)
+    page(plugin, host, _("Proxmox"), function()
+        local t = {}
+        local pv = vals(host) and vals(host).proxmox
+        if not pv then return { { message = _("Proxmox wasn't found on this host.") } } end
+        if pv.denied then return { { message = _("Proxmox's VMs, containers and backups are read as root: sign in as root, or allow sudo without a password.") } } end
+        t[#t + 1] = { band = _("VMS AND CONTAINERS"), right = T(_("%1 of %2 running"), S.upCount(pv.guests), #pv.guests) }
+        for __, g in ipairs(pv.guests) do t[#t + 1] = guestRow(plugin, host, g) end
+        t[#t + 1] = { band = _("STORAGE"), right = tostring(#pv.storage) }
+        for __, x in ipairs(pv.storage) do t[#t + 1] = storageRow(x) end
+        if #pv.storage == 0 then t[#t + 1] = { line = _("None.") } end
+        t[#t + 1] = { band = _("BACKUP JOBS"), right = tostring(#pv.jobs) }
+        for __, j in ipairs(pv.jobs) do t[#t + 1] = jobRow(j) end
+        if #pv.jobs == 0 then t[#t + 1] = { line = _("None.") } end
+        t[#t + 1] = { band = _("LATEST BACKUPS") }
+        for __, b in ipairs(pv.backups) do t[#t + 1] = backupRow(b) end
+        if #pv.backups == 0 then t[#t + 1] = { line = _("None yet.") } end
+        updated(t, host)
+        return t
+    end)
+end
+
+local MORE_TITLES = { pools = "Pools and disks", dataprotect = "Snapshots and replication", node = "Node and cluster", pfsense = "pfSense" }
+
+function Screens.more(plugin, host, which)
+    page(plugin, host, _(MORE_TITLES[which] or which), function()
+        local t = {}
+        local v = vals(host)
+        if not v then return { { message = _("Not read yet.") } } end
+        -- (only this section: the others' switches off for the moment)
+        local keep = host.stats
+        host.stats = {}
+        for __, st in ipairs(S.STATS) do if st.section then host.stats[st.id] = st.id == which end end
+        local ok, err = pcall(Screens.moreItems, plugin, host, v, t, true)
+        host.stats = keep
+        if not ok then error(err) end
+        updated(t, host)
+        return t
+    end)
+end
+
+function Screens.shares(plugin, host)
+    page(plugin, host, _("SMB shares"), function()
+        local t = {}
+        local v = vals(host)
+        local list = v and (v.shares or (v.truenas and v.truenas.shares)) or {}
+        t[#t + 1] = { band = _("SMB SHARES"), right = tostring(#list) }
+        for __, x in ipairs(list) do t[#t + 1] = shareRow(x) end
+        if #list == 0 then t[#t + 1] = { line = _("None.") } end
+        updated(t, host)
+        return t
+    end)
+end
+
+-- ------------------------------------------------------------------ Pools, disks, upkeep, Pi, pfSense, printer
+
+local function onOff(on) return on and _("On") or _("Off") end
+
+local function poolRow(x)
+    local sub = {}
+    if x.total and x.total > 0 then sub[#sub + 1] = T(_("%1 of %2 used"), S.size(x.used), S.size(x.total)) end
+    if x.raid and x.raid ~= "" then sub[#sub + 1] = x.raid end
+    if x.scan and x.scan ~= "" then sub[#sub + 1] = x.scan end
+    local h = tostring(x.health or "")
+    local ok = h == "" or h == "ONLINE"
+    return { text = x.name, sub = table.concat(sub, " · "), icon = ok and "layers" or "triangle-alert",
+        right = h == "" and "" or (ok and _("Healthy") or (h:sub(1, 1) .. h:sub(2):lower())) }
+end
+
+local function diskRow(d)
+    local sub = {}
+    if d.model and d.model ~= "" then sub[#sub + 1] = d.model end
+    if d.size and d.size > 0 then sub[#sub + 1] = S.size(d.size) end
+    if d.pool and d.pool ~= "" then sub[#sub + 1] = T(_("In %1"), d.pool) end
+    local right = {}
+    if d.health and d.health ~= "OK" then right[#right + 1] = d.health end
+    if d.temp then right[#right + 1] = string.format("%d °C", math.floor(d.temp + 0.5)) end
+    if d.health == "OK" and not d.temp then right[#right + 1] = _("OK") end
+    return { text = d.name, sub = table.concat(sub, " · "), icon = (d.health and d.health ~= "OK") and "triangle-alert" or "hard-drive",
+        right = table.concat(right, " · ") }
+end
+
+local function snapRow(plugin, host, x)
+    local sub = cronText(x.schedule)
+    if x.state ~= "" then sub = sub .. " · " .. T(_("Last: %1"), upText(x.state)) end
+    return { text = x.dataset, sub = sub, icon = "history", right = onOff(x.on),
+        callback = function()
+            KO.list(x.dataset, {
+                { text = _("Take a snapshot now"), fn = function()
+                    Screens.runCommand(plugin, host, S.truenasSnapshot(x.id), { ask = true, name = _("Take a snapshot now") })
+                end },
+            })
+        end }
+end
+
+local function replRow(plugin, host, x)
+    local sub = x.state ~= "" and T(_("Last: %1"), upText(x.state)) or ""
+    if x.at then sub = sub .. " · " .. os.date("%b %d, %H:%M", x.at) end
+    return { text = x.name, sub = sub, icon = "copy", right = onOff(x.on),
+        callback = function()
+            KO.list(x.name, {
+                { text = _("Run now"), fn = function()
+                    Screens.runCommand(plugin, host, S.truenasReplication(x.id), { ask = true, name = _("Run this replication now") })
+                end },
+            })
+        end }
+end
+
+local function ifaceRow(x)
+    return { text = x.name, icon = "network", right = T(_("↓ %1  ↑ %2"), S.size(x.inb), S.size(x.outb)) }
+end
+
+local function gatewayRow(g)
+    local ok = tostring(g.status):lower() == "online" or tostring(g.status):lower() == "none"
+    local sub = {}
+    if g.delay ~= "" then sub[#sub + 1] = T(_("Delay %1"), g.delay) end
+    if g.loss ~= "" then sub[#sub + 1] = T(_("Loss %1"), g.loss) end
+    return { text = g.name, sub = table.concat(sub, " · "), icon = ok and "globe" or "triangle-alert", right = upText(g.status) }
+end
+
+local function printerMenu(plugin, host, pr)
+    local st = tostring(pr.state)
+    local function go(action, ask, name)
+        Screens.runCommand(plugin, host, S.printerCmd(action), { ask = ask, name = name })
+    end
+    KO.list(_("3D printer"), {
+        { text = _("Pause"), enabled = st == "printing", fn = function() go("pause", true, _("Pause the print")) end },
+        { text = _("Resume"), enabled = st == "paused", fn = function() go("resume", false) end },
+        { text = _("Cancel the print"), enabled = st == "printing" or st == "paused", fn = function() go("cancel", true, _("Cancel the print")) end },
+    })
+end
+
+local function temp(now, target)
+    if not now then return "?" end
+    local s = string.format("%d °C", math.floor(now + 0.5))
+    if target and target > 0 then s = s .. " → " .. string.format("%d °C", math.floor(target + 0.5)) end
+    return s
+end
+
+--- These sections: on the host's page (full = false: a few of each list) or their own page.
+function Screens.moreItems(plugin, host, v, t, full)
+    local function open(which) return function() Screens.more(plugin, host, which) end end
+    local function list(items, row, which, n)
+        if full then
+            for __, x in ipairs(items) do t[#t + 1] = row(x) end
+            if #items == 0 then t[#t + 1] = { line = _("None.") } end
+        else
+            some(t, items, row, open(which), n)
+        end
+    end
+    -- Pools and disks
+    if wants(host, "pools") and (v.pools or v.disks) then
+        if v.pools then
+            t[#t + 1] = { band = _("POOLS"), right = tostring(#v.pools), callback = open("pools") }
+            list(v.pools, poolRow, "pools", 3)
+        end
+        if v.disks then
+            t[#t + 1] = { band = _("DISKS"), right = tostring(#v.disks), callback = open("pools") }
+            list(v.disks, diskRow, "pools", 4)
+        end
+    end
+    -- TrueNAS: snapshots and replication
+    local tn = v.truenas
+    if tn and tn.ok and tn.snaps and wants(host, "dataprotect") then
+        t[#t + 1] = { band = _("SNAPSHOT TASKS"), right = tostring(#tn.snaps), callback = open("dataprotect") }
+        list(tn.snaps, function(x) return snapRow(plugin, host, x) end, "dataprotect", 3)
+        t[#t + 1] = { band = _("REPLICATION"), right = tostring(#tn.repl), callback = open("dataprotect") }
+        list(tn.repl, function(x) return replRow(plugin, host, x) end, "dataprotect", 3)
+    end
+    -- Proxmox: the node and the cluster
+    local pv = v.proxmox
+    if pv and pv.ok and wants(host, "node") and (pv.node or pv.cluster or #pv.failed > 0) then
+        t[#t + 1] = { band = _("NODE"), right = pv.node and pv.node.version:match("^pve%-manager/([%d%.]+)") and ("Proxmox VE " .. pv.node.version:match("^pve%-manager/([%d%.]+)")) or nil }
+        if pv.node then
+            t[#t + 1] = { text = T(_("CPU %1 %"), pv.node.cpu or "?"), icon = "cpu",
+                sub = T(_("Memory %1 of %2"), S.size(pv.node.used), S.size(pv.node.total)) }
+        end
+        if pv.cluster then
+            local up = 0
+            for __, n in ipairs(pv.nodes) do if n.online then up = up + 1 end end
+            t[#t + 1] = { text = T(_("Cluster %1"), pv.cluster.name), icon = "server",
+                sub = T(_("%1 of %2 nodes online"), up, #pv.nodes), right = pv.cluster.quorate and _("Quorate") or _("No quorum") }
+        end
+        if #pv.failed > 0 then
+            t[#t + 1] = { band = _("FAILED TASKS"), right = tostring(#pv.failed), callback = open("node") }
+            list(pv.failed, function(x)
+                local kinds = { vzdump = _("Backup"), qmstart = _("Start"), qmshutdown = _("Shut down"), qmstop = _("Stop"), qmreboot = _("Reboot"),
+                    vzstart = _("Start"), vzshutdown = _("Shut down"), vzstop = _("Stop"), vzreboot = _("Reboot"), aptupdate = _("Update check") }
+                return { text = (kinds[x.kind] or x.kind) .. (x.guest ~= "" and (" " .. x.guest) or ""), icon = "triangle-alert",
+                    sub = x.at and os.date("%b %d, %H:%M", x.at) or "", right = x.status }
+            end, "node", 2)
+        end
+    end
+    -- Updates and logs
+    local up = v.upkeep
+    if up and wants(host, "upkeep") then
+        local mgr = up.manager
+        t[#t + 1] = { band = _("UPDATES AND LOGS") }
+        if up.updates then
+            t[#t + 1] = { text = up.updates == 0 and _("Up to date") or (up.updates == 1 and _("1 update waiting") or T(_("%1 updates waiting"), up.updates)),
+                icon = up.updates == 0 and "circle-check" or "download",
+                callback = mgr and S.UPGRADE[mgr] and function()
+                    KO.list(_("Updates"), {
+                        { text = _("Update everything"), enabled = up.updates > 0, fn = function()
+                            Screens.runCommand(plugin, host, S.UPGRADE[mgr], { ask = true, name = _("Update everything") })
+                        end },
+                        { text = _("Show them"), fn = function()
+                            Run().command(plugin, host, mgr == "apt" and "apt list --upgradable 2>/dev/null" or "checkupdates 2>/dev/null || pacman -Qu")
+                        end },
+                    })
+                end or nil }
+        end
+        if up.cache and mgr and S.CLEAN[mgr] then
+            t[#t + 1] = { text = _("Package cache"), icon = "package", right = S.size(up.cache),
+                callback = function()
+                    KO.list(_("Package cache"), {
+                        { text = _("Empty it"), fn = function() Screens.runCommand(plugin, host, S.CLEAN[mgr], { ask = true, name = _("Empty the package cache") }) end },
+                    })
+                end }
+        end
+        if up.errors then
+            t[#t + 1] = { text = up.errors == 0 and _("No errors since it started") or (up.errors == 1 and _("1 error since it started") or T(_("%1 errors since it started"), up.errors)),
+                sub = up.lines[#up.lines], icon = up.errors == 0 and "circle-check" or "triangle-alert",
+                callback = up.errors > 0 and function() Run().command(plugin, host, "journalctl -b -p err -q --no-pager -n 50") end or nil }
+        end
+        if up.journal then
+            t[#t + 1] = { text = _("Logs"), icon = "scroll-text", right = S.size(up.journal),
+                callback = function()
+                    KO.list(_("Logs"), {
+                        { text = _("Remove logs older than 2 weeks"), fn = function()
+                            Screens.runCommand(plugin, host, S.LOGS_CLEAN, { ask = true, name = _("Remove old logs") })
+                        end },
+                    })
+                end }
+        end
+    end
+    -- Raspberry Pi
+    local pi = v.pi
+    if pi and wants(host, "pi") then
+        t[#t + 1] = { band = _("RASPBERRY PI") }
+        local th = pi.throttled
+        if th then
+            local sub
+            if #th.now > 0 then sub = table.concat(th.now, ", ")
+            elseif #th.past > 0 then sub = T(_("Since it started: %1"), table.concat(th.past, ", ")) end
+            t[#t + 1] = { text = _("Power and heat"), sub = sub, icon = th.ok and "circle-check" or "triangle-alert",
+                right = #th.now > 0 and _("Throttled") or _("OK") }
+        end
+        for __, o in ipairs(S.PI_OPTS) do
+            local on = pi.opts[o.id]
+            if on ~= nil then
+                t[#t + 1] = { text = _(o.name), sub = o.reboot and _("Takes effect after a restart") or nil, icon = "settings", right = onOff(on),
+                    callback = function()
+                        Screens.runCommand(plugin, host, S.piSet(o.id, not on),
+                            { ask = true, name = T(on and _("Turn off %1") or _("Turn on %1"), _(o.name)) })
+                    end }
+            end
+        end
+    end
+    -- pfSense
+    local pf = v.pfsense
+    if pf and wants(host, "pfsense") then
+        t[#t + 1] = { band = _("PFSENSE") }
+        t[#t + 1] = { text = T(_("%1 firewall states"), pf.states or "?"), icon = "lock",
+            sub = pf.dhcp and T(_("%1 DHCP leases"), pf.dhcp) or nil }
+        for __, g in ipairs(pf.gateways) do t[#t + 1] = gatewayRow(g) end
+        for __, x in ipairs(pf.vpns) do
+            if x.count > 0 then t[#t + 1] = { text = x.name, icon = "lock", right = x.name == "OpenVPN" and T(_("%1 running"), x.count) or T(_("%1 up"), x.count) } end
+        end
+        t[#t + 1] = { band = _("INTERFACES"), right = tostring(#pf.ifaces), callback = open("pfsense") }
+        list(pf.ifaces, ifaceRow, "pfsense", 3)
+        t[#t + 1] = { text = _("Check for updates"), icon = "download",
+            callback = function() Run().command(plugin, host, "pfSense-upgrade -c") end }
+    end
+    -- The printer
+    local pr = v.printer
+    if pr and wants(host, "printer") then
+        local st = tostring(pr.state)
+        t[#t + 1] = { band = _("3D PRINTER"), right = upText(st) }
+        local sub = {}
+        if pr.progress and (st == "printing" or st == "paused") then sub[#sub + 1] = string.format("%d %%", math.floor(pr.progress * 100 + 0.5)) end
+        if pr.elapsed and pr.elapsed > 0 then sub[#sub + 1] = S.duration(pr.elapsed) end
+        if pr.message ~= "" then sub[#sub + 1] = pr.message end
+        t[#t + 1] = { text = pr.file ~= "" and pr.file or _("Nothing printing"), sub = table.concat(sub, " · "), icon = "box",
+            callback = function() printerMenu(plugin, host, pr) end, hold_callback = function() printerMenu(plugin, host, pr) end }
+        t[#t + 1] = { text = _("Nozzle"), icon = "thermometer", right = temp(pr.nozzle, pr.nozzleTarget) }
+        t[#t + 1] = { text = _("Bed"), icon = "thermometer", right = temp(pr.bed, pr.bedTarget) }
     end
 end
 

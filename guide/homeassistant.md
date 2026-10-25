@@ -123,7 +123,7 @@ A room's screen shows its temperature and humidity, how much is on (with **All o
 - **Lights**, **Switches**, **Sensors**, **Doors**, **Vacuums**: everything of that kind, by room. Lights and Switches have **Turn all off**.
 - **Climate**: a card for each thermostat with the temperature now, what it is doing, and − and + for the set point; then **FANS** and each room's temperature and humidity.
 - **Cameras**: every camera's picture. Tap one for a new picture, hold for full screen. Refresh at the top updates them all.
-- **Media**: each playing speaker or TV with its controls, then the others.
+- **Media**: each playing speaker or TV with its controls, then the others. With Plex set up in Home Assistant, **PLEX** comes first: who's watching what and where, **Scan clients**, and **Scan a library** (its library sensors when they're turned on in Home Assistant; otherwise type the name once and it's remembered).
 - **Scenes & scripts**: each with **Run**.
 - **Security**: the status bar, **LOCKS & DOORS** (with **Lock all** when something is unlocked), the security cameras, and door, window, motion, smoke and leak sensors.
 - **Weather**: now (temperature, humidity, wind, inside), **NEXT HOURS** with the chance of rain, and **NEXT DAYS** with highs and lows.

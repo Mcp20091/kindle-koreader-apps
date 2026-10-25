@@ -61,6 +61,15 @@ Tap a host to open its page. Its first line is its address, its system, how it s
 - **Quick commands**: the usual ones for the host's system, a tap each (see **Quick commands**).
 - **Docker**: when the host has Docker, its containers, stopped ones first (see **Docker**).
 - **Services**: failed services, and the ones you show here (see **Services**).
+- **Your system's own sections**, when the host has them (each can be turned off in **Stats and alerts**):
+  - **TrueNAS**: **Apps** (Start, Stop, Redeploy), **SMB shares**, **Rsync tasks** (Run now), **Snapshot tasks** (Take a snapshot now) and **Replication** (Run now).
+  - **Proxmox**: **VMs and containers** (Start, Shut down, Reboot, Stop, Back up now), **Storage**, **Backups**, the **Node** (CPU, memory, version, cluster and quorum) and **Failed tasks**.
+  - **ReadyNAS**: its **SMB shares**.
+  - **Pools and disks** (ZFS, ReadyNAS volumes, SMART): each pool's health, space and last scrub; each disk's model, size and temperature.
+  - **Updates and logs** (Debian, Arch and others): updates waiting (**Update everything**), the package cache (**Empty it**), errors since it started, and the log size (**Remove logs older than 2 weeks**).
+  - **Raspberry Pi**: low voltage or throttling, now or since it started, and **Camera**, **I2C**, **SPI**, **SSH**, **VNC** and **Serial port** to turn on or off (raspi-config's own; some after a restart).
+  - **pfSense**: firewall states, DHCP leases, gateways, VPNs, each interface's traffic, and **Check for updates**.
+  - **3D printer** (Klipper with Moonraker on the printer): the file, progress, nozzle and bed, with **Pause**, **Resume** and **Cancel the print**.
 - **Saved commands**: tap one to run it; hold for more. **+** in the title bar adds one.
 - **Recent**: the last commands you ran here, with when. **All recent commands** has the last 10.
 - **Files** and **Stats and alerts**.

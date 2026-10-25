@@ -1118,9 +1118,98 @@ function S.camera(self, c, snap)
     return 1
 end
 
+--- Plex: scan a library (one of its library sensors, one typed before, or a new name).
+function View:plexScan(plex)
+    local ha = self.ha
+    local function scan(name)
+        name = tostring(name or ""):gsub("^%s+", ""):gsub("%s+$", "")
+        if name == "" then return end
+        ha:send("plex.refresh_library", { library_name = name }, function(ok, err)
+            if not ok then return ha:failed(err and err.message) end
+            KO.toast(T(_("Scanning %1"), name), 2)
+        end)
+    end
+    local items, seen = {}, {}
+    for __, l in ipairs(plex.libraries) do
+        seen[l.name:lower()] = true
+        items[#items + 1] = { text = l.name, fn = function() scan(l.name) end }
+    end
+    for __, name in ipairs(ha.prefs.plex_libraries or {}) do
+        if not seen[name:lower()] then
+            seen[name:lower()] = true
+            items[#items + 1] = { text = name, fn = function() scan(name) end }
+        end
+    end
+    local function other()
+        local function done(name)
+            name = tostring(name or ""):gsub("^%s+", ""):gsub("%s+$", "")
+            if name == "" then return end
+            if not seen[name:lower()] then
+                ha.prefs.plex_libraries = ha.prefs.plex_libraries or {}
+                table.insert(ha.prefs.plex_libraries, name)
+                ha:savePrefs()
+            end
+            scan(name)
+        end
+        if KO.askText then
+            return KO.askText{ title = _("Scan a library"), text = "", hint = _("Its name in Plex, such as Movies"),
+                ok = _("Scan"), okIcon = "refresh-cw", needsText = true, done = done }
+        end
+        local dialog
+        dialog = InputDialog:new{
+            title = _("Scan a library"), input = "", input_hint = _("Its name in Plex, such as Movies"),
+            buttons = { {
+                { text = _("Cancel"), id = "close", callback = function() UIManager:close(dialog) end },
+                { text = _("Scan"), is_enter_default = true, callback = function()
+                    local q = dialog:getInputText()
+                    UIManager:close(dialog)
+                    done(q)
+                end },
+            } },
+        }
+        UIManager:show(dialog)
+        dialog:onShowKeyboard()
+    end
+    if #items == 0 then return other() end
+    items[#items + 1] = { text = _("Another library…"), fn = other }
+    KO.list(_("Scan a library"), items)
+end
+
+-- Plex's section on Media: who's watching, Scan clients, Scan a library.
+local function plexBlocks(self, c, F, plex)
+    F:block(26, function(y)
+        self:label(c, y, _("PLEX"), plex.count == 1 and _("1 watching") or T(_("%1 watching"), plex.count or 0))
+    end, 36)
+    for __, w in ipairs(plex.watching) do
+        F:block(46, function(y)
+            c:icon("tv", 14, y + 14, 16)
+            c:text(40, y + 20, w.what, 12, { maxw = c.W - 60 })
+            c:text(40, y + 38, w.who, 10, { color = C.GREY, maxw = c.W - 60 })
+            c:hline(40, y + 45, c.W - 40)
+        end)
+    end
+    if #plex.watching == 0 and (plex.count or 0) == 0 then
+        F:block(30, function(y) c:text(14, y + 20, _("Nobody is watching."), 11, { color = C.GREY }) end)
+    end
+    F:block(50, function(y)
+        local bw = math.floor((c.W - 42) / 2)
+        if plex.scan then
+            self:button(c, 14, y + 8, bw, 34, _("Scan clients"), "refresh-cw", function()
+                self.ha:send("button.press", { entity_id = plex.scan.id }, function(ok, err)
+                    if not ok then return self.ha:failed(err and err.message) end
+                    KO.toast(_("Looking for Plex players"), 2)
+                end)
+            end)
+        end
+        self:button(c, plex.scan and (28 + bw) or 14, y + 8, bw, 34, _("Scan a library"), "list", function() self:plexScan(plex) end)
+    end)
+end
+
 function S.media(self, c, snap)
     local players = visibleOf(self, snap, { media_player = true })
     local F = c:flow(56, c.H - 8, self.pageNo)
+    local plex = Model.plex(snap)
+    if plex then plexBlocks(self, c, F, plex) end
     local active, rest = {}, {}
     for __, e in ipairs(players) do
         if Model.isOn(e) then table.insert(active, e) else table.insert(rest, e) end
@@ -1143,7 +1232,7 @@ function S.media(self, c, snap)
             end)
         end
     end
-    if #players == 0 then c:text(14, 80, _("No media players to show."), 12, { color = C.GREY }) end
+    if #players == 0 and not plex then c:text(14, 80, _("No media players to show."), 12, { color = C.GREY }) end
     self:titlebar(c, true, _("Media"), {}, F:pages())
     return F:pages()
 end

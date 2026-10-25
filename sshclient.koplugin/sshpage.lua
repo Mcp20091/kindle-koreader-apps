@@ -183,9 +183,12 @@ function draw.tiles(c, F, it)
                     local x = 14 + k * (w + gap)
                     local on = t.primary
                     c:box(x, y + 4, w, h, { r = 10, fill = on and C.FILL or C.WHITE, border = C.BLACK, bw = 1.2 })
-                    if t.icon then c:icon(t.icon, x + 10, y + 12, 18, on) end
-                    c:text(x + 10, y + 44, t.text or "", 11.5, { bold = true, maxw = w - 18, color = on and C.ON_FILL or C.BLACK })
-                    if t.sub then c:text(x + 10, y + 57, t.sub, 9.5, { maxw = w - 18, color = on and C.ON_FILL_DIM or C.GREY }) end
+                    -- The icon beside the name, the line under it: room to breathe at the card's height
+                    -- (as tall as the stats above).
+                    local tx = t.icon and 34 or 10
+                    if t.icon then c:icon(t.icon, x + 10, y + 15, 17, on) end
+                    c:text(x + tx, y + 29, t.text or "", 11.5, { bold = true, maxw = w - tx - 8, color = on and C.ON_FILL or C.BLACK })
+                    if t.sub then c:text(x + 10, y + 50, t.sub, 9.5, { maxw = w - 18, color = on and C.ON_FILL_DIM or C.GREY }) end
                     c:hit(x, y + 4, w, h, t.fn, t.hold)
                 end
             end

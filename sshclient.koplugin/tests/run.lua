@@ -591,5 +591,68 @@ local lf2 = io.popen("sh -n -c " .. M.quote(Stt.command(nil)) .. " 2>&1; echo rc
 eq(lf2:read("*a"), "rc=0\n", "the Linux script still parses")
 lf2:close()
 
+-- TrueNAS SCALE, Proxmox and ReadyNAS: their lines read
+local nraw = Stt.parse(table.concat({
+    "nas_ok=1", "app=plex|RUNNING", "app=nextcloud|STOPPED",
+    "share=Media|/mnt/tank/media|on", "share=Old|/mnt/tank/old|off",
+    "rsync=3|/mnt/tank/photos|backup.lan|on|0 3 * * *|SUCCESS",
+}, "\n"))
+local nv = Stt.values(nraw)
+eq(#nv.truenas.apps .. "," .. Stt.upCount(nv.truenas.apps), "2,1", "TrueNAS: apps, one running")
+eq(nv.truenas.shares[2].on, false, "TrueNAS: a share turned off")
+eq(nv.truenas.rsync[1].schedule .. "|" .. nv.truenas.rsync[1].last, "0 3 * * *|SUCCESS", "TrueNAS: an rsync task's schedule and last run")
+eq(Stt.tile("truenas", nv).value, "1 of 2 apps running", "TrueNAS: its card")
+eq(Stt.values(Stt.parse("nas_ok=denied")).truenas.denied, true, "TrueNAS: needs sudo")
+local pv = Stt.values(Stt.parse(table.concat({
+    "pve_ok=1", "vm=101|lxc|pihole|running", "vm=100|qemu|ubuntu|stopped",
+    "pst=local-zfs|zfspool|1099511627776|274877906944|on",
+    "bjob=backup-1a2b|sun 01:00|on|pbs|all", "bk=1761350400|OK|", "bk=1761264000|job errors|101",
+}, "\n")))
+eq(pv.proxmox.guests[1].id .. pv.proxmox.guests[1].kind .. "," .. Stt.upCount(pv.proxmox.guests), "100qemu,1", "Proxmox: guests by id, one running")
+eq(math.floor(pv.proxmox.storage[1].used * 100 / pv.proxmox.storage[1].total), 25, "Proxmox: storage used")
+eq(pv.proxmox.jobs[1].which .. "|" .. pv.proxmox.backups[2].status, "all|job errors", "Proxmox: a backup job, a failed backup")
+eq(Stt.tile("proxmox", pv).value, "1 of 2 running", "Proxmox: its card")
+eq(#Stt.values(Stt.parse("share=Documents|/data/Documents|on")).shares, 1, "ReadyNAS: its shares")
+eq(Stt.proxmoxGuest("lxc", "101", "shutdown"), "pct shutdown 101", "Proxmox: a container's command")
+eq(Stt.proxmoxGuest("qemu", "1; rm", "start"), nil, "Proxmox: nothing odd in a command")
+eq(Stt.truenasApp("plex", "start"), "sudo midclt call -j app.start plex", "TrueNAS: an app's command")
+-- (only on their own systems: no TrueNAS card on a plain Debian)
+local deb, tns = { os = "debian" }, { os = "truenas" }
+local function has(h, id) for __, x in ipairs(Stt.shown(h, true)) do if x == id then return true end end return false end
+eq(tostring(has(deb, "truenas")) .. tostring(has(tns, "truenas")) .. tostring(has(tns, "proxmox")), "falsetruefalse", "the cards only on their systems")
+
+-- Pools and disks, snapshots, Proxmox's node, updates, Raspberry Pi, pfSense, the printer
+local mv = Stt.values(Stt.parse(table.concat({
+    "nas_ok=1",
+    "pool=tank|4398046511104|1099511627776|ONLINE|scrub repaired 0B in 01:02:03 with 0 errors on Sun Oct 19",
+    "pool=fast|1099511627776|0|DEGRADED|",
+    "tdisk=sda|WDC WD40|4000787030016|tank", "dtemp=sda|34",
+    "snap=2|tank/photos|0 0 * * *|on|FINISHED", "repl=1|to backup|off|SUCCESS|1761350400",
+    "sd=sdb|Samsung SSD|PASSED|31",
+    "upd=12", "pkgmgr=apt", "cache=204800", "jerr=3", "jline=first", "jline=last one", "jsize=48.0M",
+    "pi_thr=0x50005", "pi_camera=1", "pi_i2c=0",
+    "moon={\"result\": {\"status\": {\"print_stats\": {\"state\": \"printing\", \"filename\": \"cube.gcode\", \"print_duration\": 600.5},"
+        .. " \"display_status\": {\"progress\": 0.42, \"message\": null}, \"extruder\": {\"temperature\": 219.8, \"target\": 220.0},"
+        .. " \"heater_bed\": {\"temperature\": 59.9, \"target\": 60.0}}}}",
+}, "\n")))
+eq(#mv.pools .. mv.pools[1].health .. math.floor(mv.pools[1].used * 100 / mv.pools[1].total), "2ONLINE25", "pools: health and space")
+eq(#mv.disks .. "," .. mv.disks[1].temp .. "," .. mv.disks[2].health, "2,34,OK", "disks: TrueNAS's temperature, smartctl's health")
+eq(mv.truenas.snaps[1].dataset .. "," .. tostring(mv.truenas.repl[1].on) .. "," .. mv.truenas.repl[1].at, "tank/photos,false,1761350400", "TrueNAS: snapshot and replication tasks")
+eq(mv.upkeep.updates .. mv.upkeep.manager .. mv.upkeep.errors .. #mv.upkeep.lines .. mv.upkeep.journal, "12apt3249152", "updates and logs")
+eq(table.concat(mv.pi.throttled.now, ",") .. "|" .. table.concat(mv.pi.throttled.past, ",") .. "|" .. tostring(mv.pi.opts.camera) .. tostring(mv.pi.opts.i2c),
+    "Low voltage,Throttled|Low voltage,Throttled|falsetrue", "Raspberry Pi: throttling and its options (0 is on)")
+eq(mv.printer.state .. "," .. mv.printer.file .. "," .. mv.printer.progress .. "," .. mv.printer.nozzle .. "," .. mv.printer.bedTarget,
+    "printing,cube.gcode,0.42,219.8,60", "the printer from Moonraker")
+eq(Stt.tile("pools", mv), nil, "a section has no card")
+eq(Stt.piSet("i2c", true) .. "|" .. tostring(Stt.piSet("rm -rf", true)), "sudo raspi-config nonint do_i2c 0|nil", "Raspberry Pi: an option's command")
+eq(Stt.truenasSnapshot("2") .. "|" .. tostring(Stt.printerCmd("explode")), "sudo midclt call pool.snapshottask.run 2|nil", "commands: snapshot, nothing odd")
+local pmx = Stt.values(Stt.parse("pve_ok=1\npnode=0.123|4294967296|17179869184|pve-manager/8.2.4/abc\npcl=cluster|home|1|2\npcl=node|pve1|1|\npcl=node|pve2|0|\nptask=1761350400|vzdump|job errors|101"))
+eq(pmx.proxmox.node.cpu .. "," .. pmx.proxmox.cluster.name .. tostring(pmx.proxmox.cluster.quorate) .. "," .. #pmx.proxmox.nodes .. "," .. pmx.proxmox.failed[1].guest,
+    "12,hometrue,2,101", "Proxmox: node, cluster, failed tasks")
+local pfv = Stt.values(Stt.parse("pf_states=842\npf_dhcp=17\ngw=WAN_DHCP|online|1.2ms|0.0%\npif=igb0|1048576|2048\nvpn=WireGuard|1\nvpn=OpenVPN|0"))
+eq(pfv.pfsense.states .. "," .. pfv.pfsense.dhcp .. "," .. pfv.pfsense.gateways[1].status .. "," .. pfv.pfsense.ifaces[1].inb .. "," .. #pfv.pfsense.vpns,
+    "842,17,online,1024,2", "pfSense: states, leases, gateways, interfaces, VPNs")
+eq(tostring(has({ os = "pfsense" }, "pfsense")) .. tostring(has(deb, "pfsense")) .. tostring(has({ os = "raspberrypi" }, "pi")), "truefalsetrue", "sections only on their systems")
+
 print(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)

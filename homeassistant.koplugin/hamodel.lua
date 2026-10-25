@@ -1185,4 +1185,32 @@ function Model.hourly(rows, now, hours)
     return { values = values, min = min, max = max }
 end
 
+
+--- Plex (its integration's entities, marked `plex` by the template): the
+-- server's sensor, who's watching ("user - player": what), its Scan clients
+-- button and its libraries (their sensors, when turned on). nil without Plex.
+function Model.plex(snap)
+    local p = { watching = {}, libraries = {} }
+    for __, e in ipairs(snap and snap.list or {}) do
+        if e.attr.plex then
+            if e.domain == "button" then
+                p.scan = e
+            elseif e.attr.library_type then
+                p.libraries[#p.libraries + 1] = { name = (e.name:gsub("^.-[Ll]ibrary%s*%-?%s*", "")), count = tonumber(e.state), e = e }
+            elseif e.domain == "sensor" and not p.server then
+                p.server = e
+                for k, v in pairs(e.attr) do
+                    local who = type(k) == "string" and k:match("^w:(.+)$")
+                    if who then p.watching[#p.watching + 1] = { who = who, what = tostring(v) } end
+                end
+                table.sort(p.watching, function(a, b) return a.who < b.who end)
+            end
+        end
+    end
+    if not p.server and not p.scan then return nil end
+    p.count = p.server and tonumber(p.server.state) or #p.watching
+    table.sort(p.libraries, function(a, b) return a.name:lower() < b.name:lower() end)
+    return p
+end
+
 return Model

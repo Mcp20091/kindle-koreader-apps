@@ -505,5 +505,19 @@ do
     check("no addresses", #newApi({}, function() end):testAddresses(clock), 0)
 end
 
+-- Plex: the server's sensor (who's watching), Scan clients, its libraries
+do
+    local ps = Model.parse({ v = 1, now = 1, e = {
+        { "sensor.plex_server", "Plex Server", "2", "", "Plex Server", 1,
+            { { "unit_of_measurement", "watching" }, { "plex", 1 }, { "w:sam - Living Room TV", "Dune (2021)" }, { "w:alex - Phone", "The Office - S02E03" } } },
+        { "button.plex_server_scan_clients", "Plex Server Scan clients", "x", "", "Plex Server", 1, { { "plex", 1 } } },
+        { "sensor.plex_server_library_movies", "Plex Server Library - Movies", "812", "", "Plex Server", 1, { { "plex", 1 }, { "library_type", "movie" } } },
+    } })
+    local p = Model.plex(ps)
+    check("plex watching", p.count .. " " .. #p.watching .. " " .. p.watching[1].who .. ": " .. p.watching[1].what, "2 2 alex - Phone: The Office - S02E03")
+    check("plex scan clients and a library", p.scan.id .. " " .. p.libraries[1].name .. " " .. p.libraries[1].count, "button.plex_server_scan_clients Movies 812")
+    check("no plex", Model.plex(Model.parse({ v = 1, now = 1, e = {} })), nil)
+end
+
 print(string.format("%d passed, %d failed", passed, failed))
 os.exit(failed == 0 and 0 or 1)

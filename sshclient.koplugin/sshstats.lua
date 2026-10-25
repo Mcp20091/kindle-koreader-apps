@@ -27,6 +27,16 @@ S.STATS = {
     { id = "failed", name = "Failed services", icon = "triangle-alert", sub = "systemd", systems = { linux = true } },
     { id = "services", name = "Services", icon = "server", sub = "Running, and the ones you pick", systems = { linux = true } },
     { id = "docker", name = "Docker", icon = "box", sub = "Containers running, and the list (where Docker is found)", on = true },
+    { id = "truenas", name = "TrueNAS", icon = "package", sub = "Apps, SMB shares and rsync tasks (TrueNAS SCALE)", on = true, os = { truenas = true } },
+    { id = "proxmox", name = "Proxmox", icon = "monitor", sub = "VMs, containers and backups", on = true, os = { proxmox = true } },
+    { id = "shares", name = "SMB shares", icon = "folder", sub = "The shares (ReadyNAS)", on = true, os = { readynas = true } },
+    { id = "pools", name = "Pools and disks", icon = "hard-drive", sub = "Each pool's or volume's health and space, each disk's health and temperature", on = true, section = true, systems = { linux = true, bsd = true } },
+    { id = "dataprotect", name = "Snapshots and replication", icon = "history", sub = "TrueNAS's snapshot and replication tasks", on = true, section = true, os = { truenas = true } },
+    { id = "node", name = "Node and cluster", icon = "server", sub = "Proxmox's node, cluster and failed tasks", on = true, section = true, os = { proxmox = true } },
+    { id = "upkeep", name = "Updates and logs", icon = "download", sub = "Updates waiting, errors since boot, package cache and log size", on = true, section = true, systems = { linux = true } },
+    { id = "pi", name = "Raspberry Pi", icon = "cpu", sub = "Power and throttling, camera, I2C, SPI, SSH, VNC and serial", on = true, section = true, os = { raspberrypi = true } },
+    { id = "pfsense", name = "pfSense", icon = "network", sub = "Gateways, interfaces, firewall states, DHCP leases, VPNs", on = true, section = true, os = { pfsense = true } },
+    { id = "printer", name = "3D printer", icon = "box", sub = "Klipper's print, progress and temperatures (Moonraker)", on = true, section = true, systems = { linux = true } },
     { id = "swap", name = "Swap", icon = "layers", systems = { linux = true, bsd = true } },
     { id = "procs", name = "Processes", icon = "list", systems = { linux = true, bsd = true } },
 }
@@ -44,17 +54,20 @@ end
 
 --- Whether a stat can be read on a system.
 function S.fits(st, os_id)
+    -- (`os`: only on those systems, TrueNAS's apps say; set by hand or detected.)
+    if st.os then return st.os[os_id] == true end
     return st.systems == nil or st.systems[S.family(os_id)] == true
 end
 
---- The stats a host shows: its own choice, or those on by default.
-function S.shown(host)
+--- The stats a host shows: its own choice, or those on by default (with
+-- `sections`: the host page's sections too, which have no card).
+function S.shown(host, sections)
     local out = {}
     local mine = type(host.stats) == "table" and host.stats or nil
     for __, st in ipairs(S.STATS) do
         local on
         if mine and mine[st.id] ~= nil then on = mine[st.id] else on = st.on == true end
-        if on and S.fits(st, host.os ~= "auto" and host.os or host.detected) then out[#out + 1] = st.id end
+        if on and (sections or not st.section) and S.fits(st, host.os ~= "auto" and host.os or host.detected) then out[#out + 1] = st.id end
     end
     -- then its custom sensors ("cs_<id>", on unless turned off)
     for __, cs in ipairs(type(host.sensors) == "table" and host.sensors or {}) do
@@ -149,6 +162,86 @@ fi
 if command -v docker >/dev/null 2>&1; then
 if out=$(docker ps -a --format '{{.Names}}|{{.State}}|{{.Status}}|{{.Image}}' 2>&1); then echo docker_ok=1; [ -n "$out" ] && echo "$out" | sed 's/^/ct=/'; else echo docker_ok=denied; fi
 fi
+if command -v midclt >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
+M=midclt; [ "$(id -u)" != 0 ] && M="sudo -n midclt"
+if out=$($M call app.query 2>/dev/null); then echo nas_ok=1
+echo "$out" | python3 -c 'import json,sys;[print("app="+str(a.get("name",""))+"|"+str(a.get("state",""))) for a in json.load(sys.stdin)]' 2>/dev/null
+$M call sharing.smb.query 2>/dev/null | python3 -c 'import json,sys;[print("share="+str(x.get("name",""))+"|"+str(x.get("path",""))+"|"+("on" if x.get("enabled",True) else "off")) for x in json.load(sys.stdin)]' 2>/dev/null
+$M call rsynctask.query 2>/dev/null | python3 -c 'import json,sys
+def sc(t):
+  c=t.get("schedule") or {}
+  return " ".join(str(c.get(k,"*")) for k in ("minute","hour","dom","month","dow"))
+[print("rsync="+str(t.get("id"))+"|"+str(t.get("path",""))+"|"+str(t.get("remotehost","") or "")+"|"+("on" if t.get("enabled",True) else "off")+"|"+sc(t)+"|"+str(((t.get("job") or {}).get("state")) or "")) for t in json.load(sys.stdin)]' 2>/dev/null
+else echo nas_ok=denied; fi
+fi
+if command -v pvesh >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
+P=pvesh; [ "$(id -u)" != 0 ] && P="sudo -n pvesh"
+if out=$($P get /cluster/resources --type vm --output-format json 2>/dev/null); then echo pve_ok=1
+echo "$out" | python3 -c 'import json,sys;[print("vm="+str(r.get("vmid",""))+"|"+str(r.get("type",""))+"|"+str(r.get("name",""))+"|"+str(r.get("status",""))) for r in json.load(sys.stdin)]' 2>/dev/null
+$P get /cluster/backup --output-format json 2>/dev/null | python3 -c 'import json,sys;[print("bjob="+str(j.get("id",""))+"|"+str(j.get("schedule","") or j.get("starttime",""))+"|"+("off" if str(j.get("enabled",1))=="0" else "on")+"|"+str(j.get("storage",""))+"|"+("all" if j.get("all") else str(j.get("vmid","")))) for j in json.load(sys.stdin)]' 2>/dev/null
+$P get /nodes/$(hostname)/storage --output-format json 2>/dev/null | python3 -c 'import json,sys;[print("pst="+str(x.get("storage",""))+"|"+str(x.get("type",""))+"|"+str(int(x.get("total",0) or 0))+"|"+str(int(x.get("used",0) or 0))+"|"+("on" if x.get("active",1) else "off")) for x in json.load(sys.stdin)]' 2>/dev/null
+$P get /nodes/$(hostname)/tasks --typefilter vzdump --limit 5 --output-format json 2>/dev/null | python3 -c 'import json,sys;[print("bk="+str(t.get("starttime",""))+"|"+str(t.get("status","") or "running")+"|"+str(t.get("id","") or "")) for t in json.load(sys.stdin)]' 2>/dev/null
+else echo pve_ok=denied; fi
+fi
+if command -v midclt >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
+M=midclt; [ "$(id -u)" != 0 ] && M="sudo -n midclt"
+$M call disk.query 2>/dev/null | python3 -c 'import json,sys;[print("tdisk="+str(x.get("name",""))+"|"+str(x.get("model","") or "")+"|"+str(int(x.get("size",0) or 0))+"|"+str(x.get("pool","") or "")) for x in json.load(sys.stdin)]' 2>/dev/null
+$M call disk.temperatures 2>/dev/null | python3 -c 'import json,sys;d=json.load(sys.stdin);[print("dtemp="+str(k)+"|"+("" if v is None else str(v))) for k,v in (d.items() if isinstance(d,dict) else [])]' 2>/dev/null
+$M call pool.snapshottask.query 2>/dev/null | python3 -c 'import json,sys
+def sc(t):
+  c=t.get("schedule") or {}
+  return " ".join(str(c.get(k,"*")) for k in ("minute","hour","dom","month","dow"))
+[print("snap="+str(t.get("id"))+"|"+str(t.get("dataset",""))+"|"+sc(t)+"|"+("on" if t.get("enabled",True) else "off")+"|"+str((t.get("state") or {}).get("state",""))) for t in json.load(sys.stdin)]' 2>/dev/null
+$M call replication.query 2>/dev/null | python3 -c 'import json,sys
+def when(st):
+  d=(st or {}).get("datetime")
+  if isinstance(d,dict): d=d.get("$date")
+  return str(int(d/1000)) if isinstance(d,(int,float)) else ""
+[print("repl="+str(t.get("id"))+"|"+str(t.get("name",""))+"|"+("on" if t.get("enabled",True) else "off")+"|"+str((t.get("state") or {}).get("state",""))+"|"+when(t.get("state"))) for t in json.load(sys.stdin)]' 2>/dev/null
+fi
+if command -v zpool >/dev/null 2>&1; then
+zpool list -Hp -o name,size,alloc,health 2>/dev/null | while IFS="$(printf '\t')" read -r n sz al h; do echo "pool=$n|$sz|$al|$h|$(zpool status "$n" 2>/dev/null | sed -n 's/^ *scan: //p' | head -1)"; done
+fi
+if command -v pvesh >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
+P=pvesh; [ "$(id -u)" != 0 ] && P="sudo -n pvesh"
+$P get /nodes/$(hostname)/status --output-format json 2>/dev/null | python3 -c 'import json,sys;d=json.load(sys.stdin);m=d.get("memory") or {};print("pnode="+str(d.get("cpu",""))+"|"+str(m.get("used",""))+"|"+str(m.get("total",""))+"|"+str(d.get("pveversion","")))' 2>/dev/null
+$P get /cluster/status --output-format json 2>/dev/null | python3 -c 'import json,sys;[print("pcl="+str(x.get("type",""))+"|"+str(x.get("name",""))+"|"+str(x.get("quorate",x.get("online","")))+"|"+str(x.get("nodes",""))) for x in json.load(sys.stdin)]' 2>/dev/null
+$P get /nodes/$(hostname)/tasks --errors 1 --limit 5 --output-format json 2>/dev/null | python3 -c 'import json,sys;[print("ptask="+str(t.get("starttime",""))+"|"+str(t.get("type",""))+"|"+str(t.get("status",""))+"|"+str(t.get("id","") or "")) for t in json.load(sys.stdin)]' 2>/dev/null
+fi
+if [ -d /frontview ]; then
+[ -r /proc/mdstat ] && awk '/^md/{n=$1; st=$3; lvl=$4} /blocks/ && n!=""{print "md="n"|"lvl"|"st"|"$NF; n=""}' /proc/mdstat
+df -Pk -t btrfs 2>/dev/null | awk 'NR>1{print "vol="$6"|"$2"|"$3}'
+fi
+if command -v smartctl >/dev/null 2>&1 && ! command -v midclt >/dev/null 2>&1; then
+SC=smartctl; [ "$(id -u)" != 0 ] && SC="sudo -n smartctl"
+for d in /dev/sd? /dev/nvme?n1; do [ -e "$d" ] || continue
+o=$($SC -H -A -i "$d" 2>/dev/null) || [ -n "$o" ] || continue
+m=$(echo "$o" | sed -n 's/^\(Device Model\|Model Number\|Product\): *//p' | head -1)
+h=$(echo "$o" | sed -n 's/.*\(overall-health self-assessment test result\|SMART Health Status\): *//p' | head -1)
+t=$(echo "$o" | awk '$1=="194"||$1=="190"{print $10; exit} /^Temperature:/{print $2; exit}')
+echo "sd=${d#/dev/}|$m|$h|$t"
+done
+fi
+if [ ! -d /frontview ] && ! command -v midclt >/dev/null 2>&1; then
+if command -v apt >/dev/null 2>&1; then echo "upd=$(apt list --upgradable 2>/dev/null | grep -c upgradable)"; echo "pkgmgr=apt"; echo "cache=$(du -sk /var/cache/apt/archives 2>/dev/null | cut -f1)"
+elif command -v pacman >/dev/null 2>&1; then if command -v checkupdates >/dev/null 2>&1; then echo "upd=$(checkupdates 2>/dev/null | wc -l)"; else echo "upd=$(pacman -Qu 2>/dev/null | wc -l)"; fi; echo "pkgmgr=pacman"; echo "cache=$(du -sk /var/cache/pacman/pkg 2>/dev/null | cut -f1)"; fi
+if command -v journalctl >/dev/null 2>&1; then
+echo "jerr=$(journalctl -b -p err -q --no-pager 2>/dev/null | wc -l)"
+journalctl -b -p err -q --no-pager -n 3 -o cat 2>/dev/null | cut -c1-160 | sed 's/^/jline=/'
+echo "jsize=$(journalctl --disk-usage 2>/dev/null | grep -o '[0-9.]*[KMGT]' | head -1)"
+fi
+fi
+if command -v vcgencmd >/dev/null 2>&1; then echo "pi_thr=$(vcgencmd get_throttled 2>/dev/null | cut -d= -f2)"; fi
+if command -v raspi-config >/dev/null 2>&1; then
+R="raspi-config nonint"; [ "$(id -u)" != 0 ] && R="sudo -n raspi-config nonint"
+for x in camera i2c spi ssh vnc serial_hw; do v=$($R get_$x 2>/dev/null) && [ -n "$v" ] && echo "pi_$x=$v"; done
+fi
+if command -v curl >/dev/null 2>&1; then j=$(curl -s -m 3 'http://127.0.0.1:7125/printer/objects/query?print_stats&display_status&extruder&heater_bed' 2>/dev/null)
+elif command -v wget >/dev/null 2>&1; then j=$(wget -qO- -T 3 'http://127.0.0.1:7125/printer/objects/query?print_stats&display_status&extruder&heater_bed' 2>/dev/null); fi
+[ -n "$j" ] && echo "moon=$(echo "$j" | tr -d '\n')"
+if [ -d /frontview ] && command -v testparm >/dev/null 2>&1; then
+testparm -s 2>/dev/null | awk '/^\[/{n=substr($0,2,length($0)-2)} /^[ \t]*path = /{p=$0; sub(/^[ \t]*path = /,"",p); if(n!="global"&&n!="printers"&&n!="print$") print "share="n"|"p"|on"}'
+fi
 ]]
 
 local MACOS = [[
@@ -187,6 +280,15 @@ if [ -r /etc/platform ] && [ -r /etc/version ]; then echo "sys=$(cat /etc/platfo
 echo kernel=$(uname -r)
 echo users=$(who | wc -l)
 echo procs=$(( $(ps ax | wc -l) - 1 ))
+if [ -r /etc/platform ] && grep -q pfSense /etc/platform; then
+echo pf_states=$(pfctl -si 2>/dev/null | awk '/current entries/{print $3}')
+[ -x /usr/local/sbin/pfSsh.php ] && /usr/local/sbin/pfSsh.php playback gatewaystatus 2>/dev/null | awk 'NR==1{for(i=1;i<=NF;i++)c[tolower($i)]=i; next} NF>=4{print "gw="$1"|"$(c["status"])"|"$(c["delay"])"|"$(c["loss"])}'
+netstat -ibn -f link 2>/dev/null | awk 'NR==1{for(i=1;i<=NF;i++)c[$i]=i; next} $1!~/^(lo|pflog|pfsync|enc|ovpn|wg)/ && !s[$1]++ {print "pif="$1"|"$(c["Ibytes"])"|"$(c["Obytes"])}'
+if [ -r /var/lib/kea/dhcp4.leases ]; then echo pf_dhcp=$(awk -F, 'NR>1 && $1!=""{a[$1]=1} END{print length(a)}' /var/lib/kea/dhcp4.leases); elif [ -r /var/dhcpd/var/db/dhcpd.leases ]; then echo pf_dhcp=$(grep -c "binding state active" /var/dhcpd/var/db/dhcpd.leases); fi
+command -v wg >/dev/null 2>&1 && echo "vpn=WireGuard|$(wg show interfaces 2>/dev/null | wc -w)"
+echo "vpn=OpenVPN|$(pgrep -f openvpn 2>/dev/null | wc -l | tr -d ' ')"
+command -v swanctl >/dev/null 2>&1 && echo "vpn=IPsec|$(swanctl --list-sas 2>/dev/null | grep -c ESTABLISHED)"
+fi
 ]]
 
 -- (PowerShell: Windows' OpenSSH runs cmd.exe, so it goes as -EncodedCommand)
@@ -232,11 +334,13 @@ end
 
 --- What a stats command printed, as raw values (failed, ct and svc are lists).
 function S.parse(text)
-    local raw = { failed = {}, ct = {}, svc = {} }
+    local raw = { failed = {}, ct = {}, svc = {}, app = {}, share = {}, rsync = {}, vm = {}, bjob = {}, bk = {}, pst = {},
+        tdisk = {}, dtemp = {}, snap = {}, repl = {}, pool = {}, pcl = {}, ptask = {}, md = {}, vol = {}, sd = {},
+        jline = {}, gw = {}, pif = {}, vpn = {} }
     for line in (tostring(text or "") .. "\n"):gmatch("(.-)\r?\n") do
         local k, v = line:match("^([%w_]+)=(.*)$")
         if k then
-            if k == "failed" or k == "ct" or k == "svc" then
+            if type(raw[k]) == "table" then
                 if v ~= "" then table.insert(raw[k], v) end
             else
                 raw[k] = v
@@ -313,7 +417,284 @@ function S.values(raw)
     elseif raw.docker_ok == "denied" then
         v.docker = { ok = false, denied = true, list = {} }
     end
+    -- SMB shares: TrueNAS's (with it) or ReadyNAS's.
+    local shares = {}
+    for __, x in ipairs(raw.share) do
+        local name, path, on = x:match("^([^|]*)|([^|]*)|(.*)$")
+        if name and name ~= "" then shares[#shares + 1] = { name = name, path = path, on = on ~= "off" } end
+    end
+    if raw.nas_ok == "1" then
+        v.truenas = { ok = true, apps = {}, shares = shares, rsync = {} }
+        for __, x in ipairs(raw.app) do
+            local name, state = x:match("^([^|]*)|(.*)$")
+            if name and name ~= "" then v.truenas.apps[#v.truenas.apps + 1] = { name = name, state = state } end
+        end
+        for __, x in ipairs(raw.rsync) do
+            local id, path, remote, on, sched, last = x:match("^([^|]*)|([^|]*)|([^|]*)|([^|]*)|([^|]*)|(.*)$")
+            if id then v.truenas.rsync[#v.truenas.rsync + 1] = { id = id, path = path, remote = remote, on = on ~= "off", schedule = sched, last = last } end
+        end
+    elseif raw.nas_ok == "denied" then
+        v.truenas = { ok = false, denied = true, apps = {}, shares = {}, rsync = {} }
+    elseif #shares > 0 then
+        v.shares = shares
+    end
+    if raw.pve_ok == "1" then
+        v.proxmox = { ok = true, guests = {}, jobs = {}, backups = {}, storage = {} }
+        -- (sizes in bytes from pvesh: kB here, as the other stats)
+        for __, x in ipairs(raw.pst) do
+            local name, kind, total, used, on = x:match("^([^|]*)|([^|]*)|([^|]*)|([^|]*)|(.*)$")
+            if name and name ~= "" then
+                v.proxmox.storage[#v.proxmox.storage + 1] = { name = name, kind = kind, total = (tonumber(total) or 0) / 1024,
+                    used = (tonumber(used) or 0) / 1024, on = on ~= "off" }
+            end
+        end
+        for __, x in ipairs(raw.vm) do
+            local id, kind, name, status = x:match("^([^|]*)|([^|]*)|([^|]*)|(.*)$")
+            if id and id ~= "" then
+                v.proxmox.guests[#v.proxmox.guests + 1] = { id = id, kind = kind == "lxc" and "lxc" or "qemu", name = name, status = status }
+            end
+        end
+        table.sort(v.proxmox.guests, function(a, b) return (tonumber(a.id) or 0) < (tonumber(b.id) or 0) end)
+        for __, x in ipairs(raw.bjob) do
+            local id, sched, on, storage, which = x:match("^([^|]*)|([^|]*)|([^|]*)|([^|]*)|(.*)$")
+            if id then v.proxmox.jobs[#v.proxmox.jobs + 1] = { id = id, schedule = sched, on = on ~= "off", storage = storage, which = which } end
+        end
+        for __, x in ipairs(raw.bk) do
+            local at, status, id = x:match("^([^|]*)|([^|]*)|(.*)$")
+            if at then v.proxmox.backups[#v.proxmox.backups + 1] = { at = tonumber(at), status = status, guest = id } end
+        end
+    elseif raw.pve_ok == "denied" then
+        v.proxmox = { ok = false, denied = true, guests = {}, jobs = {}, backups = {}, storage = {} }
+    end
+    S.moreValues(raw, v)
     return v
+end
+
+local function split(x, n)
+    local out, i = {}, 0
+    for part in (tostring(x) .. "|"):gmatch("([^|]*)|") do i = i + 1; out[i] = part end
+    for j = i + 1, n do out[j] = "" end
+    return out
+end
+S.split = split
+
+-- Moonraker's JSON: a number or a string after "key": inside one object.
+local function jnum(obj, key) return tonumber(tostring(obj or ""):match('"' .. key .. '"%s*:%s*(-?[%d%.eE%+%-]+)')) end
+local function jstr(obj, key) return tostring(obj or ""):match('"' .. key .. '"%s*:%s*"(.-)"') end
+local function jobj(json, key) return tostring(json or ""):match('"' .. key .. '"%s*:%s*(%b{})') end
+
+--- kB from "48.0M", "1.2G" (journalctl's sizes).
+function S.unitSize(x)
+    local n, u = tostring(x or ""):match("^([%d%.]+)([KMGT]?)")
+    if not tonumber(n) then return nil end
+    local mul = { [""] = 1 / 1024, K = 1, M = 1024, G = 1024 ^ 2, T = 1024 ^ 3 }
+    return tonumber(n) * mul[u]
+end
+
+--- Raspberry Pi's get_throttled bits, as words (now, and since boot).
+function S.piThrottled(hex)
+    local n = tonumber(tostring(hex or ""):match("0x(%x+)") or "", 16)
+    if not n then return nil end
+    local function bit(b) return math.floor(n / 2 ^ b) % 2 == 1 end
+    local now, past = {}, {}
+    if bit(0) then now[#now + 1] = "Low voltage" end
+    if bit(1) then now[#now + 1] = "Speed capped" end
+    if bit(2) then now[#now + 1] = "Throttled" end
+    if bit(3) then now[#now + 1] = "Too hot" end
+    if bit(16) then past[#past + 1] = "Low voltage" end
+    if bit(17) then past[#past + 1] = "Speed capped" end
+    if bit(18) then past[#past + 1] = "Throttled" end
+    if bit(19) then past[#past + 1] = "Too hot" end
+    return { ok = n == 0, now = now, past = past }
+end
+
+--- The rest: pools and disks, snapshots and replication, Proxmox's node,
+-- updates and logs, Raspberry Pi, pfSense, the printer.
+function S.moreValues(raw, v)
+    -- Pools (ZFS) and volumes (ReadyNAS), in kB
+    local pools = {}
+    for __, x in ipairs(raw.pool) do
+        local f = split(x, 5)
+        if f[1] ~= "" then
+            pools[#pools + 1] = { name = f[1], total = (tonumber(f[2]) or 0) / 1024, used = (tonumber(f[3]) or 0) / 1024,
+                health = f[4], scan = f[5] }
+        end
+    end
+    for __, x in ipairs(raw.vol) do
+        local f = split(x, 3)
+        if f[1] ~= "" then pools[#pools + 1] = { name = f[1]:match("([^/]+)$") or f[1], total = tonumber(f[2]) or 0, used = tonumber(f[3]) or 0 } end
+    end
+    for __, x in ipairs(raw.md) do
+        local f = split(x, 4)
+        -- ("[UU]": each disk up; "_" one missing)
+        if f[1] ~= "" then
+            pools[#pools + 1] = { name = f[1], raid = f[2], health = f[4]:find("_", 1, true) and "DEGRADED" or (f[3] == "active" and "ONLINE" or f[3]:upper()) }
+        end
+    end
+    if #pools > 0 then v.pools = pools end
+    -- Disks: TrueNAS's (disk.query, temperatures) or smartctl's
+    local disks = {}
+    local temps = {}
+    for __, x in ipairs(raw.dtemp) do
+        local f = split(x, 2)
+        temps[f[1]] = tonumber(f[2])
+    end
+    for __, x in ipairs(raw.tdisk) do
+        local f = split(x, 4)
+        if f[1] ~= "" then disks[#disks + 1] = { name = f[1], model = f[2], size = (tonumber(f[3]) or 0) / 1024, pool = f[4], temp = temps[f[1]] } end
+    end
+    for __, x in ipairs(raw.sd) do
+        local f = split(x, 4)
+        if f[1] ~= "" then
+            local h = f[3]:upper()
+            disks[#disks + 1] = { name = f[1], model = f[2], health = (h == "PASSED" or h == "OK") and "OK" or (h ~= "" and f[3] or nil), temp = tonumber(f[4]) }
+        end
+    end
+    if #disks > 0 then v.disks = disks end
+    -- TrueNAS: snapshot and replication tasks
+    if v.truenas and v.truenas.ok then
+        v.truenas.snaps, v.truenas.repl = {}, {}
+        for __, x in ipairs(raw.snap) do
+            local f = split(x, 5)
+            if f[1] ~= "" then v.truenas.snaps[#v.truenas.snaps + 1] = { id = f[1], dataset = f[2], schedule = f[3], on = f[4] ~= "off", state = f[5] } end
+        end
+        for __, x in ipairs(raw.repl) do
+            local f = split(x, 5)
+            if f[1] ~= "" then v.truenas.repl[#v.truenas.repl + 1] = { id = f[1], name = f[2], on = f[3] ~= "off", state = f[4], at = tonumber(f[5]) } end
+        end
+    end
+    -- Proxmox: the node, the cluster, failed tasks
+    if v.proxmox and v.proxmox.ok then
+        local f = raw.pnode and split(raw.pnode, 4)
+        if f and f[1] ~= "" then
+            v.proxmox.node = { cpu = tonumber(f[1]) and math.floor(tonumber(f[1]) * 100 + 0.5), used = (tonumber(f[2]) or 0) / 1024,
+                total = (tonumber(f[3]) or 0) / 1024, version = f[4] }
+        end
+        v.proxmox.nodes = {}
+        for __, x in ipairs(raw.pcl) do
+            local c = split(x, 4)
+            if c[1] == "cluster" then
+                v.proxmox.cluster = { name = c[2], quorate = c[3] == "1", nodes = tonumber(c[4]) }
+            elseif c[1] == "node" then
+                v.proxmox.nodes[#v.proxmox.nodes + 1] = { name = c[2], online = c[3] == "1" }
+            end
+        end
+        v.proxmox.failed = {}
+        for __, x in ipairs(raw.ptask) do
+            local t = split(x, 4)
+            if t[2] ~= "" then v.proxmox.failed[#v.proxmox.failed + 1] = { at = tonumber(t[1]), kind = t[2], status = t[3], guest = t[4] } end
+        end
+    end
+    -- Updates and logs
+    if raw.upd or raw.jerr then
+        v.upkeep = { updates = tonumber(raw.upd), manager = raw.pkgmgr, cache = tonumber(raw.cache), errors = tonumber(raw.jerr),
+            lines = raw.jline, journal = S.unitSize(raw.jsize) }
+    end
+    -- Raspberry Pi
+    local thr = S.piThrottled(raw.pi_thr)
+    local pi = { throttled = thr, opts = {} }
+    for __, k in ipairs({ "camera", "i2c", "spi", "ssh", "vnc", "serial_hw" }) do
+        -- (raspi-config: 0 is on)
+        if raw["pi_" .. k] then pi.opts[k] = raw["pi_" .. k] == "0" end
+    end
+    if thr or next(pi.opts) then v.pi = pi end
+    -- pfSense
+    if raw.pf_states then
+        local pf = { states = tonumber(raw.pf_states), dhcp = tonumber(raw.pf_dhcp), gateways = {}, ifaces = {}, vpns = {} }
+        for __, x in ipairs(raw.gw) do
+            local g = split(x, 4)
+            if g[1] ~= "" then pf.gateways[#pf.gateways + 1] = { name = g[1], status = g[2], delay = g[3], loss = g[4] } end
+        end
+        for __, x in ipairs(raw.pif) do
+            local g = split(x, 3)
+            if g[1] ~= "" then pf.ifaces[#pf.ifaces + 1] = { name = g[1], inb = (tonumber(g[2]) or 0) / 1024, outb = (tonumber(g[3]) or 0) / 1024 } end
+        end
+        for __, x in ipairs(raw.vpn) do
+            local g = split(x, 2)
+            if g[1] ~= "" then pf.vpns[#pf.vpns + 1] = { name = g[1], count = tonumber(g[2]) or 0 } end
+        end
+        v.pfsense = pf
+    end
+    -- The printer (Moonraker)
+    if raw.moon and raw.moon:find('"status"', 1, true) then
+        local ps, ds = jobj(raw.moon, "print_stats"), jobj(raw.moon, "display_status")
+        local ex, bed = jobj(raw.moon, "extruder"), jobj(raw.moon, "heater_bed")
+        v.printer = { state = jstr(ps, "state") or "?", file = jstr(ps, "filename") or "", progress = jnum(ds, "progress"),
+            elapsed = jnum(ps, "print_duration"), message = jstr(ds, "message") or "",
+            nozzle = jnum(ex, "temperature"), nozzleTarget = jnum(ex, "target"),
+            bed = jnum(bed, "temperature"), bedTarget = jnum(bed, "target") }
+    end
+end
+
+--- How many of a list are running (TrueNAS's apps: RUNNING; Proxmox's guests: running).
+function S.upCount(list)
+    local n = 0
+    for __, x in ipairs(list or {}) do
+        local st = tostring(x.state or x.status or ""):lower()
+        if st == "running" then n = n + 1 end
+    end
+    return n
+end
+
+-- The commands for TrueNAS's apps and rsync tasks, and Proxmox's VMs and containers (with the
+-- system's own tools: midclt, qm, pct, vzdump). sudo when not root, where they need it.
+local function idOk(x) return tostring(x):match("^[%w%._%-]+$") ~= nil end
+function S.truenasApp(name, action)
+    if not idOk(name) or not (action == "start" or action == "stop" or action == "redeploy") then return nil end
+    return "sudo midclt call -j app." .. action .. " " .. name
+end
+function S.truenasRsync(id)
+    if not tostring(id):match("^%d+$") then return nil end
+    return "sudo midclt call -j rsynctask.run " .. id
+end
+function S.proxmoxGuest(kind, id, action)
+    if not tostring(id):match("^%d+$") then return nil end
+    local ok = { start = true, shutdown = true, reboot = true, stop = true, status = true, config = true }
+    if not ok[action] then return nil end
+    local tool = kind == "lxc" and "pct" or "qm"
+    return tool .. " " .. action .. " " .. id
+end
+function S.proxmoxBackup(id)
+    if not tostring(id):match("^%d+$") then return nil end
+    return "vzdump " .. id
+end
+function S.truenasSnapshot(id)
+    if not tostring(id):match("^%d+$") then return nil end
+    return "sudo midclt call pool.snapshottask.run " .. id
+end
+function S.truenasReplication(id)
+    if not tostring(id):match("^%d+$") then return nil end
+    return "sudo midclt call -j replication.run " .. id
+end
+-- Clean the package cache and the old logs
+S.CLEAN = {
+    apt = "sudo apt-get clean",
+    pacman = "sudo paccache -rk1 || sudo pacman -Sc --noconfirm",
+}
+S.LOGS_CLEAN = "sudo journalctl --vacuum-time=2weeks"
+S.UPGRADE = {
+    apt = "sudo apt-get update && sudo apt-get -y upgrade",
+    pacman = "sudo pacman -Syu --noconfirm",
+}
+-- Raspberry Pi options: raspi-config's own (0 turns on, 1 off)
+S.PI_OPTS = {
+    { id = "camera", name = "Camera", reboot = true },
+    { id = "i2c", name = "I2C" },
+    { id = "spi", name = "SPI" },
+    { id = "ssh", name = "SSH" },
+    { id = "vnc", name = "VNC" },
+    { id = "serial_hw", name = "Serial port", reboot = true },
+}
+function S.piSet(id, on)
+    local ok = false
+    for __, o in ipairs(S.PI_OPTS) do if o.id == id then ok = true end end
+    if not ok then return nil end
+    return "sudo raspi-config nonint do_" .. id .. " " .. (on and "0" or "1")
+end
+-- The printer: Moonraker's own pause, resume and cancel
+function S.printerCmd(action)
+    if not (action == "pause" or action == "resume" or action == "cancel") then return nil end
+    return "curl -s -X POST http://127.0.0.1:7125/printer/print/" .. action .. " || wget -qO- --post-data= http://127.0.0.1:7125/printer/print/" .. action
 end
 
 -- ------------------------------------------------------------------ showing them
@@ -349,6 +730,7 @@ S.running = running
 function S.tile(id, v)
     local st = S.byId[id]
     if not st then return nil end
+    if st.section then return nil end
     local t = { icon = st.icon, label = st.name }
     local function na() t.value, t.dim = "Not available", true return t end
     if id == "uptime" then
@@ -398,6 +780,23 @@ function S.tile(id, v)
         if not v.docker then return na() end
         if v.docker.denied then t.value, t.sub = "Needs sudo", "docker ps"
         else t.value = string.format("%d of %d running", running(v.docker.list), #v.docker.list) end
+    elseif id == "truenas" then
+        if not v.truenas then return na() end
+        if v.truenas.denied then t.value, t.sub = "Needs sudo", "midclt"
+        else
+            t.value = string.format("%d of %d apps running", S.upCount(v.truenas.apps), #v.truenas.apps)
+            t.sub = string.format("%d shares · %d rsync tasks", #v.truenas.shares, #v.truenas.rsync)
+        end
+    elseif id == "proxmox" then
+        if not v.proxmox then return na() end
+        if v.proxmox.denied then t.value, t.sub = "Needs root", "pvesh"
+        else
+            t.value = string.format("%d of %d running", S.upCount(v.proxmox.guests), #v.proxmox.guests)
+            t.sub = "VMs and containers"
+        end
+    elseif id == "shares" then
+        if not v.shares then return na() end
+        t.value = string.format("%d shares", #v.shares)
     end
     return t
 end

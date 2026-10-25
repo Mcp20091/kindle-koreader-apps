@@ -2,7 +2,9 @@
 The one template Home Assistant renders for every refresh: all the entities
 the plugin can show or control (with only the attributes it uses), each
 room's sensors (temperature, humidity, doors, leaks...; only those in a
-room), every battery (phones left out), a 3D printer's sensors, each
+room), every battery (phones left out), a 3D printer's sensors, Plex's
+server sensor, Scan clients button and library sensors (who's watching:
+each "w:<user - player>" attribute), each
 room's temperature and humidity (a sensor with a humidity sensor on the same
 device first, so a thermostat or room sensor wins over, say, a 3D printer's
 nozzle), open doors, low batteries (phones left out) and the weather.
@@ -22,11 +24,13 @@ Template.ALL = [==[
 {%- set keep = ['unit_of_measurement','brightness','supported_color_modes','color_temp_kelvin','min_color_temp_kelvin','max_color_temp_kelvin','entity_id','percentage','percentage_step','preset_mode','preset_modes','oscillating','hvac_modes','hvac_action','current_temperature','temperature','target_temp_low','target_temp_high','target_temp_step','min_temp','max_temp','fan_mode','fan_modes','current_humidity','current_position','device_class','supported_features','source','source_list','volume_level','is_volume_muted','media_title','media_artist','app_name','battery_level','status','message','start_time','all_day','color_mode','hs_color'] -%}
 {%- set ns = namespace(e=[], r=[], d=[], b=[]) -%}
 {%- set mob = integration_entities('mobile_app') -%}
+{%- set plx = integration_entities('plex') | reject('match', 'media_player|update') | list -%}
 {%- set pkw = 'flashforge|bambu|prusa|creality|octoprint|klipper|moonraker|3d_printer|ender_?3|ad5m|elegoo|anycubic|voron' -%}
-{%- for s in states if s.domain in doms or (s.domain == 'sensor' and s.attributes.device_class in sclasses and (area_name(s.entity_id) or (s.attributes.device_class == 'battery' and s.entity_id not in mob))) or (s.domain == 'binary_sensor' and s.attributes.device_class in bclasses and area_name(s.entity_id)) or (s.domain in ['sensor', 'binary_sensor', 'button'] and s.entity_id | regex_search(pkw)) -%}
+{%- for s in states if s.domain in doms or (s.domain == 'sensor' and s.attributes.device_class in sclasses and (area_name(s.entity_id) or (s.attributes.device_class == 'battery' and s.entity_id not in mob))) or (s.domain == 'binary_sensor' and s.attributes.device_class in bclasses and area_name(s.entity_id)) or (s.domain in ['sensor', 'binary_sensor', 'button'] and s.entity_id | regex_search(pkw)) or s.entity_id in plx -%}
 {%- set dn = device_attr(s.entity_id, 'name_by_user') or device_attr(s.entity_id, 'name') or '' -%}
 {%- set at = namespace(l=[]) -%}
 {%- for k in keep if s.attributes[k] is defined and s.attributes[k] is not none -%}{%- set at.l = at.l + [[k, s.attributes[k]]] -%}{%- endfor -%}
+{%- if s.entity_id in plx -%}{%- set at.l = at.l + [['plex', 1]] -%}{%- for k in s.attributes.keys() if k not in keep + ['friendly_name', 'icon', 'last_added_item', 'last_added_timestamp'] -%}{%- set at.l = at.l + [[('library_type' if k == 'library_type' else 'w:' ~ k), s.attributes[k] | string]] -%}{%- endfor -%}{%- endif -%}
 {%- set ns.e = ns.e + [[s.entity_id, s.name, s.state, area_name(s.entity_id) or '', dn, as_timestamp(s.last_changed) | int, at.l]] -%}
 {%- endfor -%}
 {%- set fl = namespace(l=[]) -%}{%- for f in floors() -%}{%- set fl.l = fl.l + floor_areas(f) -%}{%- endfor -%}
