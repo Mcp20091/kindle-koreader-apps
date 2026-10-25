@@ -225,7 +225,7 @@ Some apps connect to other services and need a one-time setup, and every one of 
 - **Microsoft To Do and OneNote:** needed only to sync with Microsoft. It takes a free Microsoft app registration (an App ID); a personal Microsoft account needs a free Azure account first, for the directory to register it in. Without it, To Do keeps its lists on the Kindle and Notes keeps its notebooks on the Kindle.
 - **Home Assistant:** its address, then sign in or use a long-lived token. Nothing changes in Home Assistant.
 - **AI (handwriting recognition, Notes, Crosswords and SSH):** a key from Gemini or Groq (both have free tiers), OpenRouter or Claude, the address of your own Ollama, or any OpenAI-compatible service.
-- **Syncthing:** the Syncthing program itself, downloaded with `syncthing.koplugin/tools/fetch-syncthing.sh`.
+- **Syncthing:** the Syncthing program comes with the zip. Pair the Kindle with your computer or phone in the Syncthing app.
 - **SSH:** an SSH server on the computer you connect to.
 - **Nothing to set up:** the Library, Weather (a free forecast with no account), Wikipedia and the crossword sources.
 

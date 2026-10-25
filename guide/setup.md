@@ -1,6 +1,6 @@
 # Setting up the services
 
-Most of the apps work straight away. A few connect to something else, and need a one-time setup first: a Microsoft app ID for To Do and OneNote, your Home Assistant's address, a key for the AI features, and the Syncthing program. This chapter gathers what each one needs and where to get it, and what you get without it (**If you skip it**, at the end). **Settings > Set up your Kindle** (on the launcher, **⋮ > Settings**) walks through the same steps on the Kindle, and you can skip any of them: each step says what skipping it means, and the last page lists what was skipped.
+Most of the apps work straight away. A few connect to something else, and need a one-time setup first: a Microsoft app ID for To Do and OneNote, your Home Assistant's address, and a key for the AI features. This chapter gathers what each one needs and where to get it, and what you get without it (**If you skip it**, at the end). **Settings > Set up your Kindle** (on the launcher, **⋮ > Settings**) walks through the same steps on the Kindle, and you can skip any of them: each step says what skipping it means, and the last page lists what was skipped.
 
 ## Before you start
 
@@ -63,10 +63,9 @@ On free tiers, the service may use what you send to improve its products. Keep p
 
 ## Syncthing
 
-The Syncthing app runs the Syncthing program, which isn't included (it's large, and made for each kind of device). Get it once:
+The Syncthing app runs the Syncthing program, which comes with the release zip (the `syncthing` file in `syncthing.koplugin`, the Kindle's ARM build exactly as the Syncthing project releases it). Nothing to get.
 
-1. On a computer, run `syncthing.koplugin/tools/fetch-syncthing.sh`. It downloads the Syncthing release for the Kindle (ARM) and puts the `syncthing` program in the plugin's folder.
-2. Copy `syncthing.koplugin` (with the program in it) to the Kindle, as with the other plugins.
+If you installed from the project's files instead of the zip, get it once: on a computer, run `syncthing.koplugin/tools/fetch-syncthing.sh`. It downloads the Syncthing release for the Kindle (ARM) and puts the `syncthing` program in the plugin's folder; then copy `syncthing.koplugin` to the Kindle, as with the other plugins.
 
 Then pair it with Syncthing on your computer or phone: see the Syncthing chapter (Setting it up).
 
