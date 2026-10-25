@@ -94,7 +94,7 @@ function Box:render()
     if self.canvas then self.canvas:release() end
     local c = Canvas.new(self.w, self.h, false)
     self.canvas = c
-    local wide = self.kind == "request" or self.kind == "read"
+    local wide = self.kind == "request" or self.kind == "read" or self.kind == "pictures"
     local bw = math.min(c.W - (wide and 40 or 60), self.kind == "toast" and 420 or (wide and 540 or 460))
     if self.kind == "undo" then
         -- A dark bar at the bottom: what was done, and Undo.
@@ -146,6 +146,43 @@ function Box:render()
         self:renderRequest(c, x, bw, add)
     elseif self.kind == "read" then
         self:renderRead(c, x, bw, add, blocks[1] and blocks[1].h or 0)
+    elseif self.kind == "pictures" then
+        -- Choices as small pictures (what each looks like), a few across, each named under it;
+        -- the current one framed thick, with a tick. A tap picks.
+        local opts = self.options or {}
+        local cols, gap = self.cols, 12
+        local tw = (bw - 36 - gap * (cols - 1)) / cols
+        local th = 0
+        for __, o in ipairs(opts) do if o.image then th = math.max(th, o.image:getHeight() / c.u) end end
+        for r = 1, math.ceil(#opts / cols) do
+            add(th + 48, function(y)
+                for k = 1, cols do
+                    local o = opts[(r - 1) * cols + k]
+                    if o then
+                        local x0 = x + 18 + (k - 1) * (tw + gap)
+                        local on = o.value == self.current
+                        if o.image then
+                            local iw, ih = o.image:getWidth() / c.u, o.image:getHeight() / c.u
+                            local ix = x0 + (tw - iw) / 2
+                            c:box(ix - 2, y + 8, iw + 4, ih + 4, { border = C.BLACK, bw = on and 3 or 1 })
+                            c:image(o.image, ix, y + 10)
+                        end
+                        local label = o.label or ""
+                        if on then
+                            local lw = c:width(label, 12, true)
+                            c:icon("check", x0 + tw / 2 - lw / 2 - 20, y + th + 22, 16)
+                        end
+                        c:text(x0 + tw / 2, y + th + 36, label, 12, { bold = on, align = "middle", maxw = tw })
+                        c:hit(x0, y, tw, th + 48, function() self:pick({ fn = function() if self.onPick then self.onPick(o.value) end end }) end)
+                    end
+                end
+            end)
+        end
+        add(ROW, function(y)
+            local label = self.back and _("Back") or _("Close")
+            c:text(x + bw / 2, y + 28, label, 12.5, { bold = true, align = "middle" })
+            c:hit(x, y, bw, ROW, function() self:goBack() end)
+        end)
     elseif self.kind == "menu" then
         local items = self.items or {}
         -- As many rows as fit; more turn pages (‹ 1/2 › at the bottom).
@@ -754,6 +791,10 @@ end
 
 function Box:onCloseWidget()
     if self.canvas then self.canvas:release() end
+    -- (A pictures box's pictures are its own.)
+    for __, o in ipairs(self.kind == "pictures" and self.options or {}) do
+        if o.image then o.image:free() o.image = nil end
+    end
     if self.field then
         self.typing = false
         pcall(self.field.onCloseKeyboard, self.field)
@@ -775,6 +816,26 @@ end
 function Popup.menu(o)
     return show(Box:new{ kind = "menu", title = o.title, items = o.items or {}, close_text = o.close,
         no_close = o.no_close, keep_open = o.keep_open, dismissable = o.dismissable, back = o.back })
+end
+
+--- A choice shown as pictures of each option: { title, options = { { label, value,
+-- picture = fn(width in pixels) -> a blitbuffer (it's the box's to free) } }, current,
+-- onPick = fn(value), back = fn (Back instead of Close), cols (2 or 3; by how many) }.
+function Popup.pictures(o)
+    local opts = o.options or {}
+    local cols = o.cols or (#opts <= 2 and 2 or 3)
+    -- (The box's width as Box:render works it out, so each picture is made the right size.)
+    local u = math.min(Screen:getWidth(), Screen:getHeight()) / 620
+    local bw = math.min(Screen:getWidth() / u - 40, 540)
+    local px = math.floor((bw - 36 - 12 * (cols - 1)) / cols * u) - 4 * math.ceil(u)
+    for __, opt in ipairs(opts) do
+        if opt.picture and not opt.image then
+            local ok, img = pcall(opt.picture, px)
+            if ok then opt.image = img end
+        end
+    end
+    return show(Box:new{ kind = "pictures", title = o.title, options = opts, current = o.current,
+        onPick = o.onPick, back = o.back, cols = cols })
 end
 
 --- Something to read (a result, a problem): { title, text, ok, onOk }, with OK.

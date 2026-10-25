@@ -256,11 +256,11 @@ do
     -- The weather for At a glance, the widgets sleep screen and the Weather tile.
     -- Which tiles show, the layout, and the quick buttons.
     PS.registerSetup{ key = "launcher", order = 65, icon = "grid-3x3", title = _("Your home screen"),
-        text = _("Make the home screen yours: the tiles on it and how they're laid out, the recent row, ready-made groups (Settings, Reading, Home, Writing, Tools) and the quick buttons under the clock. Everything starts set the usual way; Gestures, Battery and KOReader settings start hidden, so tick them under Tiles if you want them."),
+        text = _("Make the home screen yours. Tap a setting to change it. Gestures, Battery and KOReader settings start hidden: tick them under Tiles if you want them."),
         done = function() return Apps.instance ~= nil and Apps.instance.settings.launcher_setup_done == true end,
-        doneText = _("Chosen"), action = _("Choose"),
+        doneText = _("Changed"),
         skipped = _("The home screen keeps the usual tiles and buttons. Change them any time in Settings > Edit home screen and Quick buttons."),
-        run = function() if Apps.instance then Apps.instance:setupLauncher() end end }
+        rows = function() return Apps.instance and Apps.instance:setupRows() or {} end }
     -- Last: what's ready without setting anything up (only what's installed).
     PS.registerSetup{ key = "more", order = 95, icon = "sparkles", title = _("More to explore"),
         text = _("Ready to use, no setup needed:"),
@@ -277,10 +277,37 @@ do
             table.insert(out, { icon = "search", title = _("Search"), text = _("Search books, notes, tasks and settings") })
             return out
         end }
+    -- The bar at the top of every app, button by button: nothing to set, a page to read.
+    PS.registerSetup{ key = "bar", order = 66, icon = "app-window", title = _("Getting around: the top bar"),
+        text = _("Every app has the same bar at the top:"),
+        info = true, done = function() return true end,
+        items = function()
+            return {
+                { icon = "chevron-left", title = _("Back"), text = _("Where you were, or the launcher. Swiping in from the left edge does the same.") },
+                { icon = "house", title = _("Home"), text = _("The launcher, from any app, a book or the library.") },
+                { icon = "history", title = _("Recent apps"), text = _("The apps, books and notebooks you used last.") },
+                { icon = "chevron-down", title = _("The time and battery"), text = _("Tap for the control center: the light, Wi-Fi, night mode and your quick buttons.") },
+                { icon = "refresh-cw", title = _("Refresh"), text = _("Draws the screen again, clearing e-ink ghosting (and updates the app).") },
+                { icon = "bell", title = _("Notifications"), text = _("Reminders, alerts and messages from every app. The number is how many are new.") },
+                { icon = "ellipsis-vertical", title = _("Menu"), text = _("The app's own options, then Light, Night mode, Refresh screen and Settings.") },
+                { icon = "globe", title = _("The globe"), text = _("Shows next to the time while the web server is on. Tap the bell for its address.") },
+            }
+        end }
     -- What holding and swiping do, everywhere: nothing to set, a page to read.
-    PS.registerSetup{ key = "tips", order = 67, icon = "hand", title = _("Hold for more"),
-        text = _("Hold a tile to move it, put it in a group or hide it. Hold a group to rename it, sort it (Custom or A–Z) or change its icon. Hold a quick button for what's behind it, such as a light's brightness. Hold a recent book or notebook for its options. Tap the battery or Wi-Fi at the top for the control center, and swipe in from the left edge to go back."),
-        info = true, done = function() return true end }
+    PS.registerSetup{ key = "tips", order = 67, icon = "hand", title = _("Getting around: hold and swipe"),
+        text = _("Holding something shows what else it does:"),
+        info = true, done = function() return true end,
+        items = function()
+            return {
+                { icon = "grid-3x3", title = _("Hold a tile on the launcher"), text = _("Move it, put it in a group, or hide it.") },
+                { icon = "folder", title = _("Hold a group"), text = _("Rename it, sort it (Custom or A–Z) or change its icon.") },
+                { icon = "lightbulb", title = _("Hold a quick button"), text = _("What's behind it, such as a light's brightness.") },
+                { icon = "house", title = _("Hold a Home Assistant device"), text = _("Its controls: brightness and color, fan speed, the thermostat and more.") },
+                { icon = "book-open", title = _("Hold a book, notebook or task"), text = _("Its options, such as rename, move and delete.") },
+                { icon = "sparkles", title = _("Hold a button that uses AI"), text = _("Pick which AI service and model does that job.") },
+                { icon = "hand", title = _("Swipe"), text = _("Left or right turns the page, in from the left edge goes back, and a diagonal swipe clears the screen.") },
+            }
+        end }
     PS.registerSetup{ key = "weather", order = 25, icon = "cloud-sun", title = _("Weather"),
         text = _("The weather on the launcher and the sleep screen: Home Assistant's, or without it a free forecast from Open-Meteo (no account). Pick your town or city."),
         done = function() return Apps.instance ~= nil and require("appsweather").source(Apps.instance) ~= nil end,
@@ -584,15 +611,45 @@ function Apps.has(ui)
     end
 end
 
---- Set up your Kindle's launcher step: the tiles (switches), the layout, the quick buttons.
-function Apps:setupLauncher()
-    local KO = require("appsko")
+--- A small picture of the home screen as it would look after `change(settings)` (applied for
+-- the picture only): `w` pixels wide; `part` (0 to 1) keeps only the top of it. A blitbuffer.
+function Apps:homePicture(change, w, part)
+    local Blitbuffer = require("ffi/blitbuffer")
+    local View = require("appsview")
     local s = self.settings
+    local saved = {}
+    for k, v in pairs(s) do saved[k] = v end
+    local ok, err = pcall(change, s)
+    local v = ok and View:new{ apps = self }
+    for k in pairs(s) do s[k] = nil end
+    for k, val in pairs(saved) do s[k] = val end
+    if not v then error(err) end
+    local full = Blitbuffer.new(v.w, v.h, Blitbuffer.TYPE_BB8)
+    full:fill(Blitbuffer.COLOR_WHITE)
+    v.canvas:paint(full, 0, 0)
+    v.canvas:release()
+    local h = math.floor(v.h * (part or 1))
+    local top = full
+    if h < v.h then
+        top = Blitbuffer.new(v.w, h, Blitbuffer.TYPE_BB8)
+        top:blitFrom(full, 0, 0, 0, 0, v.w, h)
+        full:free()
+    end
+    return require("ui/renderimage"):scaleBlitBuffer(top, w, math.max(1, math.floor(h * w / v.w)), true)
+end
+
+--- Set up your Kindle's launcher step, as settings rows on the step itself:
+-- { { title, value, fn(refresh) } }; refresh() draws the step again after a change.
+function Apps:setupRows()
+    local KO = require("appsko")
+    local View = require("appsview")
+    local s = self.settings
+    local refresh = function() end
     local function done()
         s.launcher_setup_done = true
         self:changed()
+        refresh()
     end
-    local menu
     local function tiles()
         local items = {}
         for __, t in ipairs(self:tiles(true)) do
@@ -606,48 +663,77 @@ function Apps:setupLauncher()
                 end })
             end
         end
-        KO.list(_("Tiles on the launcher"), items, menu)
+        KO.list(_("Tiles on the launcher"), items)
     end
-    local function quick()
-        local Quick = require("appsquick")
+    local Quick = require("appsquick")
+    -- The built-in quick buttons that can be added here: { b, entry, its list, its index }.
+    local function builtins()
         if type(s.quick) ~= "table" then s.quick = require("util").tableDeepCopy(Model.quickList(s)) end
-        local items = {}
+        local out = {}
         for __, b in ipairs(Model.QUICK_BUILTIN) do
             if Quick.available(b.key) then
                 local e, l, i = Model.quickFind(s.quick, "b:" .. b.key)
-                table.insert(items, { text = _(b.name), checked = e ~= nil, fn = function()
-                    if e then table.remove(l, i) else table.insert(s.quick, { b = b.key }) end
-                    done()
-                    UIManager:nextTick(quick)
-                end })
+                table.insert(out, { b = b, e = e, l = l, i = i })
             end
         end
-        KO.list(_("Quick buttons"), items, menu)
+        return out
     end
-    menu = function()
-        local View = require("appsview")
-        KO.list(_("Your home screen"), {
-            { text = _("Tiles…"), fn = tiles },
-            { text = T(_("Layout: %1"), View.LAYOUT_NAMES[s.layout or "tiles"]), fn = function()
-                local options = {}
-                for __, v in ipairs(View.LAYOUTS) do table.insert(options, { label = View.LAYOUT_NAMES[v], value = v }) end
-                KO.choose(_("Layout"), options, s.layout or "tiles", function(v) s.layout = v done() UIManager:nextTick(menu) end, menu)
-            end },
-            -- The recent books, notebooks and crosswords: the newest of each in one row, or a row each.
-            { text = T(_("Recent items: %1"), s.recent_together ~= false and _("One row") or _("Separate rows")), fn = function()
-                KO.choose(_("Recent items"), { { label = _("One row"), value = "together" }, { label = _("Separate rows"), value = "separate" } },
-                    s.recent_together ~= false and "together" or "separate", function(v)
-                        if v == "separate" then s.recent_together = false else s.recent_together = nil end
-                        done()
-                        UIManager:nextTick(menu)
-                    end, menu)
-            end },
-            -- Ready-made groups (Settings, Reading, Home...), from those that can be made.
-            { text = _("Suggested groups…"), enabled = current ~= nil, fn = function() if current then current:suggestGroups(menu) end end },
-            { text = _("Quick buttons…"), fn = quick },
-        })
+    local function quick()
+        local items = {}
+        for __, x in ipairs(builtins()) do
+            table.insert(items, { text = _(x.b.name), checked = x.e ~= nil, fn = function()
+                if x.e then table.remove(x.l, x.i) else table.insert(s.quick, { b = x.b.key }) end
+                done()
+                UIManager:nextTick(quick)
+            end })
+        end
+        KO.list(_("Quick buttons"), items)
     end
-    menu()
+    local shown, on = 0, 0
+    for __, t in ipairs(self:tiles(true)) do
+        if not t.pin and not t.groupTile and not Model.isHidden(s.hidden, t) then shown = shown + 1 end
+    end
+    for __, x in ipairs(builtins()) do if x.e then on = on + 1 end end
+    local Popup = require("appspopup")
+    local rows = {
+        { title = _("Tiles"), sub = _("Which apps show on the home screen"), value = T(_("%1 shown"), shown),
+            fn = function(r) refresh = r tiles() end },
+        -- Each layout as a picture of the home screen drawn that way.
+        { title = _("Layout"), sub = _("How the apps are drawn: tiles, a list or icons"), value = View.LAYOUT_NAMES[s.layout or "tiles"], fn = function(r)
+            refresh = r
+            local options = {}
+            for __, v in ipairs(View.LAYOUTS) do
+                table.insert(options, { label = View.LAYOUT_NAMES[v], value = v,
+                    picture = function(w) return self:homePicture(function(t) t.layout = v end, w) end })
+            end
+            Popup.pictures{ title = _("Layout"), options = options, current = s.layout or "tiles",
+                onPick = function(v) s.layout = v done() end }
+        end },
+        -- The recent books, notebooks and crosswords: the newest of each in one row, or a row each
+        -- (pictures of the top of the home screen, where they are).
+        { title = _("Recent items"), sub = _("Your latest books, notebooks and crosswords"),
+            value = s.recent_together ~= false and _("One row") or _("Separate rows"), fn = function(r)
+            refresh = r
+            Popup.pictures{ title = _("Recent items"), current = s.recent_together ~= false and "together" or "separate", options = {
+                { label = _("One row"), value = "together",
+                    picture = function(w) return self:homePicture(function(t) t.recent_together = nil end, w, 0.45) end },
+                { label = _("Separate rows"), value = "separate",
+                    picture = function(w) return self:homePicture(function(t) t.recent_together = false end, w, 0.45) end },
+            }, onPick = function(v)
+                if v == "separate" then s.recent_together = false else s.recent_together = nil end
+                done()
+            end }
+        end },
+        -- Ready-made groups (Settings, Reading, Home...), from those that can be made (the launcher's own).
+        { title = _("Suggested groups"), sub = _("Ready-made folders of apps: Settings, Reading, Home, Writing, Tools"),
+            value = current == nil and _("Open the launcher first") or nil, fn = function(r)
+            refresh = r
+            if current then current:suggestGroups() else KO.toast(_("Open the launcher first, then come back here.")) end
+        end },
+        { title = _("Quick buttons"), sub = _("The round buttons under the clock: Wi-Fi, Light, Night mode…"),
+            value = T(_("%1 on"), on), fn = function(r) refresh = r quick() end },
+    }
+    return rows
 end
 
 --- From KOReader's reading statistics: { today = seconds read today, streak

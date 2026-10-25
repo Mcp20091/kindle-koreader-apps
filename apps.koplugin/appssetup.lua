@@ -16,6 +16,8 @@ Apps add their step through PluginShare:
             skipped = "To Do keeps lists on this Kindle only.",
             -- Optional: a list under the text, items() -> { { icon, title, text } }; info = true for
             -- a page to read only (no Done line, not in the summary).
+            -- Optional: settings to change on the step itself, rows() -> { { title, sub, value,
+            -- fn(refresh) } } (the name, its value at the right; call refresh() after a change).
             -- Optional: a picture under the text (a PNG's path), as large as the page leaves room for.
             image = "/path/to/picture.png",
             -- Optional: a "How to get one" page, the short steps and a QR code of
@@ -45,6 +47,91 @@ local Setup = {}
 
 -- Where the guide lives (the public repo): QR codes on help pages point here.
 Setup.GUIDE_URL = "https://github.com/Mcp20091/kindle-koreader-apps/blob/main/guide/"
+
+-- The guide as a PDF, the latest release's (GitHub sends it on from there).
+Setup.GUIDE_PDF_URL = "https://github.com/Mcp20091/kindle-koreader-apps/releases/latest/download/Kindle.Apps.Guide.pdf"
+
+--- Where the downloaded guide goes: the home folder, as a book.
+function Setup.guidePath()
+    local home = G_reader_settings:readSetting("home_dir") or require("apps/filemanager/filemanagerutil").getDefaultDir()
+    return home .. "/Kindle Apps Guide.pdf"
+end
+
+-- The download now: nil, { status = "getting" }, or { status = "failed", message }.
+local guideDownload
+
+--- Downloads the guide PDF in a child process (KOReader carries on); done() when it's over.
+function Setup.downloadGuide(done)
+    if guideDownload and guideDownload.status == "getting" then return end
+    if NetworkMgr:isConnected() == false then
+        guideDownload = { status = "failed", message = _("The Kindle isn't on Wi-Fi.") }
+        return done()
+    end
+    local ffiutil = require("ffi/util")
+    local path = Setup.guidePath()
+    local part = path .. ".part"
+    local pid, fd = ffiutil.runInSubProcess(function(_, write_fd)
+        local ok, err = pcall(function()
+            local socketutil = require("socketutil")
+            local https = require("ssl.https")
+            local ltn12 = require("ltn12")
+            -- (GitHub answers with a redirect to where the file is: followed by hand, a few at most.)
+            local url = Setup.GUIDE_PDF_URL
+            for __ = 1, 5 do
+                local f = assert(io.open(part, "wb"))
+                socketutil:set_timeout(20, 300)
+                local okR, __, code, headers = pcall(https.request, { url = url, method = "GET", redirect = false,
+                    sink = ltn12.sink.file(f), headers = { ["User-Agent"] = "KOReader" } })
+                socketutil:reset_timeout()
+                if not okR then error(tostring(code)) end
+                if (code == 301 or code == 302 or code == 303 or code == 307 or code == 308) and headers and headers.location then
+                    url = headers.location
+                elseif code == 200 then
+                    local check = io.open(part, "rb")
+                    local head = check and check:read(5)
+                    if check then check:close() end
+                    if head ~= "%PDF-" then error("What came back isn't a PDF") end
+                    os.remove(path)
+                    assert(os.rename(part, path))
+                    return
+                else
+                    error("GitHub answered " .. tostring(code))
+                end
+            end
+            error("Too many redirects")
+        end)
+        if not ok then os.remove(part) end
+        ffiutil.writeToFD(write_fd, ok and "K" or ("E" .. tostring(err)), true)
+    end, true)
+    if not pid then
+        guideDownload = { status = "failed", message = tostring(fd) }
+        return done()
+    end
+    guideDownload = { status = "getting" }
+    local deadline = os.time() + 10 * 60
+    local function check()
+        local size = ffiutil.getNonBlockingReadSize(fd)
+        local exited = ffiutil.isSubProcessDone(pid)
+        if not (size and size > 0) and not exited then
+            if os.time() < deadline then return UIManager:scheduleIn(1, check) end
+            ffiutil.terminateSubProcess(pid)
+            guideDownload = { status = "failed", message = _("It took too long. Try again when Wi-Fi is better.") }
+        else
+            local out = (size and size > 0) and ffiutil.readAllFromFD(fd) or "EIt stopped"
+            if out:sub(1, 1) == "K" then
+                guideDownload = nil
+            else
+                guideDownload = { status = "failed", message = (out:sub(2):gsub("^.-:%d+: ", "")) }
+            end
+        end
+        if not exited then
+            local function reap() if not ffiutil.isSubProcessDone(pid) then UIManager:scheduleIn(1, reap) end end
+            reap()
+        end
+        done()
+    end
+    UIManager:scheduleIn(1, check)
+end
 
 -- (Kept in PluginShare: apps register at start, before this module is loaded.)
 local PS0 = require("pluginshare")
@@ -148,6 +235,16 @@ function Screen_:render()
     if self.helpFor then
         return self:renderHelp(c)
     end
+    if self.guideOpen then
+        return self:renderGuide(c)
+    end
+    local function guideButton(at)
+        button(c, 60, at, c.W - 120, _("Read the user guide"), false, function()
+            self.guideOpen = true
+            self:render()
+            UIManager:setDirty(self, "full")
+        end)
+    end
     if self.step == 0 then
         c:icon("sparkles", cx - 24, y, 48)
         y = y + 100
@@ -156,7 +253,7 @@ function Screen_:render()
         paragraph(T(_("A few steps connect the apps: Wi-Fi, then %1. Skip any of them; you can do each later in its app's settings, or run this again from Settings > Set up your Kindle."),
             (function()
                 local names = {}
-                for __, e in ipairs(self.steps) do if e.key ~= "wifi" then table.insert(names, e.title) end end
+                for __, e in ipairs(self.steps) do if e.key ~= "wifi" and not e.info then table.insert(names, e.title) end end
                 return table.concat(names, ", ")
             end)()))
         button(c, 60, bottom - 60, c.W - 120, _("Start"), true, function() self:go(1) end)
@@ -177,7 +274,7 @@ function Screen_:render()
             need = need + 34
             if not done(e) and e.skipped then need = need + 6 + 18 * #c:wrap(e.skipped, 10.5, c.W - 152, 2) end
         end
-        local explain = y + need < bottom - 80
+        local explain = y + need < bottom - 140
         for i, e in ipairs(self.steps) do
           if not e.info then
             local ok = done(e)
@@ -199,7 +296,8 @@ function Screen_:render()
             c:hit(50, top, c.W - 100, y - top - 4, function() self.fromSummary = true self:go(i) end)
           end
         end
-        button(c, 60, bottom - 60, c.W - 120, _("Go through every step"), false, function() self.fromSummary = false self:go(1) end)
+        if y <= bottom - 130 then guideButton(bottom - 120) end
+        button(c, 60, bottom - 60, c.W - 120, _("Start over"), false, function() self.fromSummary = false self:go(1) end)
         button(c, 60, bottom, c.W - 120, _("Done"), true, function() self:finish(true) end)
     else
         local e = self.steps[self.step]
@@ -216,9 +314,39 @@ function Screen_:render()
             for __, it in ipairs(ok and list or {}) do
                 c:icon(it.icon or "check", 60, y - 4, 26)
                 c:text(102, y + 12, it.title or "", 13, { bold = true })
-                c:text(102, y + 34, it.text or "", 11, { color = C.GREY, maxw = c.W - 162 })
-                y = y + 56
+                -- (Its line wraps once when it's long.)
+                local lines = c:wrap(it.text or "", 11, c.W - 162, 2)
+                for i, l in ipairs(lines) do c:text(102, y + 34 + 17 * (i - 1), l, 11, { color = C.GREY }) end
+                y = y + 56 + 17 * math.max(0, #lines - 1)
             end
+        end
+        -- Settings to change right on the step (rows(): { { title, value, fn(refresh) } }), as the
+        -- launcher's Settings pages: the name, its value at the right; a tap changes it.
+        if e.rows then
+            local ok, list = pcall(e.rows)
+            y = y + 4
+            for __, r in ipairs(ok and list or {}) do
+                local top = y
+                -- (sub: a grey line under the name, what the setting is.)
+                local h = r.sub and 62 or 44
+                local valueW = r.value and r.value ~= "" and c:width(r.value, 12) + 12 or 0
+                c:text(60, y + 27, r.title or "", 13, { maxw = c.W - 160 - valueW })
+                if r.sub then c:text(60, y + 48, r.sub, 10.5, { color = C.GREY, maxw = c.W - 150 }) end
+                if r.value and r.value ~= "" then c:text(c.W - 82, y + 27, r.value, 12, { align = "end", color = C.GREY }) end
+                c:icon("chevron-right", c.W - 76, y + 13, 16)
+                c:hline(60, y + h - 1, c.W - 120)
+                c:hit(50, top, c.W - 100, h, function()
+                    local okR, err = pcall(r.fn, function()
+                        if self.canvas then
+                            self:render()
+                            UIManager:setDirty(self, "ui")
+                        end
+                    end)
+                    if not okR then require("logger").warn("Setup:", e.key, err) end
+                end)
+                y = y + h
+            end
+            y = y + 10
         end
         -- A picture of it (the web page, say), framed, as wide as the text.
         if e.image then
@@ -336,7 +464,68 @@ function Screen_:renderHelp(c)
     })
 end
 
+--- The guide: a QR code of it online, and its PDF downloaded to this Kindle (then opened).
+function Screen_:renderGuide(c)
+    local y = Bar.H + 50
+    local function back()
+        self.guideOpen = false
+        self:render()
+        UIManager:setDirty(self, "full")
+    end
+    c:text(60, y, _("User guide"), 20, { bold = true })
+    y = y + 36
+    for __, l in ipairs(c:wrap(_("Every app, step by step, with pictures. Read it on your phone, or put the PDF on this Kindle to read here."), 12.5, c.W - 120, 4)) do
+        c:text(60, y, l, 12.5)
+        y = y + 21
+    end
+    y = y + 16
+    local bottom = c.H - 90
+    local size = math.min(220, bottom - y - 200)
+    if size >= 90 then
+        local okQ, qr = pcall(function()
+            return require("ui/widget/qrwidget"):new{ text = Setup.GUIDE_URL, width = c:X(size), height = c:X(size) }
+        end)
+        if okQ and qr and qr.image then
+            local px = qr.image:getWidth() / c.u
+            c:text(c.W / 2, y + 10, _("Scan to read it on your phone:"), 11.5, { align = "middle", color = C.GREY })
+            c:image(qr.image, c.W / 2 - px / 2, y + 24)
+            y = y + 24 + px + 20
+        end
+    end
+    local path = Setup.guidePath()
+    local have = require("libs/libkoreader-lfs").attributes(path, "mode") == "file"
+    local state = guideDownload
+    if state and state.status == "getting" then
+        button(c, 60, y, c.W - 120, _("Downloading the guide…"), false, function() end)
+    elseif have then
+        button(c, 60, y, c.W - 120, _("Open the guide on this Kindle"), true, function()
+            self:finish(false)
+            require("appsreaderbar").openBook(path)
+        end)
+    else
+        button(c, 60, y, c.W - 120, _("Download the PDF to this Kindle"), true, function()
+            Setup.downloadGuide(function() if self.guideOpen and not self.closed then self:render() UIManager:setDirty(self, "ui") end end)
+            self:render()
+            UIManager:setDirty(self, "ui")
+        end)
+    end
+    y = y + 60
+    if state and state.status == "failed" then
+        for __, l in ipairs(c:wrap(T(_("Couldn't download it: %1"), state.message or ""), 11.5, c.W - 120, 3)) do
+            c:text(60, y, l, 11.5, { color = C.GREY })
+            y = y + 20
+        end
+    elseif have then
+        c:text(60, y, T(_("Saved as %1, with your books."), "Kindle Apps Guide.pdf"), 11.5, { color = C.GREY, maxw = c.W - 120 })
+    else
+        c:text(60, y, _("About 10 MB, over Wi-Fi. It goes with your books."), 11.5, { color = C.GREY, maxw = c.W - 120 })
+    end
+    button(c, 60, bottom, c.W - 120, _("Back"), false, back)
+    Bar.draw(c, { title = _("Set up your Kindle"), subtitle = _("User guide"), back = back, clock = true })
+end
+
 function Screen_:go(step)
+    self.guideOpen = false
     self.helpFor = nil
     self.step = math.max(0, math.min(#self.steps + 1, step))
     self:render()
