@@ -15,6 +15,7 @@ local DEFAULTS = {
     -- Toolbar groups: one button for several tools or actions (Settings.GROUPS).
     groups = { add = { "shapes", "text", "insert" }, tidy = { "tidy", "tidy_level", "tidy_upright", "tidy_size", "tidy_space" } },
     folded = false,                      -- open notebooks with the toolbar folded away
+    quick_buttons = true,                -- a quick note's Peek, Swap, Discard and Save by its handle
     side_button = "eraser",              -- what the pen's side button does: eraser, lasso, hl, ruler, none
     whole_eraser = false,                -- the eraser takes whole strokes
     eraser_hl = false,                   -- the eraser takes only highlighter (and shader) strokes
@@ -533,6 +534,9 @@ function Settings.show(changed, extra)
     end))
     add(row(T(_("Start with toolbar hidden: %1"), onOff(Settings.get("folded"))), function()
         Settings.set("folded", not Settings.get("folded"))
+    end))
+    add(row(T(_("Quick note buttons by the handle: %1"), onOff(Settings.get("quick_buttons"))), function()
+        Settings.set("quick_buttons", not Settings.get("quick_buttons"))
     end))
 
     add(heading(_("Writing")))

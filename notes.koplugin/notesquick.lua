@@ -110,7 +110,11 @@ return function(Notes)
             local bg = shot:copy()
             bg:paintRect(r[1], r[2], r[3], r[4], Blitbuffer.COLOR_WHITE)
             Paper.level = Settings.get("paper_lines") or "medium"
-            Paper.paint(bg, "narrow", r[1], r[2] + ui:u(10), r[1] + r[3], r[2] + r[4], W, H, r[1])
+            -- (The lines clear of the buttons' strip by the edge: below it, or above it when flipped.)
+            local strip = #ed:quickButtons() > 0 and ui:u(26) or ui:u(10)
+            local y0, y1 = r[2] + strip, r[2] + r[4]
+            if ed.quick.flip then y0, y1 = r[2] + ui:u(10), r[2] + r[4] - (strip > ui:u(10) and strip or 0) end
+            Paper.paint(bg, "narrow", r[1], y0, r[1] + r[3], y1, W, H, r[1])
             -- The edge between the pad and the picture (above the pad, or below it when flipped),
             -- and its handle: drag it to make the pad taller or shorter.
             local hw, hh = ui:u(60), ui:u(7)
@@ -122,6 +126,11 @@ return function(Notes)
             else
                 bg:paintRect(r[1], r[2] - 3, r[3], 3, Blitbuffer.COLOR_BLACK)
                 ui:box(bg, hx, r[2] - ui:u(18), hw, hh, { fill = UI.MID, r = math.floor(hh / 2) })
+            end
+            -- Its buttons beside the handle, small icons inside the pad's edge: Peek, Swap | Discard, Save.
+            local is = ui:u(16)
+            for __, b in ipairs(ed:quickButtons()) do
+                ui:drawIcon(bg, b.icon, b.x + math.floor((b.w - is) / 2), b.y + math.floor((b.h - is) / 2), is)
             end
             return bg
         end

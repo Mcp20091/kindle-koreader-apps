@@ -13,7 +13,7 @@ local Device = require("device")
 local Web = {}
 
 local SETTINGS = {
-    side = "string", folded = "boolean", side_button = "string", whole_eraser = "boolean", paper = "string",
+    side = "string", folded = "boolean", quick_buttons = "boolean", side_button = "string", whole_eraser = "boolean", paper = "string",
     pressure = "boolean", sort = "string", snap_hold = "boolean", level_lines = "boolean", join_ends = "boolean",
     smooth = "number", order = "table", custom = "table",
     buttons = "table", favorites = "table", deghost = "number", ko_gestures = "boolean",

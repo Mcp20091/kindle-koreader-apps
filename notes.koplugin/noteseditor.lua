@@ -94,7 +94,7 @@ local PUZZLE_MENU_ONLY = {
     { key = "settings", label = _("Settings"), icon = "settings" },
 }
 local MARGIN_TOOLS = { "pen", "eraser", "lasso", "zoom", "undo", "redo" }   -- writing on a book's page
-local QUICK_TOOLS = { "pen", "hl", "eraser", "lasso", "undo", "redo", "peek", "swap", "refresh", "discard" }   -- a quick note (notesquick.lua)
+local QUICK_TOOLS = { "pen", "hl", "eraser", "lasso", "undo", "redo", "peek", "swap", "refresh" }   -- (✓ Save and Discard at the top; all four by the pad's handle too)   -- a quick note (notesquick.lua)
 local SPREAD_TOOLS = { "pen", "hl", "eraser", "undo", "redo" }               -- two pages side by side
 -- Tidy handwriting (notestidy.lua): what each action does; papers whose ruled lines writing is set on.
 local TIDY = {
@@ -144,6 +144,8 @@ function Editor:init()
     self.eraserSize = Settings.get("eraser_size")
     self.penFeel = Settings.get("pen_feel")
     self.folded = Settings.get("folded")
+    -- A quick note starts with its toolbar folded: its own buttons are by the pad's handle.
+    if self.quick then self.folded = true end
     self.hits = {}
     self.undo, self.redo = {}, {}
     self.page_bb = Blitbuffer.new(self.w, self.h, Blitbuffer.TYPE_BB8)
@@ -243,6 +245,16 @@ function Editor:swipeClues(ges)
 end
 
 function Editor:onEditorTap(_arg, ges)
+    -- A quick note's buttons by its handle: a finger works them too (not a palm by the pen).
+    if ges and ges.pos and self.quick and not self:palmLikely() then
+        local pad = self.ui:u(6)
+        for __, b in ipairs(self:quickButtons()) do
+            if ges.pos.x >= b.x - pad and ges.pos.x < b.x + b.w + pad and ges.pos.y >= b.y - pad and ges.pos.y < b.y + b.h + pad then
+                self:quickButton(b.key)
+                return true
+            end
+        end
+    end
     if ges and ges.pos then self:tapAt(ges.pos.x, ges.pos.y, true) end
     return true
 end
@@ -1263,6 +1275,11 @@ function Editor:paintToolbar(bb)
         self:closeAsked()
     end)
     y = y + pitch
+    -- A quick note's Discard right under its ✓ Save.
+    if self.quick and self.quick.discard then
+        button(y, "trash-2", function() self.quick.discard(self) end, false, false, "discard")
+        y = y + pitch
+    end
     sep(y - u(2))
     y = y + u(4)
     for __, key in ipairs(self.order) do
@@ -2279,10 +2296,13 @@ end
 -- A finger on the grip drags the strip too, and pinned clues.
 function Editor:onEditorPan(_arg, ges)
     if not (ges and ges.pos) then return true end
-    if not (self.stripDrag or self.cardDrag) then
+    if not (self.stripDrag or self.cardDrag or self.quickDrag) then
         local rel = ges.relative or { x = 0, y = 0 }
         local x0, y0 = ges.pos.x - rel.x, ges.pos.y - rel.y
-        if self.zoomOn and self:onStripGrip(x0, y0) then
+        if self.quick and not self:palmLikely() and math.abs(y0 - self:quickEdge()) <= self.ui:u(26) then
+            -- A quick note's handle, dragged with a finger.
+            self.quickDrag = { from = y0, top = self.quick.top }
+        elseif self.zoomOn and self:onStripGrip(x0, y0) then
             self.stripDrag = { dy = y0 - self:zoomGeometry()[2] }
         elseif not self.view and not self:palmLikely() and self:onClueCard(x0, y0) then
             self:grabClueCard(x0, y0)
@@ -2290,7 +2310,9 @@ function Editor:onEditorPan(_arg, ges)
             return true
         end
     end
-    if self.cardDrag then
+    if self.quickDrag then
+        self:dragQuick(ges.pos.y)
+    elseif self.cardDrag then
         self:dragClueCard(ges.pos.x, ges.pos.y)
     else
         self:dragStrip(ges.pos.y)
@@ -2299,6 +2321,7 @@ function Editor:onEditorPan(_arg, ges)
 end
 
 function Editor:onEditorPanRelease()
+    if self.quickDrag then return self:dragQuick(nil, true) or true end
     self:dropClueCard()
     self:dropStrip()
     return true
@@ -4506,6 +4529,16 @@ function Editor:penDown(x, y, tool, width)
         self.press = { x = x, y = y, moved = false }
         return
     end
+    -- A quick note's buttons by the handle: worked when the pen or finger lifts on them.
+    if self.quick then
+        local pad = self.ui:u(6)
+        for __, b in ipairs(self:quickButtons()) do
+            if x >= b.x - pad and x < b.x + b.w + pad and y >= b.y - pad and y < b.y + b.h + pad then
+                self.quickTap = b
+                return
+            end
+        end
+    end
     -- A quick note's top edge (its handle): dragged, the pad is taller or shorter.
     if self.quick and not self:hitAt(x, y) and math.abs(y - self:quickEdge()) <= self.ui:u(26) then
         self.quickDrag = { from = y, top = self.quick.top }
@@ -4656,6 +4689,7 @@ function Editor:previewHighlight(x0, y0, x1, y1, width)
 end
 
 function Editor:penMove(x, y, width)
+    if self.quickTap then return end
     if self.quickDrag then return self:dragQuick(y) end
     if self.stripDrag then return self:dragStrip(y) end
     if self.cardDrag then return self:dragClueCard(x, y) end
@@ -4774,6 +4808,11 @@ function Editor:penUp()
     if self.busy then self.penUpAt = time.now() end
     self.busy = false
     self.penTool = nil
+    if self.quickTap then
+        local b = self.quickTap
+        self.quickTap = nil
+        return self:quickButton(b.key)
+    end
     if self.quickDrag then return self:dragQuick(nil, true) end
     if self.stripDrag then return self:dropStrip() end
     if self.cardDrag then return self:dropClueCard() end
@@ -6144,6 +6183,41 @@ function Editor:dragQuick(y, final)
         self.quickDrag = nil
         if self.quick.moved then self.quick.moved(to / self.h, self.quick.flip) end
         if dy == 0 then self:repaint(nil, "full") end
+    end
+end
+
+--- A quick note's buttons by its handle: small icons in the pad's blank strip just inside the
+-- edge (nothing of the picture covered), Peek and Swap to the handle's left, Discard and Save
+-- (✓) to its right. { { key, icon, x, y, w, h } } (w and h: the tap area).
+function Editor:quickButtons()
+    -- (Off in Notes' settings > Toolbar: none; the toolbar has them.)
+    if not Settings.get("quick_buttons") then return {} end
+    local u = function(n) return self.ui:u(n) end
+    local r = self.pageRect
+    local e = self:quickEdge()
+    local bw, bh, gap, hw = u(34), u(26), u(8), u(60)
+    -- (Below the edge, or above it when the pad is on top.)
+    local y = self.quick.flip and (e - u(2) - bh) or (e + u(2))
+    local cx = r[1] + math.floor(r[3] / 2)
+    local left = cx - math.floor(hw / 2) - gap
+    local right = cx + math.floor(hw / 2) + gap
+    return {
+        { key = "peek", icon = "eye", x = left - 2 * bw - gap, y = y, w = bw, h = bh },
+        { key = "swap", icon = "arrow-up-down", x = left - bw, y = y, w = bw, h = bh },
+        { key = "discard", icon = "trash-2", x = right, y = y, w = bw, h = bh },
+        { key = "save", icon = "check", x = right + bw + gap, y = y, w = bw, h = bh, primary = true },
+    }
+end
+
+function Editor:quickButton(key)
+    if key == "peek" then
+        if self.quick.peek then self.quick.peek(self) end
+    elseif key == "swap" then
+        self:swapQuick()
+    elseif key == "discard" then
+        if self.quick.discard then self.quick.discard(self) end
+    elseif key == "save" then
+        self:closeAsked()
     end
 end
 
