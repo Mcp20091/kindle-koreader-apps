@@ -2,6 +2,8 @@
 
 A set of KOReader plugins that turn a jailbroken Kindle Scribe into a small system of its own: a launcher, a library for your books, Home Assistant, Microsoft To Do, handwritten notes, crosswords, Wikipedia, Syncthing, SSH, and a web server for running it all from a phone or computer's browser. Every app shares one title bar, one notifications list, one settings design and one look for pop-ups.
 
+> **Made almost entirely by AI.** The code, the guide and its screenshots were written by Claude (through Claude Code), with a person choosing what to build, testing it on a Kindle and reporting bugs. See [How this came about](#how-this-came-about).
+
 ![The launcher on the Kindle, and the Kindle's web server page on a computer](media/overview.png)
 
 ## How this came about
