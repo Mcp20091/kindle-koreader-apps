@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#1d1d1b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Kindle">
+<link rel="manifest" href="/static/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="/static/icon-192.png">
+<title>Kindle</title>
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">KOReader</div>
+  <nav id="nav">
+    <a href="#home" data-page="home">Home</a>
+    <a href="#dashboard" data-page="dashboard">Dashboard</a>
+    <a href="#files" data-page="files">Files</a>
+    <a href="#reading" data-page="reading">Reading</a>
+    <a href="#apps" data-page="apps" data-plugin="apps">Launcher</a>
+    <a href="#ha" data-page="ha" data-plugin="homeassistant">Home Assistant</a>
+    <a href="#todo" data-page="todo" data-plugin="todo">To Do</a>
+    <a href="#notes" data-page="notes" data-plugin="notes">Notes</a>
+    <a href="#crosswords" data-page="crosswords" data-plugin="crosswords">Crosswords</a>
+    <a href="#wikipedia" data-page="wikipedia" data-plugin="wikipedia">Wikipedia</a>
+    <a href="#syncthing" data-page="syncthing" data-plugin="syncthing">Syncthing</a>
+    <a href="#ssh" data-page="ssh" data-plugin="sshclient">SSH</a>
+    <a href="#ai" data-page="ai" data-plugin="apps">AI</a>
+    <a href="#fonts" data-page="fonts" data-plugin="apps">Fonts</a>
+    <a href="#koreader" data-page="koreader">KOReader</a>
+    <a href="#system" data-page="system">System</a>
+  </nav>
+  <input id="search" type="search" placeholder="Search notebooks, tasks, settings" aria-label="Search">
+</header>
+<main id="main"></main>
+<div id="toasts"></div>
+<script src="/static/app.js"></script>
+<script src="/static/home.js"></script>
+<script src="/static/dashboard.js"></script>
+<script src="/static/files.js"></script>
+<script src="/static/library.js"></script>
+<script src="/static/reading.js"></script>
+<script src="/static/apps.js"></script>
+<script src="/static/ha.js"></script>
+<script src="/static/todo.js"></script>
+<script src="/static/notes.js"></script>
+<script src="/static/crosswords.js"></script>
+<script src="/static/wikipedia.js"></script>
+<script src="/static/syncthing.js"></script>
+<script src="/static/ssh.js"></script>
+<script src="/static/search.js"></script>
+<script src="/static/system.js"></script>
+<script src="/static/fonts.js"></script>
+<script src="/static/ai.js"></script>
+<script src="/static/koreader.js"></script>
+<script>App.start();</script>
+</body>
+</html>

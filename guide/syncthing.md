@@ -8,17 +8,28 @@ This plugin is based on **koreader-syncthing** by jasonchoimtt (github.com/jason
 
 ## Opening it
 
-- The **Syncthing** tile on the Apps launcher. Its line says what Syncthing is doing: **On · Up to date**, **On · Syncing · 3 files left**, or **Off**.
+- The **Syncthing** tile on the launcher. Its line says what Syncthing is doing: **On · Up to date**, **On · Syncing · 3 files left**, or **Off**.
+- A **Syncthing** quick button on the launcher (add it in **Settings > Launcher > Quick buttons > Add a button > Syncthing…**, or on the web page's Launcher tab): tap it to turn Syncthing on or off (it is black while on), hold it to open the app.
 - **Settings (gear) > Network > Syncthing** in KOReader's menu.
 - A gesture: **Settings > Taps and gestures > Gesture manager**, pick a gesture, then **General > Syncthing** (opens the app) or **Turn Syncthing on or off**.
+- The launcher's **recent apps**, its **search** (it finds Syncthing's folders by name or path) and its **Settings** list (**Syncthing** opens Syncthing's settings).
+- **Set up your Kindle** in the launcher has a Syncthing step: **Show this Kindle's ID** turns Syncthing on and shows the ID, ready to add from your computer or phone.
 
-The back arrow at the top left closes the app. **↻** reads the status again (it also does that by itself every few seconds while the app is open).
+The title bar is the same as in the other apps:
+
+- At the left: **‹** goes back (from Syncthing's own page, to the launcher), the house goes to the launcher, and the clock with an arrow shows the recent apps. Then the title.
+- At the right: the time and battery (tap them, or the small **▾**, for the control center: light, Wi-Fi, night mode and more), **⟳** (reads the status again and redraws the screen; the app also reads it by itself every few seconds while it is open), the bell (notifications, with how many are new) and **⋮**.
+- When a list has more than one page, **‹ 1/2 ›** shows in the bar; tap its halves to turn pages.
+
+A swipe in from the left edge of the screen goes back, as in the other apps; other swipes turn pages.
+
+New requests and folders with errors also show in the shared notifications (the bell), so you see them from the other apps too. Tap one to open Syncthing; it goes away once the request is accepted or ignored, or the error is fixed.
 
 ## Setting it up
 
 You need Syncthing on the other device too: **syncthing.net** for a computer, or Syncthing-Fork on Android.
 
-1. Tap **Off** at the top right of the Syncthing box to turn it **On**. The first start takes a few seconds (**Starting…**).
+1. Tap the power button (**Off**) at the right of the Syncthing box to turn it **On** (it turns black). The first start takes a few seconds (**Starting…**).
 2. Tap **This Kindle's ID** at the bottom. The Kindle shows its ID as a QR code.
 3. In Syncthing on your computer or phone, choose **Add Remote Device** and scan the code or type the ID.
 4. On the Kindle, the computer shows up under **Requests**: "Desktop PC wants to connect". Tap **Accept** and give it a name (it suggests the computer's own name).
@@ -27,17 +38,19 @@ You need Syncthing on the other device too: **syncthing.net** for a computer, or
 
 The folder syncs straight away.
 
+**Not set up?** Nothing else on the Kindle needs Syncthing: it stays off (the tile says **Off**) until you turn it on. Copy books using the web server feature instead; if you prefer a physical connection, exit KOReader and connect your Kindle via USB. **Set up your Kindle** in the launcher can skip this step; set up Syncthing any time later from the app.
+
 ![Requests: a new device and a shared folder](img/syncthing/requests.png)
 
-**Ignore** on a request means Syncthing won't ask about that device or folder again. To change your mind later, use Syncthing's own web page (see the menu below).
+**Ignore** on a request means Syncthing won't ask about that device or folder again. **Undo** at the bottom of the screen takes it back for a few seconds; to change your mind later, use Syncthing's own web page (see the menu below).
 
 ## The app
 
-- **The Syncthing box**: what Syncthing is doing ("Up to date", "Syncing · 2 files left", "Scanning Books", "Errors in Papers", "No devices connected"), how many devices are connected, and the Kindle's address on the Wi-Fi. **On** / **Off** starts or stops it.
+- **The Syncthing box**: what Syncthing is doing ("Up to date", "Syncing · 2 files left", "Scanning Books", "Errors in Papers", "No devices connected"), how many devices are connected, and the Kindle's address on the Wi-Fi. The power button (**On** / **Off**) starts or stops it.
 - **REQUESTS**: only when a device wants to connect or shares a folder (see above).
 - **FOLDERS**: each folder with its state: **Up to date**, **Syncing 42%** (with a progress bar and what's left), **Scanning**, **Paused**, or **Out of sync** (some files couldn't be synced: see **Details**). Under the name: where it is, how many files and how big, and the last file that changed. **Rescan all** looks for changes in every folder now (Syncthing also does that by itself every hour, and sooner for changes made on the Kindle).
 - **DEVICES**: your other devices: **Connected** (with how much of what you share it has, such as "Connected · 100%"), **Paused**, or when it was last seen.
-- **At the bottom**: **This Kindle's ID**, and when the status was last read. A long list turns pages: swipe, or tap the arrows at the bottom.
+- **At the bottom**: **This Kindle's ID**, and when the status was last read.
 
 When Syncthing is off, the folders and devices still show, so you can see what will sync.
 
@@ -48,29 +61,34 @@ When Syncthing is off, the folders and devices still show, so you can see what w
 - **Rescan**: look for changes in this folder now.
 - **Pause** / **Resume**: stop syncing this folder for now.
 - **Open in Library**: the folder in KOReader's file browser.
-- **Details**: where it is, its files and size on the Kindle and in all, errors, when it was last scanned, the devices it's shared with, and its folder ID.
+- **Details**: where it is, its files and size on the Kindle and in all, errors, when it was last scanned, the devices it's shared with, and its folder ID, with **Copy** (the text), **Open** (in the Library) and **Done**.
 
 ### Tapping a device
 
 - **Pause** / **Resume**: stop syncing with this device for now.
-- **Details**: its device ID, its address and Syncthing version while connected, what it still needs, and when it was last seen.
+- **Details**: its device ID, its address and Syncthing version while connected, what it still needs, and when it was last seen, with **Copy** (its device ID), **Pause** (or **Resume**) and **Done**.
 
 ### This Kindle's ID
 
 ![This Kindle's ID](img/syncthing/id.png)
 
-The QR code and the full ID, to add the Kindle from Syncthing on another device. Tap anywhere to close it.
+The QR code and the full ID, to add the Kindle from Syncthing on another device. **Copy** puts the ID on the clipboard (to paste it in another app on the Kindle); **Done**, or a tap outside the box, closes it.
 
 ## The menu
 
 ![The menu](img/syncthing/menu.png)
 
-- **Start with Wi-Fi**: when on, Syncthing starts by itself whenever the Kindle's Wi-Fi connects, and stops before Wi-Fi goes off. If you turn Syncthing off by hand, it stays off until Wi-Fi connects again.
 - **This Kindle's ID**: as at the bottom of the screen.
-- **Web GUI**: the address of Syncthing's own web page (such as `192.168.1.42:8384`), for settings that aren't in the app: folder types (Send Only, Receive Only), ignore patterns, versioning, ignored devices and folders, and more. Open it in a browser on the same Wi-Fi. The user name is `syncthing`; set a password first.
-- **Web GUI password**: sets that password (Syncthing must be on).
-- **Port**: the web GUI's port, 8384 unless something else uses it. Change it while Syncthing is off.
-- **Help**: a short version of the setup above.
+- **Web GUI**: the address of Syncthing's own web page (such as `192.168.1.42:8384`), for settings that aren't in the app: folder types (Send Only, Receive Only), ignore patterns, versioning, ignored devices and folders, and more. Open it in a browser on the same Wi-Fi. The user name is `syncthing`; set a password first. **Copy** copies the address; **Password** sets the password.
+- **Help**: a short version of the setup above, with **Copy** and **Kindle ID** (the QR code).
+- **Recent apps**, **Light**, **Night mode** and **Refresh screen**, as in the other apps.
+- **Settings**, always last: a full page like the other apps' settings (**‹** goes back to the app). The same page opens from the launcher's **Settings** list, under **Syncthing** (then **‹** goes back there):
+
+![Settings](img/syncthing/settings.png)
+
+  - **Start with Wi-Fi** (a switch): when on, Syncthing starts by itself whenever the Kindle's Wi-Fi connects, and stops before Wi-Fi goes off. If you turn Syncthing off by hand, it stays off until Wi-Fi connects again.
+  - **Password** (under WEB GUI): sets that password (Syncthing must be on).
+  - **Port**: the web GUI's port, 8384 unless something else uses it. Change it while Syncthing is off.
 
 ## On the web page
 
@@ -83,7 +101,7 @@ The web page (see the Web server chapter) has a **Syncthing** tab with the same 
 - **Devices** with their state and **Pause** / **Resume**.
 - A link to Syncthing's own web page.
 
-While Syncthing is on, the tab updates itself every 5 seconds.
+While Syncthing is on, the tab updates itself every 5 seconds. The web page's **Dashboard** tab also shows Syncthing's state and any requests.
 
 ## Good to know
 

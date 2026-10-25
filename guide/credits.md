@@ -9,6 +9,8 @@ These plugins are built on other people's work. Thank you to:
 - **Lucide** (lucide.dev, ISC licence): the icons in every plugin.
 - **Noto Sans** (SIL Open Font License) and **Droid Sans Mono** (Apache License 2.0): the fonts in this guide, with symbols from Microsoft's **Segoe UI Symbol**.
 - **Wikipedia** and its editors: articles are Wikipedia's, under CC BY-SA.
+- **Open-Meteo** (open-meteo.com, CC BY 4.0): the weather forecast and place search without Home Assistant. Weather data by Open-Meteo.com.
+- The US **National Weather Service** (weather.gov): weather alerts in the US.
 - The crosswords' publishers: puzzles are downloaded from their own websites and belong to them.
 
 Home Assistant, Microsoft To Do, OneNote, Ollama and Claude are their makers' products; these plugins only connect to them.

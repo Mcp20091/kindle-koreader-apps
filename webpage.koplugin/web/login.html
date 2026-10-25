@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#1d1d1b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Kindle">
+<link rel="manifest" href="/static/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="/static/icon-192.png">
+<title>Kindle · Sign in</title>
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<main id="main" style="max-width:420px;margin:12vh auto 0">
+  <div class="card stack">
+    <h1 style="margin:0">Kindle</h1>
+    <form id="f" class="stack">
+      <input id="pw" type="password" placeholder="Password" autocomplete="current-password" autofocus style="width:100%">
+      <label class="row small"><input id="remember" type="checkbox" checked> Stay signed in</label>
+      <button class="btn primary" type="submit">Sign in</button>
+      <div id="msg" class="small" style="color:#b00020;min-height:1.2em"></div>
+    </form>
+  </div>
+</main>
+<script>
+document.getElementById('f').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const msg = document.getElementById('msg');
+  msg.textContent = '';
+  const r = await fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password: document.getElementById('pw').value, remember: document.getElementById('remember').checked }) });
+  // Back to where the link pointed (Open on the web page on the Kindle), else the front page.
+  if (r.ok) { location.href = (location.pathname === '/login' ? '/' : location.pathname) + location.hash; return; }
+  const j = await r.json().catch(() => ({}));
+  msg.textContent = j.error || 'Could not sign in.';
+});
+</script>
+</body>
+</html>

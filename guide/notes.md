@@ -1,30 +1,32 @@
 # Notes
 
-Notes turns the Kindle Scribe into a handwritten notebook. You write with the pen on ruled, grid, dotted or blank pages (or on the pages of a PDF), keep notebooks in folders, search them, tidy your handwriting, send them to OneNote, turn them into typed text with AI, and solve crosswords from newspapers.
+Notes turns the Kindle Scribe into a handwritten notebook. You write with the pen on ruled, grid, dotted or blank pages (or on the pages of a PDF), keep notebooks in folders, search them, tidy your handwriting, send them to OneNote and turn them into typed text with AI.
 
 Notes reads the pen directly, so a hand resting on the screen doesn't write or turn pages. Fingers only work the buttons and menus; the pen writes.
 
-Crosswords and puzzle books have their own chapter.
+Crossword books are solved in the Crosswords app, which has its own chapter.
 
 ## Getting started
 
 ### Opening Notes
 
-- From the Apps launcher, tap the **Notes** tile.
+- From the launcher, tap the **Notes** tile.
 - Or open KOReader's menu and choose **Tools > Notes**.
 - Or set a gesture: **Settings > Taps and gestures > Gesture manager**, pick a gesture, then **General > Notes**.
+- Or search from the launcher: notebooks are found by name (and by words on pages Notes' own search has already looked at). Notes is also in Recent apps once you've used it.
 
 Notes opens on the notebook list. If **Open the last notebook when Notes opens** is on (Settings > Notebook list), the notebook you used last opens straight away.
 
 ### Making a notebook
 
 1. Tap **+ New notebook** at the top of the list.
-2. Type a name, or leave it blank to name it by the date and time (for example "Oct 21, 2:47 PM").
-3. Tap the template you want: **Blank**, **Narrow**, **Wide**, **Grid** or **Dots**. The other templates (checklist, tasks, Cornell notes, week planner, music staves and more) can be picked later from the page's menu.
+2. Type a name (or tap the pen at the end of the box and write it), or leave it blank to name it by the date and time (for example "Oct 21, 2:47 PM").
+3. Under **Paper**, tap the one you want: **Blank**, **Narrow**, **Wide**, **Grid** or **Dots** (each drawn as it looks). The other templates (checklist, tasks, Cornell notes, week planner, music staves and more) can be picked later from the page's menu.
+4. Tap **Create**.
 
 Other choices in the same box:
 
-- **From PDF…** makes a notebook from a PDF on the Kindle: each PDF page becomes a page you can write on.
+- **From a PDF…** makes a notebook from a PDF on the Kindle: each PDF page becomes a page you can write on.
 - **Your template…** starts the notebook with one of your own templates.
 
 A new notebook goes into the folder you have open. Portrait or landscape follows the way the Kindle is held.
@@ -32,15 +34,15 @@ A new notebook goes into the folder you have open. Portrait or landscape follows
 ### Naming notebooks
 
 - To rename a notebook, hold it in the list and tap **Rename**, or use **⋯ > Rename notebook** inside it.
-- **Suggest name** in the Rename box asks the AI to read the first written page and suggest a short name.
+- **Suggest** in the Rename box asks the AI to read the first written page and suggest a short name.
 - **Suggest names (AI)** (Settings > New notebooks): when you close a notebook still named by its date, the AI reads its first page and offers a name a moment later (you can carry on meanwhile). Tap **Rename** to take it or **Keep** to leave it.
 - **Add the date to names** (Settings > New notebooks): **Before the name** gives "Oct 21 – Meeting", **After the name** gives "Meeting – Oct 21". It applies to names you type for new notebooks, and when a notebook still named by date gets its first real name.
 
 ### Saving and closing
 
-Notes saves as you write; there is no Save button to remember. To leave a notebook, tap the top button on the toolbar (the open book).
+Notes saves as you write; there is no Save button to remember. To leave a notebook, tap the open book near the top of the toolbar (back to the notebook list), or ⌂ above it (back to the launcher).
 
-If you'd rather decide each time, set **When closing** (Settings > Writing) to **Ask**. Closing a notebook you changed then offers **Save**, **Rename…**, **Don't save** (puts it back as it was when you opened it; a brand-new notebook is removed) or **Cancel**.
+If you'd rather decide each time, set **When closing** (Settings > Writing) to **Ask**. Closing a notebook you changed then offers **Save**, **Rename…** or **Don't save** (puts it back as it was when you opened it; a brand-new notebook is removed). **Close** leaves the notebook open.
 
 A notebook reopens at the page you left it on, and its undo steps are kept while KOReader is running (for the last two notebooks you closed).
 
@@ -52,19 +54,21 @@ The notebook list shows each notebook's first page as a cover, with folders as t
 
 ![The notebook list: the buttons along the top, the Recent folder, folders and notebooks](img/notes/notes-list.png)
 
-The buttons along the top are:
+The title bar is the same as in the other apps: **‹** (back up a folder, or out of Notes), ⌂ (the launcher), Recent apps, then the folder's name. On the right are the time and battery (tap them, or the ▾ beside them, for the drop-down panel with the light, Wi-Fi and Night mode), ⟳ (refresh the screen), the bell (notifications) and **⋮**, which has **Open on the web page**, **Recent apps**, **Light**, **Night mode**, **Refresh screen** and, last, **Settings**.
+
+The buttons under the title bar are:
 
 - **+ New notebook**
 - New folder (folder icon)
 - **Today's page** (at the top level)
-- **Crosswords** (see the Crosswords chapter)
+- **Crosswords** (when the Crosswords app is installed; it opens that app)
 - **OneNote** (when you're signed in to OneNote)
 - Search (magnifier icon, at the top level)
 - Sort (up-and-down arrows icon)
 
-If they don't all fit, the rest go behind **More…**. The cog at the top left opens Notes' settings, and the time and battery show at the top right.
+If they don't all fit, the rest go behind **More…**. When there are more notebooks than fit, swipe left or right to turn the pages, or tap the arrows by the page number in the title bar. A swipe in from the left edge of the screen goes back, as **‹** does.
 
-Tap a notebook to open it. Hold a notebook for its options: **Rename**, **Duplicate**, **Move to…**, **Pin to top**, **Lock…**, **Send to OneNote now**, **Add to Apps** (a tile for it on the Apps launcher), **Select** and **Delete**.
+Tap a notebook to open it. Hold a notebook for its options: **Rename**, **Duplicate**, **Move to…**, **Pin to top**, **Lock…**, **Send to OneNote now**, **Add to launcher** (a tile for it on the launcher), **Select** and **Delete**.
 
 ### Sort
 
@@ -76,9 +80,9 @@ Tap the Sort button at the top of the list and pick **Name**, **Date created**, 
 ### Folders
 
 - Tap the New folder button and type a name. Folders can hold other folders.
-- Tap a folder to open it; tap **‹** at the top to go back up. New notebooks go into the folder you have open.
+- Tap a folder to open it; tap **‹** at the top (or swipe in from the left edge) to go back up. New notebooks go into the folder you have open.
 - Hold a folder to rename, move or delete it, or to choose its **Cover…**: Automatic (the notebooks changed last inside it), a plain folder, an icon (house, briefcase, school, travel and others) or one of its notebooks.
-- Deleting a folder asks whether its notebooks are deleted too or moved up a level.
+- Deleting a folder that has notebooks in it asks whether they are deleted too or moved up a level. Tap **Undo** at the bottom of the screen in the next few seconds to put everything back.
 
 ### Selecting several
 
@@ -95,7 +99,7 @@ Hold a notebook and tap **Lock…** to set a PIN (**Remove lock** takes it off).
 
 ### Trash
 
-Deleting a notebook moves it to the trash, which is at the end of the notebook list. Tap a notebook there to restore it (it goes back to its folder) or delete it for good; **Empty trash** deletes them all. Notebooks in the trash are deleted for good after 30 days.
+Deleting a notebook (hold it, then **Delete**) moves it to the trash straight away; tap **Undo** at the bottom of the screen in the next few seconds to put it back. The trash is at the end of the notebook list. Tap a notebook there to restore it (it goes back to its folder) or delete it for good; **Empty trash** deletes them all. Deleting for good asks first, and notebooks in the trash are deleted for good after 30 days.
 
 ### Search
 
@@ -105,6 +109,8 @@ Tap the Search button and type a word. Notes finds it in:
 - handwriting that has been read by the AI (with **⋯ > Convert page to text**, or from an earlier search).
 
 Tap a result to open that page. If some pages haven't been read yet, the last row offers to read them with AI. Locked notebooks are never searched.
+
+The launcher's search finds notebooks too: by name, and by words on pages that Notes' search has already looked at.
 
 ![Search results: a notebook's name, typed text on a page, and pages not read yet](img/notes/notes-search.png)
 
@@ -118,18 +124,20 @@ Tap **Today's page** to open today's page in a notebook called **Journal**. The 
 
 The toolbar runs down the left edge (or the right: **Settings > Toolbar > Side**). From the top:
 
+- ⌂: the notebook is saved and closed, and the launcher shows;
 - the open book: back to the notebook list;
 - **Pen**, **Highlighter**, **Eraser**, **Lasso**;
 - **Add** (Shapes, Text and Insert, in one button);
 - **Zoom window**;
 - **Undo** and **Redo**;
 - **Tidy** (tidy handwriting);
-- any action buttons you added (**Refresh screen** is there to start with);
+- any action buttons you added;
 - your favorite pens;
 - the time and battery;
 - page up, the page number, page down;
 - all pages (the grid button), **+** (add a page) and **⋯** (the menu);
-- the bottom button folds the toolbar into a small tab on the edge. Tap the tab to bring it back.
+- the fold button folds the toolbar into a small tab on the edge. Tap the tab to bring it back;
+- at the very bottom, always there: ⟳ (refresh the screen), the bell (notifications) and ⚙ (Notes' settings).
 
 ![A page being written on, with the toolbar on the left](img/notes/notes-writing.png)
 
@@ -143,7 +151,7 @@ To change the groups, go to **Settings > Toolbar > Groups…**, pick a group, an
 
 ### Your own toolbar
 
-**Settings > Toolbar > Toolbar buttons…** lists everything the toolbar can show: the tools, the Add and Tidy groups, and the actions from the ⋯ menu (**Send to OneNote**, **Ask AI**, **Convert page to text**, **Add page to To Do**, **Bookmark page**, **Date and time**, **Export**, **Light**, **Night mode**, **Refresh screen**, **Settings** and others).
+**Settings > Toolbar > Toolbar buttons…** lists everything the toolbar can show: the tools, the Add and Tidy groups, and the actions from the ⋯ menu (**Send to OneNote**, **Ask AI**, **Convert page to text**, **Add page to To Do**, **Bookmark page**, **Date and time**, **Export**, **Light**, **Night mode** and others). Refresh, notifications and Settings are always at the bottom of the toolbar, so they aren't in this list.
 
 ![Toolbar buttons: the eye shows or hides a button, the arrows move it](img/notes/notes-toolbar-buttons.png)
 
@@ -208,7 +216,7 @@ The pen's eraser end, or its side button, erases whatever tool is picked. The er
 ### Tips
 
 - Stroke smoothing (Settings > Writing) evens out shaky lines: **Light** for handwriting, **Strong** for drawings and long curves.
-- If the screen keeps faint marks from earlier writing, tap **Refresh screen**; **Full refresh** (Settings > Screen) sets how often Notes clears them by itself.
+- If the screen keeps faint marks from earlier writing, tap ⟳ at the bottom of the toolbar; **Full refresh** (Settings > Display) sets how often Notes clears them by itself.
 
 ## The lasso
 
@@ -220,14 +228,14 @@ Tap **Lasso** and circle ink, text boxes, pictures or tape with the pen to selec
 - The bar under the selection has:
   - **Cut**, **Copy** and **Duplicate**;
   - **Snap shapes**: rough lines, circles and boxes become clean ones;
-  - **To text**: reads the handwriting with AI. The text can be copied, saved, or put back with **Replace handwriting** (the typed text goes where the writing was);
+  - **To text**: reads the handwriting with AI. The text can be copied, saved, or put back with **Replace** (the typed text goes where the writing was);
   - **Style**: change the selected ink's pen, thickness, shade or line;
   - **Tidy**: tidy the handwriting in the selection (see Tidy handwriting);
   - **To To Do**: add the to-do items in the selection to To Do;
   - **Ask**: ask the AI about the selection;
   - **Draw**: have the AI redraw it or draw next to it;
   - **Delete**.
-- With something cut or copied, tap the page with the lasso and tap **Paste**.
+- With something cut or copied, tap the page with the lasso and tap **Paste**. Text copied in another app (a To Do task, an AI answer, SSH) pastes the same way, as a text box; the typed text of text boxes you cut or copy here pastes in other apps' boxes too (hold the box, **Paste**).
 
 ## Shapes and snapping
 
@@ -250,7 +258,7 @@ Draw a rough line, circle, ellipse, rectangle or triangle and hold the pen still
 
 ### Text boxes
 
-Open **Add > Text** and tap the page to type a text box (drag across the page first to set its width). The panel sets the size (four sizes), bold or italic, sans or serif, and left, centre or right alignment for new boxes. Tap a text box to edit or delete it. You can write over text boxes; move or resize them with the lasso.
+Open **Add > Text** and tap the page to type a text box (drag across the page first to set its width). The panel sets the size (four sizes), bold or italic, sans or serif, and left, centre or right alignment for new boxes. In the box where you type, **Bold**, **Italic**, **Sans** (or **Serif**) and the alignment under the text switch the style of this one; the pen at the end of the box writes the text by hand. Tap a text box to edit it, or to **Delete** it. You can write over text boxes; move or resize them with the lasso.
 
 ### Pictures
 
@@ -314,10 +322,11 @@ Tap the page number, or the grid button, to see every page as a thumbnail.
 
 - Tap a page to go there.
 - Hold a page to bookmark, copy, move or delete it.
-- **★ Bookmarked** shows only bookmarked pages; **⋯ > Bookmark page** marks the page you're on (★ by its number).
-- **Select** ticks several pages to bookmark, move, copy, move to another notebook or delete them together.
+- The star in the title bar shows only bookmarked pages (tap it again for all); **⋯ > Bookmark page** marks the page you're on (★ by its number).
+- The tick-list button (**Select**) ticks several pages to bookmark, move, copy, move to another notebook or delete them together.
 - **⋯ > Reorder pages** moves pages up and down.
-- Deleted pages are kept for 30 days: **Deleted (n)** in the page list restores them, or deletes them for good.
+- Deleted pages are kept for 30 days: the bin in the title bar (with how many) restores them, or deletes them for good.
+- **‹** goes back to the page; **⌂** to the launcher.
 
 ### Page templates
 
@@ -325,7 +334,7 @@ The top of the ⋯ menu shows the page templates: **Blank**, **Narrow** ruled, *
 
 ![The ⋯ menu: the page templates, then the page's and the notebook's actions](img/notes/notes-menu.png)
 
-Tap **All pages** beside the title to switch to **This page**, so a template applies only to the page you're on. **Template lines** (Settings > Screen) makes template lines **Light**, **Medium** or **Dark**.
+Tap **All pages** beside the title to switch to **This page**, so a template applies only to the page you're on. **Template lines** (Settings > Display) makes template lines **Light**, **Medium** or **Dark**.
 
 ### Your own templates
 
@@ -345,7 +354,7 @@ On a **Month** calendar page, tap a day's number to open that day's page in the 
 
 ### Page header
 
-**Page header (date and page number)** (Settings > Screen) shows the page's date and number in small type at the top right of each page.
+**Page header (date and page number)** (Settings > Display) shows the page's date and number in small type at the top right of each page.
 
 ## Orientation and two pages side by side
 
@@ -385,7 +394,7 @@ The writing is kept with the book and stays in place when you zoom in or out. It
 
 ## PDFs as notebooks
 
-**+ New notebook > From PDF…** picks a PDF on the Kindle (copy it over by USB first, anywhere on the Kindle). Each PDF page becomes a page you can write on. Pages you add are blank paper. Landscape PDFs make a landscape notebook.
+**+ New notebook > From a PDF…** picks a PDF on the Kindle (copy it over by USB first, anywhere on the Kindle). Each PDF page becomes a page you can write on. Pages you add are blank paper. Landscape PDFs make a landscape notebook.
 
 **⋯ > Export… > The PDF with my writing added (annotations)** saves a copy of the PDF with your writing as PDF annotations, which other PDF apps show and can edit.
 
@@ -393,17 +402,11 @@ The PDF page fills the screen, so the toolbar may cover a little of its left edg
 
 ## AI features
 
-Several features use AI to read your handwriting or answer questions: Convert page to text, To text, search of handwriting, Ask AI, Make PDF, Draw, Add to To Do, Suggest name and Check my answers (crosswords).
+Several features use AI to read your handwriting or answer questions: Convert page to text, To text, search of handwriting, Ask AI, Make PDF, Draw, Add to To Do and Suggest name.
 
-### Setting up AI
+The AI services are set up in the launcher's **Settings > AI**, shared with the Crosswords app: the AI chapter has the details (the services and their keys, which AI does each job, Try a prompt, and what each feature sends). Notes' **Settings > Integrations > AI settings…** opens it.
 
-Go to **Settings > Integrations > AI (Claude or local AI)…**.
-
-- **Claude**: enter a **Claude API key** from platform.claude.com. Claude Max and Team plans include monthly API credits (claude.ai > Settings > Billing). **Claude model** picks the model; Sonnet and Haiku cost less.
-- **Local AI**: your own AI on your network, for example Gemma on Ollama. Under **Local AI (Ollama)…**, set the **Address at home (Ollama)**: the computer running Ollama and its port, for example http://192.168.1.50:11434 (Ollama has to accept connections from the network), and optionally a **Pangolin AI gateway address** and **Pangolin key** for when the Kindle is away from home. **Model** lists your models (pick one that reads pictures). **Test it** says which address answered.
-- **Which AI does each job**: reading handwriting, search and To Do; Ask and Make PDF; drawing. Each can use Claude or Local AI.
-
-**AI** at the top of Notes' settings switches every job at once with one tap: **Claude**, **Local AI**, or **Mixed** (some of each).
+Until an AI service is set up, Notes leaves these features out: no AI buttons or menu items show, and Notes' settings have one row, **AI services: Not set up**, that opens the AI settings. Once any service is set up, they all appear.
 
 ### Convert page to text
 
@@ -411,14 +414,19 @@ Go to **Settings > Integrations > AI (Claude or local AI)…**.
 
 ### Ask AI and Make PDF
 
-**⋯ > Ask AI…** (or the lasso's **Ask** for a selection): type a request, pick one of the examples or your last five requests, or tap **Write it** to write it by hand in a strip at the bottom of the page.
+**⋯ > Ask AI…** (or the lasso's **Ask** for a selection): type a request in the box, or tap the pen at its end to write it by hand in a strip at the bottom of the page. Your last five requests and some examples are listed under it; tap one to ask it straight away (**More examples…** shows the rest).
 
-- **Ask** shows the answer, to copy or save.
+- **Answer** shows the AI's answer. **Copy** and **Save** keep it (Save puts a text file in koreader/notes/export); **Done** closes it.
 - **Make PDF** has the AI rewrite the note as a clean document (headings, lists, checkboxes, bold and italics) and saves it as a PDF, which you can open or write on as a new notebook.
 
 ### Draw with AI
 
-Select with the lasso and tap **Draw**: for example "Redraw this neatly", "Make this a flowchart" or "Turn this into a table". **Replace** swaps your drawing for the AI's; **Beside** puts it next to yours. Lasso an empty area for **Draw here**. The result is ordinary ink and text boxes that you can erase, move or undo.
+Select with the lasso and tap **Draw**. Type what you want (or tap the pen to write it), or pick an example such as "Redraw this neatly", "Make this a flowchart" or "Turn this into a table". The AI draws simple line art: diagrams, flowcharts, tables, grids, simple charts and sketches, with short labels.
+
+- **Replace** swaps your drawing for the AI's; **Beside** puts the AI's next to yours.
+- Lasso an empty area to have it draw something new there, such as a habit tracker or a title box: that box has one button, **Draw**.
+
+The result is ordinary ink and text boxes that you can erase, move or undo.
 
 ### Add to To Do
 
@@ -426,7 +434,7 @@ Select with the lasso and tap **Draw**: for example "Redraw this neatly", "Make 
 
 - Tap the list name to choose which To Do list they go into.
 - Tap a task to tick or untick it and its steps, or to set its due date and reminder.
-- Dates written beside a task are read too: "Fri" or "10/30" is the due date, "9am" a reminder, "Fri 9am" both, "remind Mon 7pm" only a reminder. Turn this off with **Dates written beside tasks (To Do)** in the AI settings.
+- Dates written beside a task are read too: "Fri" or "10/30" is the due date, "9am" a reminder, "Fri 9am" both, "remind Mon 7pm" only a reminder. Turn this off with **Dates written beside tasks (To Do)** in Notes' **Settings > Integrations**.
 
 You need the To Do plugin, signed in.
 
@@ -434,32 +442,38 @@ You need the To Do plugin, signed in.
 
 ### Signing in
 
-Notes signs in to OneNote with a Microsoft app ID. If the To Do plugin is set up, Notes uses the same one, and there is nothing to do. Otherwise, make one once (it's free):
-
-1. On a computer, sign in at entra.microsoft.com with your Microsoft account and open **App registrations > New registration**.
-2. Give it any name, choose **Personal Microsoft accounts only** (or any account type that includes yours), and register it.
-3. Under **Authentication**, set **Allow public client flows** to **Yes** and save.
-4. Under **API permissions**, add Microsoft Graph's delegated permission **Notes.ReadWrite** (and **Tasks.ReadWrite** if To Do will use the same app ID).
-5. Copy the **Application (client) ID** from the app's Overview page.
+OneNote uses the Kindle's one Microsoft account, the same as To Do: one App ID and one sign-in for both, in the launcher's **Settings > Microsoft** (the setup chapter says how to make the App ID, once, for free). If you already signed in there for To Do, sign in again once so the same sign-in covers OneNote too: **Settings > Microsoft** shows **Sign in again to allow** next to Notes (OneNote) until you do.
 
 Then on the Kindle:
 
-1. Go to **Settings > Integrations > OneNote…**, tap **App ID** and enter the ID (leave it empty to use the To Do plugin's).
-2. Tap **Sign in**. On a phone or computer, open the address shown and enter the code (or scan the QR code).
-3. Pick the OneNote notebook to send to, or make a new one.
+1. Go to Notes' **Settings > Integrations > OneNote…** and tap **Microsoft account**: it opens **Settings > Microsoft**. Tap **Sign in**, then on a phone or computer open the address shown and enter the code (or tap **QR code** and scan it).
+2. Back in OneNote's settings, pick the OneNote notebook to send to, or make a new one.
+
+A OneNote sign-in from before this moved to the shared account by itself. Without the launcher, OneNote's settings have their own App ID and sign-in, as before.
 
 ### Sending notebooks to OneNote
 
 - **⋯ > Send to OneNote** sends the notebook you're in. Hold a notebook in the list for **Send to OneNote now**, or use **Send all now** in the OneNote settings.
 - Sending happens in the background: you can keep writing or reading, and a notice says when it's done (for example "OneNote: 2 new, 1 changed, 0 removed").
 - Each notebook becomes a OneNote section, and each page a OneNote page holding the page as a picture (OneNote can search handwriting in pictures). Changed pages are updated and deleted pages removed; nothing comes back from OneNote.
-- **Send automatically** sends a notebook when you close it, and everything when Wi-Fi comes on (Notes never turns Wi-Fi on itself).
+- **Send automatically when Wi-Fi is on** sends a notebook when you close it, and everything when Wi-Fi comes on (Notes never turns Wi-Fi on itself).
 - **Notebooks sent: Ones I pick** sends only the notebooks you mark: hold a notebook in the list and tap **Sent to OneNote by itself** to switch it.
 - **Typed text of each page (read by AI)** adds the page's text under each page sent.
 
+### Choosing where a notebook goes
+
+Notebooks go to the OneNote notebook picked in the OneNote settings, each as a section of its own name. To send one somewhere else, hold it in the notebook list and tap **OneNote: Default…**:
+
+1. Pick a OneNote notebook (or **Default** to go back to the usual one).
+2. Pick a section: one already there, **New section…**, or **A section named** after the notebook.
+
+Hold a **folder** to do the same for every notebook in it, including ones added later. A notebook's own choice comes before its folder's. The hold menu shows where each one goes, for example **OneNote: Work › Meetings**.
+
+Notes only changes or removes the pages it sent, so a section you already use keeps your own pages. Pages sent into a shared section are titled with the notebook's name ("Meeting notes – Page 1"). After you change where a notebook goes, it is sent again to the new place; the copy already in OneNote stays where it was.
+
 ### Reading OneNote
 
-Once signed in, tap **OneNote** in the notebook list (or **Browse OneNote…** in the OneNote settings) to see your OneNote notebooks, sections and pages.
+Once signed in, tap **OneNote** in the notebook list (or **Browse OneNote** in the OneNote settings) to see your OneNote notebooks, sections and pages. **‹** goes back up a level.
 
 ![The pages of a OneNote section](img/notes/notes-onenote.png)
 
@@ -484,22 +498,30 @@ Exports are saved in the **notes/export** folder inside the koreader folder on t
 
 ## Open on the web page
 
-With the Web server plugin installed, **⋯ > Open on the web page** in a notebook shows a QR code. Scan it with your phone's camera and that notebook opens on the web page, where you can look through its pages and download them. From the notebook list, the same is the first row of Notes' settings (the cog), and opens the Notes page. The web server is started if it isn't running.
+With the Web server plugin installed, **⋯ > Open on the web page** in a notebook shows a QR code. Scan it with your phone's camera and that notebook opens on the web page, where you can look through its pages and download them. In the notebook list, **⋮ > Open on the web page** opens the Notes page. The web server is started if it isn't running.
 
 ## Settings
 
-Open the settings with the cog in the notebook list, or **⋯ > Settings** in a notebook. Settings with more than two choices open a list to pick from. At the top, **AI** switches all AI jobs between Claude, Local AI and Mixed.
+Open Notes' settings from **⋮ > Settings** in the notebook list, ⚙ at the bottom of a notebook's toolbar, or the launcher's Settings list. They are full pages, like the other apps' settings: tap a row to switch it on or off or to pick from a list, and swipe left or right (or tap the arrows in the title bar) for the next page.
 
 ![Notes settings](img/notes/notes-settings.png)
+
+### Display
+
+- **Full refresh**: Every 6 pauses, Every 3 pauses, Every pause or Never.
+- **Page header (date and page number)**.
+- **Template lines**: Light, Medium or Dark.
+- **KOReader gestures (two fingers, edge swipes)**.
+
+Light and Night mode are KOReader's own: use the drop-down panel (tap the time and battery) or **⋮**. The time and battery always show; whether the time is 12- or 24-hour follows KOReader's own setting (Settings > Time and date).
 
 ### Toolbar
 
 - **Side**: left or right edge.
 - **Toolbar buttons…**: the order of the buttons, which ones show (the eye) and Reset.
-- **Groups…**: what's in the Add and Tidy groups.
 - **All pages button** and **Add page button**.
+- **Groups…**: what's in the Add and Tidy groups.
 - **Start with toolbar hidden**.
-- **Crossword book buttons…**: the buttons on a crossword book's toolbar (see the Crosswords chapter).
 
 ### Writing
 
@@ -529,30 +551,24 @@ Open the settings with the cog in the notebook list, or **⋯ > Settings** in a 
 ### Notebook list
 
 - **Sort by** and **Default sort**.
-- **Reorder notebooks…** (My order).
-- **Show notebooks as**: Covers or List.
 - **Recent notebooks**: As a folder, At the top or Off.
 - **Open the last notebook when Notes opens**.
-
-### Screen
-
-- **Light…** (KOReader's brightness and warmth) and **Night mode**.
-- **Full refresh**: Every 6 pauses, Every 3 pauses, Every pause or Never.
-- **Template lines**: Light, Medium or Dark.
-- **Clock and battery** on Notes' screens.
-- **Page header (date and page number)**.
-- **KOReader gestures (two fingers, edge swipes)**.
+- **Show notebooks as**: Covers or List.
+- **Reorder notebooks…** (My order).
 
 ### Integrations
 
-- **OneNote…**: sign in, pick a notebook, sending options, Browse OneNote….
-- **AI (Claude or local AI)…**: keys, local AI addresses and which AI does each job.
+- **AI**: all of Notes' AI jobs to one AI, picked from the list.
+- **Dates written beside tasks (To Do)**: whether Add to To Do reads dates written beside the tasks.
+- **Read all pages now**: reads every page not read yet, so search finds its handwriting.
+- **OneNote…**: your Microsoft account (Settings > Microsoft), the OneNote notebook, sending options and Browse OneNote.
+- **AI settings…**: the launcher's **Settings > AI** (see the AI chapter).
 
 ## Gestures
 
 ### KOReader gestures in Notes
 
-The gestures you set up in KOReader's Gesture manager also work inside Notes, as long as they can't be a resting palm: two-finger taps and swipes, pinch, spread, rotate, edge swipes and multiswipes. For example, an edge swipe can change the light or open a QuickMenu. One-finger taps and swipes on the page don't trigger them. Turn this off with **KOReader gestures** in Settings > Screen.
+The gestures you set up in KOReader's Gesture manager also work inside Notes, as long as they can't be a resting palm: two-finger taps and swipes, pinch, spread, rotate, edge swipes and multiswipes. For example, an edge swipe can change the light or open a QuickMenu. One-finger taps and swipes on the page don't trigger them. Turn this off with **KOReader gestures** in Settings > Display.
 
 ### Notes actions for gestures
 
@@ -561,5 +577,4 @@ In **Settings > Taps and gestures > Gesture manager**, pick a gesture, then **Ge
 - **Notes**: open Notes.
 - **Notes: today's page**.
 - **Notes: quick note**.
-- **Today's crossword**.
 - **Notes: write on this page** (in the reader, for PDFs and other fixed-page books).

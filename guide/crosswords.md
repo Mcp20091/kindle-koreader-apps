@@ -1,17 +1,22 @@
 # Crosswords
 
-Notes can download crosswords from five newspapers, lay them out for the Kindle and let you solve them with the pen, just as on paper. You can also import a PDF of puzzles, or a crossword file, and write on it the same way.
+Crosswords downloads puzzles from five newspapers, lays them out for the Kindle and lets you solve them with the pen, just as on paper. You can also import a PDF of puzzles, or a crossword file, and write on it the same way.
 
-Everything starts from the **Crosswords** button at the top of the Notes list, beside **+ New notebook**. It has:
+Crosswords needs the Notes plugin installed: you write with the same pen and tools, and Notes keeps your puzzle books.
 
-- **Get a crossword…**: download a puzzle.
-- **Today's crossword**: open (or download) today's puzzle from your usual source. The button shows the source and whether you've started it.
-- **Import a puzzle book (PDF, .puz, .ipuz)…**: add puzzles from a file on the Kindle.
+Open it from its tile on the launcher (the tile also shows today's puzzle), from **Tools > Crosswords** in KOReader's menu, or with a gesture (**General > Crosswords**). It lists your puzzle books, one per newspaper, plus any you've imported. Tap one to open it, or hold it to rename or delete it (**Undo** puts a deleted book back). Along the top:
+
+- **+ Get a crossword**: download a puzzle.
+- **Today's**: open (or download) today's puzzle from your usual source. The button shows the source and whether you've started it.
+- **Import**: add puzzles from a PDF, .puz or .ipuz file on the Kindle.
 - **Stats**: how many you've done and how fast.
-- **Crossword settings…**: everything in "Crossword settings" below.
-- **Open on the web page**: a QR code that opens the web page's Crosswords tab on your phone (when the Web page plugin is installed).
+- **Sort**: by name, date created, date changed, or your own order.
 
-![The Crosswords button's menu](img/notes/cw-menu.png)
+The title bar is the same as in the other apps. Its **⋮** has **Open on the web page** (a QR code for the web page's Crosswords tab, when the Web page plugin is installed) and, last, **Settings**. **‹**, or a swipe in from the left edge, goes back to the launcher.
+
+The launcher's search finds your puzzles too, by day ("21 oct"), kind ("quick") or book.
+
+![The Crosswords list](img/crosswords/cw-home.png)
 
 ## Getting crosswords
 
@@ -32,52 +37,52 @@ The crosswords are for your own use.
 ### Get a crossword
 
 1. Turn on Wi-Fi.
-2. Tap **Crosswords**, then **Get a crossword…** (or, inside a crossword book, tap **⋯** and **Get a crossword…**).
-3. Tap a source. For The Guardian, tap the kind too.
+2. Tap **+ Get a crossword** (or, inside a crossword book, tap **⋯** and **Get a crossword…**). It opens at the source you used last.
+3. To use another, tap **Another source…** at the bottom and pick it (The Guardian's Quick, Cryptic, Quiptic and Prize are listed separately).
 4. Tap a day. The latest five are listed first, with **Today** marked.
    - **Older** and **Newer** step back and forth through the years, five at a time.
    - **Random** picks a puzzle from any year that isn't in your book yet.
    - **Get the last 7 days** downloads every puzzle from the last week that you don't have yet. Use it before a trip without Wi-Fi.
 
-![Get a crossword: pick the source, then the day](img/notes/cw-get.png)
+![Get a crossword: the latest days from one source, then Older, Random, Get the last 7 days and Another source](img/crosswords/cw-get.png)
 
-A message such as **Getting the crossword for Wed 21 Oct from USA Today…** shows while the Kindle downloads it, and the puzzle opens as soon as it's in. If it's already in your book, Notes just opens it, with your writing as you left it.
+A message such as **Getting the crossword for Wed 21 Oct from USA Today…** shows while the Kindle downloads it, and the puzzle opens as soon as it's in. If it's already in your book, it just opens, with your writing as you left it.
 
-> Downloads run in the background, so a slow or patchy Wi-Fi connection never freezes the Kindle. Tap the message to stop waiting: the puzzle then isn't opened. A download that gets no answer gives up after a minute or two.
+> Downloads run in the background, so a slow or patchy Wi-Fi connection never freezes the Kindle. To stop waiting, tap **Cancel** (a tap anywhere else does nothing): the puzzle then isn't opened. A download that gets no answer gives up after a minute or two.
 
-Each source has its own book: "Guardian crosswords", "USA Today crosswords" and so on. They live in the **Crosswords** folder, each in a folder of its own with a crossword cover.
+Each source has its own book: "Guardian crosswords", "USA Today crosswords" and so on, all in the Crosswords list.
 
 ### Get new ones automatically
 
-Notes can fetch new puzzles for you.
+Crosswords can fetch new puzzles for you.
 
-1. Tap **Crosswords**, then **Crossword settings…**.
+1. Open Crossword settings (**⋮ > Settings** on the Crosswords list).
 2. Tap **Get new ones automatically**.
 3. Tick the sources you want (Guardian Quick, Guardian Cryptic, Guardian Quiptic, Guardian Prize, USA Today, Universal, Washington Post, New Yorker).
 
-When you open Notes and Wi-Fi is already on, puzzles from the last 3 days that aren't in your books are added, at most once an hour. This happens quietly in the background while you carry on, and a notice such as "Added 3 new crosswords" says when they're in. Notes never turns Wi-Fi on for this. With Guardian Prize ticked, Prize puzzles also get their answers once they're out. A book you have open at the time is left alone until the next try.
+When you open Crosswords and Wi-Fi is already on, puzzles from the last 3 days that aren't in your books are added, at most once an hour. This happens quietly in the background while you carry on, and a notice such as "Added 3 new crosswords" says when they're in. With the launcher installed, it also goes in your notifications: "3 new crosswords are ready", and tapping it opens the first. It goes away once you open a crossword. It never turns Wi-Fi on for this. With Guardian Prize ticked, Prize puzzles also get their answers once they're out. A book you have open at the time is left alone until the next try.
 
 ### Today's crossword
 
 **Today's crossword** opens the newest puzzle from one source: the one in your book if you have it, otherwise it downloads it in the background and opens it (KOReader asks to turn on Wi-Fi if needed). If today's isn't out yet, you get the one before.
 
-Pick the source in **Crossword settings… > Today's crossword**, or leave it on **The one last opened** to follow whichever source you used last in Get a crossword.
+Pick the source in **Crossword settings > Today's crossword**, or leave it on **The one last opened** to follow whichever source you used last in Get a crossword.
 
 You can open it three ways:
 
-- **Crosswords > Today's crossword** in Notes.
+- **Today's** at the top of the Crosswords list.
 - A gesture: in KOReader, go to **Settings > Taps and gestures > Gesture manager**, pick a gesture, then **General > Today's crossword**.
-- A tile in the Apps launcher (with the Apps plugin installed): **Add shortcut > Crossword**, then pick the source. Each source can have its own tile, and the tile shows whether today's puzzle is started or done.
+- A shortcut on the launcher for one source: **Add shortcut > Crossword**, then pick the source. Each source can have its own tile, showing whether today's puzzle is started or done.
 
-### Recent crosswords on the Apps launcher
+### Recent crosswords on the launcher
 
-With the Apps launcher plugin installed, the launcher has a **RECENT CROSSWORDS** row, under RECENT BOOKS and RECENT NOTEBOOKS, with the puzzles you opened or wrote in most recently: up to 3 cards, or 5 with the Kindle on its side. It covers every crossword book, imported puzzles and PDF puzzle books, but not hidden puzzles or locked notebooks.
+The launcher has a **RECENT CROSSWORDS** row, under RECENT BOOKS and RECENT NOTEBOOKS, with the puzzles you opened or wrote in most recently: up to 3 cards, or 5 with the Kindle on its side. It covers every crossword book, imported puzzles and PDF puzzle books, but not hidden puzzles or locked notebooks.
 
 - Each card shows a small picture of the grid as you've written it so far, the puzzle's name, and how far you've got: "23 of 78 clues" with a progress bar, or **New**, **Started** or **Done** (always one of these for a PDF puzzle book). The picture is redrawn a moment after you close a puzzle, so it can take a refresh of the launcher to catch up.
 - Tap a card to open that puzzle. A locked notebook asks for its PIN first.
 - Hold a card for **Open** or **Remove from recent**. A removed card stays off the row until you work on that puzzle again (its state or ticked clues change).
 - The row starts empty after updating and fills as you open puzzles.
-- To turn it off, open the Apps settings (the gear) and set **DISPLAY > Recent crosswords** to **Off**, or use the web page's Apps tab: **Display > Recent crosswords**. It's on to start with.
+- To turn it off, set **Recent crosswords** to **Off** in **Launcher** settings, or in the web page's Launcher tab. It's on to start with.
 
 ### Prize answers
 
@@ -85,15 +90,15 @@ The Guardian Prize answers are published a week after the puzzle. Get the same p
 
 ## Solving
 
-Write the letters in the squares with the pen, as on paper. The toolbar down the left has the pen (tap it again for its tips and sizes), eraser, lasso, zoom, Undo, Redo and **Done** (the ✓). Under them are the buttons you've pinned: **Hint**, **Check my answers** and **Refresh screen** to start with. At the bottom are the page arrows, the puzzle list, **⋯** and the button that folds the toolbar away.
+Write the letters in the squares with the pen, as on paper. The toolbar down the left starts with **Home** (the house, back to the launcher, when it's installed) and the book (closes the puzzle book, back to where you opened it). Then come the pen (tap it again for its tips and sizes), eraser, lasso, zoom, Undo, Redo and **Done** (the ✓), and under them the buttons you've pinned: **Hint** and **Check my answers** to start with. Lower down are the page arrows, the puzzle list, **⋯** and the button that folds the toolbar away, and at the very bottom, always: **Refresh screen**, the **bell** (notifications, with the launcher installed) and **Settings**, which opens Crossword settings.
 
-![A crossword being solved: letters written in the squares, finished clues ticked, "3 of 24 clues" at the top](img/notes/cw-solve.png)
+![A crossword being solved: letters written in the squares, finished clues ticked, "3 of 24 clues" at the top](img/crosswords/cw-solve.png)
 
 ### Your toolbar buttons
 
-Anything in a crossword book's **⋯** menu can go on the toolbar: Hint, Check my answers, Get a crossword, Page orientation, Open on the web page, Ask AI, Export, Hide page, Rename notebook, Pen pressure, Light, Night mode, Refresh screen and Settings.
+Anything in a crossword book's **⋯** menu can go on the toolbar: Hint, Check my answers, Get a crossword, Page orientation, Open on the web page, Ask AI, Export, Hide page, Rename notebook, Pen pressure, Light and Night mode. (Refresh screen and Settings are always at the bottom.)
 
-1. Tap **Crosswords**, then **Crossword settings…**, then **Toolbar buttons** (or, in a crossword book, **⋯ > Settings > Toolbar > Crossword book buttons…**).
+1. Open **Crossword settings** (the toolbar's **Settings** in a crossword book, or **⋮ > Settings** on the Crosswords list), then **Toolbar buttons**.
 2. Tick the ones you want. They go under the tools, in the same order as in **⋯**.
 3. Tap **Done**.
 
@@ -105,19 +110,21 @@ The more you pin, the closer together the buttons sit, so they all fit.
 
 ### Tapping a clue number
 
-Tap a clue's number (in the clue list) with the pen or a finger, and its squares are outlined in the grid, with the clue itself outlined too. If the clue is on another clue page, Notes goes back to the grid's page first.
+Tap a clue's number (in the clue list) with the pen or a finger, and its squares are outlined in the grid, with the clue itself outlined too. If the clue is on another clue page, it goes back to the grid's page first.
 
 Tap a number in the grid, and the clues that start in that square are outlined: the Across one and the Down one.
 
-- If one of those clues is on another clue page, it's pinned in a small card just below where you tapped (or above, near the bottom of the page) so you can read it.
+- If one of those clues is on another clue page, it's pinned in a card just above where you tapped (below, if there's no room above), just as wide as the clue needs.
+  - Its tick box ticks the clue off, just as the box in the clue list does.
   - Drag the card out of the way with the pen or a finger. When you let go, the screen is cleaned up where it moved.
+  - To get the card for every clue, including ones on the same page (still outlined in the list too), set **Crossword settings > Clue card** to **Every clue**.
   - Tap its **X** to close it. Otherwise it stays while you work.
 - The outline goes away with your next pen stroke, or a finger tap anywhere else.
 - The tap doesn't leave a dot.
 
-![A number tapped in the grid: its clue from the next clue page, pinned by the tap](img/notes/cw-cluecard.png)
+![A number tapped in the grid: its clue from the next clue page, pinned by the tap](img/crosswords/cw-cluecard.png)
 
-To turn this off, set **Crossword settings… > Tap a number to find it** to **Off**.
+To turn this off, set **Crossword settings > Tap a number to find it** to **Off**.
 
 ### Ticking clues
 
@@ -140,7 +147,7 @@ When the clues don't all fit under the grid (on big puzzles, or with Large clues
 
 Only the clue part of the screen changes. What you write in the grid shows on every clue page. Anything you write beside the clues stays on that clue page.
 
-![The second clue page: the same grid and writing, the rest of the clues below, "Clues 2 of 2"](img/notes/cw-clues2.png)
+![The second clue page: the same grid and writing, the rest of the clues below, "Clues 2 of 2"](img/crosswords/cw-clues2.png)
 
 ### Hints
 
@@ -148,21 +155,22 @@ Tap **Hint** (the lightbulb) on the toolbar, or **⋯ > Hint**, and pick one:
 
 - **Reveal a letter**: then tap a square. Its letter appears in grey, with a small mark in the square's corner so you can tell it was revealed.
 - **Reveal a word**: then tap a clue, or a square of the word. The whole answer appears in grey, each square marked.
+- **Check my answers**: checks the whole grid, as the toolbar's button does.
 - **Check a word**: then tap a clue or a square. Only that word is checked: the AI reads your letters and puts a dot in each square that looks wrong, without showing the right letter.
-- **Ask AI for a hint**: then tap a clue or a square. **Asking the AI for a hint…** shows while it thinks (tap it to give up), then a short nudge, never the answer, appears in a card by the clue. Drag it out of the way, or tap its **X** to close it.
+- **Ask AI for a hint**: then tap a clue or a square. **Asking the AI for a hint…** shows while it thinks (tap **Cancel** to give up; a stray tap elsewhere doesn't stop it), then a short nudge, never the answer, appears in a card by the clue. Ask again for the same clue and each hint goes further than the last (for a cryptic clue: first which part is the definition and the kind of wordplay, then how the wordplay works, then the strongest hint short of the answer). Drag the card out of the way, tick the clue off from it, copy the hint with its copy button, or tap its **X** to close it.
 - **Show the answers page**: opens the puzzle's hidden answers page.
 
-![The Hint menu beside the toolbar](img/notes/cw-hint.png)
+![The Hint menu beside the toolbar](img/crosswords/cw-hint.png)
 
-![A revealed word and a revealed letter, in grey with a mark in each square's corner](img/notes/cw-revealed.png)
+![A revealed word and a revealed letter, in grey with a mark in each square's corner](img/crosswords/cw-revealed.png)
 
-![A hint from the AI, pinned by its clue](img/notes/cw-aihint.png)
+![A hint from the AI, pinned by its clue](img/crosswords/cw-aihint.png)
 
 While a hint waits for your tap, a bar at the bottom says what to tap, with **Cancel**. Tapping a square where an Across and a Down word cross asks **Which word?**.
 
 - Undo takes revealed letters out again.
 - The puzzle list counts the hints you used, such as "Done · 14 min · 2 hints".
-- If the AI's hint gives the answer away, Notes asks it again; if it still does, the hint isn't shown.
+- If the AI's hint gives the answer away, Crosswords asks it again; if it still does, the hint isn't shown.
 
 > Check a word and Ask AI for a hint need an AI set up first: see "Setting up the AI" below. Claude's hints are noticeably better than a small local AI's for cryptic clues.
 
@@ -174,36 +182,41 @@ To see a whole answer without the Hint button:
 2. Draw around a clue, or some squares in the grid.
 3. Tap **Answer** (beside **Ask**, below what you circled).
 
-The answer shows, or "No answer yet" for a Prize puzzle whose answers aren't out. Tap **Show in the grid** to put it in its squares, in grey and marked as revealed. Undo takes it out again.
+The answer shows, or "No answer yet" for a Prize puzzle whose answers aren't out. Tap **Copy** to copy the answers, or **Show in the grid** to put it in its squares, in grey and marked as revealed. Undo takes it out again.
+
+To see just some letters, circle those squares and tap **Reveal** instead: only the squares you circled get their letters, in grey and marked as revealed. Undo takes them out again.
 
 ### Check my answers
 
-Notes can read what you wrote and tell you which squares look wrong, without giving the right letters away.
+The AI can read what you wrote and tell you which squares look wrong, without giving the right letters away.
 
 1. Tap **Check my answers** on the toolbar (or **⋯ > Check my answers**).
 2. A picture of the grid goes to the AI that reads handwriting (see "Setting up the AI" below).
-3. **Checking your answers…** shows while the AI reads the grid (tap it to give up). Then each square that looks wrong gets a small dot, and a line at the bottom says how many, such as "2 squares look wrong (dotted) · 41 filled".
+3. **Checking your answers…** shows while the AI reads the grid (tap **Cancel** to give up; a stray tap elsewhere doesn't stop it). Then each square that looks wrong gets a small dot, and a line at the bottom says how many, such as "2 squares look wrong (dotted) · 41 filled".
 4. Clues whose squares are all right are ticked for you.
 5. Tap **Clear dots** when you're done with them.
 
-![Check my answers: a dot in the square that looks wrong, and how many at the bottom](img/notes/cw-check.png)
+![Check my answers: a dot in the square that looks wrong, and how many at the bottom](img/crosswords/cw-check.png)
 
 To check one word, use **Hint > Check a word**. To check some squares, circle them with the lasso and tap **Check**.
 
-If the grid changed while it was being checked (you turned the page, or wrote or erased in it), no dots go on it; Notes says "The grid changed while it was being checked. Check again."
+If the grid changed while it was being checked (you turned the page, or wrote or erased in it), no dots go on it, and a message says "The grid changed while it was being checked. Check again."
 
 > Claude reads handwriting much more reliably than a small local AI. If many rows come back "not read", write the letters a little larger, or switch reading handwriting to Claude.
 
 ### Setting up the AI
 
-Check my answers, Check a word, Ask AI for a hint and Ask all need an AI. Notes can use Claude (from Anthropic, over the internet) or an AI you run on your own computer, such as Gemma on Ollama. Without one set up, these features ask you to set one up when you use them.
+Check my answers, Check a word, Ask AI for a hint and Ask all need an AI. Crosswords uses the AI services set up in the launcher's **Settings > AI** (shared with Notes and SSH): Claude, Gemini, OpenRouter, Groq, an AI you run on your own computer (Local AI, such as Ollama), or a Custom one. Until one is set up, they're left out: the Hint menu keeps Reveal a letter, Reveal a word and the answers page, the lasso keeps Answer and Reveal, and Crossword settings shows **AI services: Not set up**. They come back as soon as a service is set up.
 
-1. In Notes, tap the gear for **Settings**, then **Integrations > AI (Claude or local AI)…**.
-2. For **Claude**: get an API key at platform.claude.com (sign in, then create a key under API keys) and enter it as the **Claude API key**. Claude Max and Team plans include monthly API credits (claude.ai > Settings > Billing); otherwise you pay per use, which for crosswords is a few cents at most.
-3. For a **local AI**: under **Local AI (Ollama)…**, enter the **Address at home (Ollama)**, the computer running Ollama and its port (for example http://192.168.1.50:11434; Ollama must be set to accept connections from your network). Pick a **Model** that can read pictures, and tap **Test it**.
-4. Choose which AI does each job. Check my answers and Check a word use the one for **reading handwriting**; Ask AI for a hint and Ask use the one for **Ask and Make PDF**.
+1. Open Crossword settings (**⋮ > Settings** on the Crosswords list) and tap **Check my answers** or **Hints from the AI** under **AI**. That opens **Settings > AI**; Back returns to Crosswords.
+2. Set up a service under **AI services**: for Claude, its own page takes the API key (from platform.claude.com) and the model; Gemini, OpenRouter and Groq have free tiers, which may answer "too many requests" when used a lot; for Local AI, enter the computer running Ollama and its port (for example http://192.168.1.50:11434) and pick a model that can read pictures.
+3. Choose which service does each job. Check my answers and Check a word use the one for **reading handwriting**; Ask AI for a hint and Ask use the one for **Ask and Make PDF**.
 
-The Notes chapter's "Setting up AI" section has more detail, including using a local AI away from home.
+To pick the AI and model for one job straight from a crossword, hold an AI button (**Check my answers**, the Hint menu's **Check a word** or **Ask AI for a hint**, or the lasso's **Ask** or **Check**): **AI for this** opens.
+
+To change how the AI is asked, open **Advanced** in the AI settings: **Crossword hints** and **Crossword checks** each have their own wording, which you can edit (**Reset to default** puts it back), and a preview of what's sent. The rule that a hint never gives the answer, and the form a check's reply has to take, always stay.
+
+The AI chapter has more detail, including using a local AI away from home.
 
 ### Ask AI anything
 
@@ -228,7 +241,7 @@ Turn the Kindle on its side (or tap **⋯ > Page orientation**) and each puzzle 
 - Done, the timer and the ticks are shared between the two.
 - **Page orientation** also offers **Inverted portrait** and **Inverted landscape**.
 
-![The same puzzle on its side](img/notes/cw-landscape.png)
+![The same puzzle on its side](img/crosswords/cw-landscape.png)
 
 ## The answers page
 
@@ -242,24 +255,24 @@ Tap the grid button on the toolbar to see the book's puzzles.
 - **Newest first** switches to oldest first.
 - **Next unstarted** opens the newest puzzle you haven't started.
 - Filter with **All**, **Not started**, **Started**, **Done** and **Hidden**.
-- **Stats** shows your streak of days in a row with one done, this week's and this month's count, and for each source how many you've done, with the average and best time.
+- The chart button in the title bar (**Stats**) shows your streak of days in a row with one done, this week's and this month's count, and for each source how many you've done, with the average and best time.
 
-![The puzzle list: each puzzle's day, state and time](img/notes/cw-list.png)
+![The puzzle list: each puzzle's day, state and time](img/crosswords/cw-list.png)
 
 Hold a puzzle for more:
 
 - **Mark as done** or **Mark as not done**.
 - **Hide page** or **Show page**.
 - **Clear writing**: rub out everything you wrote on it (after asking).
-- **Remove puzzle**: takes its pages, its answers and your writing out of the book, after asking.
+- **Remove puzzle**: takes its pages, its answers and your writing out of the book. Changed your mind? Tap **Undo** at the bottom of the screen within a few seconds to put it back.
 
-**Select** lets you tick several and mark them done, hide them or clear them together.
+The select button in the title bar (the list with ticks) lets you tick several and mark them done, hide them or clear them together.
 
 To hide the page you're on without opening the list, tap **⋯ > Hide page**. The page arrows pass hidden pages by.
 
 ### Finished puzzles
 
-**Crossword settings… > Finished puzzles** decides what happens to puzzles marked done:
+**Crossword settings > Finished puzzles** decides what happens to puzzles marked done:
 
 - **Keep**: they stay as they are.
 - **Hide after 7 days**: a week after you finish, they move to Hidden. Your writing is kept.
@@ -272,10 +285,10 @@ To hide the page you're on without opening the list, tap **⋯ > Hide page**. Th
 Any PDF works: a puzzle magazine, a scanned book, a printout, with crosswords, sudoku or word searches. Nothing is read from the pages, so scanned pages work too.
 
 1. Copy the PDF to the Kindle (over USB, or with the web page's Files tab).
-2. Tap **Crosswords**, then **Import a puzzle book (PDF, .puz, .ipuz)…**.
+2. On the Crosswords list, tap **Import**.
 3. Pick the PDF.
 
-It becomes a puzzle book in the **Crosswords** folder, each page ready to write on. Done, Hidden, the puzzle list, zoom and Ask AI all work. Answer, Check my answers, clue boxes and tapping numbers need a downloaded or imported crossword, because Notes can't read the puzzle out of a PDF's pages.
+It becomes a puzzle book in the Crosswords list, each page ready to write on. Done, Hidden, the puzzle list, zoom and Ask AI all work. Answer, Check my answers, clue boxes and tapping numbers need a downloaded or imported crossword, because the Kindle can't read the puzzle out of a PDF's pages.
 
 > Hide a magazine's solution pages (hold the page in the puzzle list > **Hide page**) and the page arrows pass them by.
 
@@ -284,28 +297,35 @@ It becomes a puzzle book in the **Crosswords** folder, each page ready to write 
 These are the standard crossword file formats many puzzle sites offer.
 
 1. Copy the file to the Kindle.
-2. Tap **Crosswords**, then **Import a puzzle book (PDF, .puz, .ipuz)…**.
+2. On the Crosswords list, tap **Import**.
 3. Pick the file.
 
 It's laid out just like a downloaded crossword and goes into the **Imported crosswords** book, with an answers page when the file includes the answers. Every crossword feature works on it, except that a file with scrambled answers has no Answer or Check my answers.
 
 ## Crossword settings
 
-Tap **Crosswords**, then **Crossword settings…**.
+Crosswords has its own settings, full screen like the other apps' settings: tap **Settings** at the bottom of the toolbar in a crossword book, **⋮ > Settings** on the Crosswords list, or **Crosswords** in the launcher's Settings list. Switches turn things on and off; the others open a list.
 
-- **Today's crossword**: the source that Today's crossword, the gesture and the Apps tile open.
-- **Get new ones automatically**: the sources to fetch for you (see above).
-- **Clue size**: **Normal** or **Large**. Large clues that don't fit carry on to more clue pages; the grid stays put.
-- **Clue boxes**: the tick box before each clue. **On** to start with.
-- **Tap a number to find it**: tapping numbers to outline clues and squares. **On** to start with.
-- **Timer**: times each puzzle. **On** to start with.
-- **Finished puzzles**: **Keep**, **Hide after 7 days** or **Remove after 30 days**.
-- **Toolbar buttons**: which of the **⋯** menu's items go on the toolbar (see "Your toolbar buttons").
-- **Check my answers**: which AI checks the grid (Claude or your local AI). Tap it to change it (it opens **Settings > Integrations > AI (Claude or local AI)…**).
+- **DISPLAY**
+  - **Clue size**: **Normal** or **Large**. Large clues that don't fit carry on to more clue pages; the grid stays put.
+  - **Clue boxes**: the tick box before each clue. **On** to start with.
+  - **Clue card**: when you tap a number in the grid, a card for **Clues on other pages** only (to start with) or for **Every clue**.
+  - **Toolbar side**: **Left** or **Right**.
+  - **Toolbar buttons**: which of the **⋯** menu's items go on the toolbar (see "Your toolbar buttons").
+- **SOLVING**
+  - **Tap a number to find it**: tapping numbers to outline clues and squares. **On** to start with.
+  - **Timer**: times each puzzle. **On** to start with.
+  - **Finished puzzles**: **Keep**, **Hide after 7 days** or **Remove after 30 days**.
+- **GETTING CROSSWORDS**
+  - **Today's crossword**: the source that Today's crossword, the gesture and the Crosswords tile on the launcher open.
+  - **Get new ones automatically**: the sources to fetch for you (see above).
+  - **Test connection**: checks that the Kindle reaches each newspaper you get puzzles from (with the launcher installed; also on the web page's Crosswords tab).
+- **AI**
+  - **Check my answers** and **Hints from the AI**: which AI service each uses. Tap one to change it; it opens the launcher's **Settings > AI**, shared with Notes and SSH. With no service set up, this is one row: **AI services: Not set up**.
 
 When you change Clue size or Clue boxes, your crossword books are laid out again the next time you open them. Your writing is kept.
 
-![Crossword settings](img/notes/cw-settings.png)
+![Crossword settings](img/crosswords/cw-settings.png)
 
 ## Crosswords on the web page
 
@@ -318,8 +338,8 @@ With the Web page plugin running, the **Crosswords** tab in your browser lets yo
 - **Import PDF, .puz or .ipuz**: upload a file from your computer. A PDF becomes a puzzle book; a .puz or .ipuz goes into Imported crosswords.
 - **Crossword settings**: the same settings as on the Kindle.
 
-![The web page's Crosswords tab](img/notes/cw-web.png)
+![The web page's Crosswords tab](img/crosswords/cw-web.png)
 
-To open it on your phone straight from the Kindle, tap **Open on the web page**: in a crossword book it's in **⋯**, and it's also in the **Crosswords** button's menu. The Kindle starts the web page if it isn't running and shows a QR code. Scan it with your phone's camera and the Crosswords tab opens there, at the book and puzzle you were on.
+To open it on your phone straight from the Kindle, tap **Open on the web page**: in a crossword book it's in **⋯**, and on the Crosswords list it's in **⋮**. The Kindle starts the web page if it isn't running and shows a QR code. Scan it with your phone's camera and the Crosswords tab opens there, at the book and puzzle you were on.
 
 > A book that's open on the Kindle can't be changed from the web page. Close it on the Kindle first.

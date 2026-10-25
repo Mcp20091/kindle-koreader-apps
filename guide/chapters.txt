@@ -1,6 +1,9 @@
 # The guide's chapters, in order.
 intro.md
+setup.md
 apps.md
+library.md
+ai.md
 homeassistant.md
 todo.md
 notes.md

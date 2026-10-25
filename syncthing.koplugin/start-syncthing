@@ -1,0 +1,47 @@
+#!/bin/sh
+# Starts Syncthing in the background: start-syncthing <config dir> <home dir> <port>
+# Based on koreader-syncthing by jasonchoimtt (AGPL-3.0).
+set -e
+
+plugin_dir=$(cd "$(dirname "$0")" && pwd)
+syncthing=$plugin_dir/syncthing
+cacert=$plugin_dir/cacert.pem
+pid_file=/tmp/syncthing_koreader.pid
+
+config_dir=${1:?config dir}
+home_dir=${2:-/}
+port=${3:-8384}
+
+case "$port" in
+    ''|*[!0-9]*) echo "Invalid Syncthing port: $port" >&2; exit 2 ;;
+esac
+if [ "$port" -lt 1 ] || [ "$port" -gt 65535 ]; then
+    echo "Invalid Syncthing port: $port" >&2
+    exit 2
+fi
+
+mkdir -p "$config_dir"
+
+if [ ! -f "$config_dir/config.xml" ]; then
+    # A random password: the web GUI stays closed until one is set in KOReader.
+    password=$(cat /proc/sys/kernel/random/uuid 2>/dev/null || date +%s%N)
+    # HOME is where Syncthing puts its Default Folder (Sync).
+    HOME="$home_dir" SSL_CERT_FILE="$cacert" "$syncthing" generate \
+        --config="$config_dir" --data="$config_dir" \
+        --gui-user=syncthing --gui-password="$password" \
+        --no-port-probing # Kobos have no IPv4 loopback until KOReader brings it up
+fi
+
+# This Kindle's device ID, for KOReader to show without asking Syncthing.
+SSL_CERT_FILE="$cacert" "$syncthing" device-id --config="$config_dir" --data="$config_dir" > "$config_dir/device-id"
+
+# The GUI listens on every address so it can be opened from another device;
+# --no-upgrade keeps the binary and its config format in step with this plugin.
+HOME="$home_dir" SSL_CERT_FILE="$cacert" "$syncthing" serve \
+    --config="$config_dir" --data="$config_dir" \
+    --gui-address="http://0.0.0.0:$port" \
+    --no-browser --no-upgrade \
+    --log-file="$config_dir/logs" --log-max-old-files=3 --log-max-size=1048576 \
+    > /dev/null 2>&1 &
+
+echo $! > "$pid_file"

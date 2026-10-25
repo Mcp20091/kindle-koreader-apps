@@ -6,14 +6,18 @@ Control your home from the Kindle: lights, switches, fans, the thermostat, locks
 
 ## Opening it and signing in
 
-Open it from the launcher's **Home Assistant** or **Dashboard** tile, **Tools > Home Assistant**, or a gesture (**General > Home Assistant** or **Home Assistant dashboard**).
+Open it from the launcher's **Home Assistant** or **Dashboard** tile, **Tools > Home Assistant**, or a gesture (**General > Home Assistant** or **Home Assistant dashboard**). The **Dashboard** tile shows once you're signed in.
+
+Any device can also be one of the launcher's quick buttons, under the clock and in the control center in every app: a light with − and +, the thermostat, a speaker's controls, a sensor's reading (see the launcher chapter, Quick buttons).
+
+Without Home Assistant, nothing else is affected: the other apps don't need it, and the launcher's weather can come from Open-Meteo instead (see the launcher chapter, Weather).
 
 The first time, **Connect to Home Assistant** asks how to sign in:
 
-- **Sign in with username and password**, as in the phone app:
-  1. **Internal URL**: the address at home, such as `http://homeassistant.local:8123`.
-  2. **External URL (optional)**: the address away from home, if you have one.
-  3. Your **Username** and **Password**, then **Sign in**.
+- **Sign in with username and password**, as in the phone app, one step at a time (**Next**, and **Back** to change an earlier step):
+  1. **Internal URL**: the address at home, such as `http://homeassistant.local:8123`. Turn on **External URL** under it if you also have an address that works from anywhere; it becomes its own step.
+  2. Your **User name**.
+  3. Your **Password**, then **Sign in**.
   4. If your account has two-step sign-in, a **Two-factor code** box asks for the code from your authenticator app.
 - **Use a long-lived token**: make one in Home Assistant (your profile > Security), then **Load from file** (copy it to the Kindle first) or **Enter manually**.
 
@@ -23,11 +27,14 @@ The internal address is tried first, then the external one; the one that answere
 
 ## The title bar
 
-- **‹** goes back. On Home there is none.
-- **The page number** with arrows, on long screens. Tap either side to turn the page, or swipe.
-- **The clock and battery** (Settings > **Clock and battery** turns them off).
-- **⋮**: **Open on the web page** (a QR code for the web page's Home Assistant tab), **Add to Apps** (puts this screen on the launcher; on screens that can be a tile, not on Search, Settings or Routines), **Light**, **Night mode**, **Refresh screen**. On Cameras and Security it also has **Reorder or hide cameras**.
-- On Home: **the gear** (Settings), **refresh**, **search** and **the bell** with a count when Home Assistant has notifications.
+The bar every app has (see "Finding your way around" in Getting started). In Home Assistant:
+
+- **‹** on the screen Home Assistant opened on goes back to the launcher.
+- The screen's own buttons, such as **search** on Home and **refresh** on Cameras.
+- **The time and battery** (the control center).
+- **Refresh**: the states again from Home Assistant, and the screen flashed clean.
+- **The bell**: Home Assistant's notifications are in the shared list; tapping one opens Home Assistant's own **Notifications** screen, where **Dismiss** removes it from Home Assistant (and from the list).
+- **⋮**: **Open on the web page** (a QR code for the web page's Home Assistant tab), **Add to launcher** (puts this screen on the launcher; on screens that can be a tile, not on Search, Settings or Routines), **Home Assistant notifications**, **Recent apps**, **Light**, **Night mode**, **Refresh screen** and **Settings**. On Cameras and Security it also has **Reorder or hide cameras**.
 
 ## Home
 
@@ -49,7 +56,7 @@ Home is made of sections. Settings > **Home sections** reorders or hides them.
 
 ### Shortcuts
 
-A row of buttons for whole kinds of things. **Lights**, **Climate**, **Switches**, **Sensors**, **Cameras**, **Media**, **Scenes**, **Dashboard** and **Security** show to start with. **Doors**, **Vacuums**, **Weather**, **Activity**, **Batteries** and **3D printer** can be added in Settings > **Shortcuts**. Hold a shortcut for **Open** or **Add to Apps**.
+A row of buttons for whole kinds of things. **Lights**, **Climate**, **Switches**, **Sensors**, **Cameras**, **Media**, **Scenes**, **Dashboard** and **Security** show to start with. **Doors**, **Vacuums**, **Weather**, **Activity**, **Batteries** and **3D printer** can be added in Settings > **Shortcuts**. Hold a shortcut for **Open** or **Add to launcher**.
 
 ### Routines
 
@@ -58,6 +65,10 @@ Your routines as play buttons (see Routines below). Tap one to run it, hold it t
 ### On now
 
 Everything that is on: lights, switches, fans, players. Tap one to turn it off, hold it for its controls. **Turn all off** turns them all off.
+
+Something you turn off here stays in On now for a few minutes, drawn as off (white), so a tap turns it straight back on if it was a mistake. Settings > **Keep turned off in On now** sets how long (**Off**, 1, 3, 5 or 10 minutes; 3 to start with).
+
+![On now, with a light just turned off](img/apps/ha-on-now.png)
 
 ### Quick
 
@@ -168,9 +179,9 @@ Today's tasks, Scenes and routines, and the 24-hour graph are off to start with.
 
 - **Tap the clock** to leave the dashboard. **Tap the weather** for the Weather screen.
 - The bottom line shows when it last updated ("Updated 2 min ago"), whether the screen stays on ("Screen on while charging", "Screen always on" or "Normal sleep"), and **Tap to exit**. **⋮** and the gear are at the bottom right.
-- The Kindle's battery shows next to the date in the **Clock and info**, **Info cards** and **Clock** styles (Settings > **Clock and battery** covers only the other screens' title bar).
+- The Kindle's battery shows next to the date in the **Clock and info**, **Info cards** and **Clock** styles.
 - **Update interval**: how often it updates (every 1 to 30 minutes; 5 to start with). Pictures are taken again at each update, rotating through the cameras unless **Camera** picks one.
-- **Keep screen on**: **While charging** (to start with), **Always** or **Never**.
+- **Keep awake**: **While charging** (to start with), **Always** or **Never**: whether the Kindle stays awake while the dashboard shows.
 - **Auto brightness**: on a Kindle with a light sensor, the front light follows the room's light while the dashboard shows.
 - **Doorbell alerts**: when the doorbell rings or sees motion (**Ring and motion**, **Ring only** or **Off**), its camera fills the screen for a minute, updating every few seconds, then the dashboard comes back.
 
@@ -181,7 +192,7 @@ A routine runs several things in one tap, such as "Leaving": lights off, lock th
 1. Settings > **Routines**, then **New routine**, and give it a name.
 2. **Add step**: pick a device, then what it should do (**Turn on**, **Turn off**, **Lock**, **Unlock**, **Open**, **Close**, **Run**, **Start**, **Return to dock**, **Pause**).
 3. Add as many steps as you like. Tap a step to remove it.
-4. **Run now** tries it. **Rename** and **Delete** are there too.
+4. **Run now** tries it. **Rename** and **Delete** are there too (**Undo** for a few seconds after a delete).
 
 Routines show on Home (tap to run, hold to edit) and in the dashboard's Scenes section. A routine that unlocks a door, opens the garage or runs a script asks first, like those taps do. When it finishes, a notice says it's done, or how many steps didn't work.
 
@@ -222,28 +233,37 @@ With **Sleep screen** set to **Home Assistant**, the sleeping Kindle shows:
 
 ## Settings
 
-Tap the gear on Home.
+**⋮ > Settings** on any screen, or **Settings > Home Assistant** on the launcher. The settings are on full pages; swipe or tap the arrows next to the page number. (The light, night mode and a screen refresh are in **⋮**.)
+
+![Home Assistant settings](img/apps/ha-settings.png)
 
 ### Display
 
 - **Start screen**: **Home** or **Dashboard**.
 - **Layout**: **Cards**, **Big tiles**, **List** (a switch or button on each row, such as **Unlock** or **Start**) or **Minimal**.
-- **Dark mode**: **Off**, **On** or **Dashboard only**. Camera pictures stay as they are.
-- **Clock and battery** and **24-hour clock**.
-- **Night mode**, **Light** and **Refresh screen**: KOReader's own.
-- **Sleep screen** and **Sleep screen updates**.
+
 
 ### Home
 
-- **Home sections**, **Shortcuts**, **Quick tiles**, **Rooms**, **Cameras**, **Security cameras** and **Sleep screen alerts**: each opens a list to order (see below).
+- **Home sections**, **Shortcuts**, **Quick tiles** and **Rooms**: each opens a list to order (see below).
 - **Routines**.
-- **Weather**: **Auto**, or which weather service to use when Home Assistant has more than one. It is used by Home, the dashboard, the Weather screen and the launcher.
-- **Wake alerts**.
+- **Keep turned off in On now** (see On now).
+
+### Devices and cameras
+
 - **Devices**: which devices show at all. Tap a device to show or hide it; **All**, **Shown** and **Hidden** filter the list, and search finds one. Settings that are switches on a device (its LED, motion detection, firmware updates) are hidden to start with.
+- **Cameras** and **Security cameras**: lists to order (see below).
+- **Weather**: **Auto**, or which weather service to use when Home Assistant has more than one. It is used by Home, the dashboard, the Weather screen and the launcher.
 
 ### Dashboard
 
-- **Style**, **Camera** (**Rotate through all**, **None** or one camera), **Sections**, **Quick tiles**, **Scenes**, **Graph**, **Auto brightness**, **Doorbell alerts**, **Update interval** and **Keep screen on**, as described under The dashboard.
+- **Style**, **Camera** (**Rotate through all**, **None** or one camera), **Sections**, **Quick tiles**, **Scenes**, **Graph**, **Auto brightness**, **Doorbell alerts**, **Update interval** and **Keep awake**, as described under The dashboard.
+
+### Sleep screen
+
+- **Sleep screen**: opens the launcher's settings at **Sleep**, where the sleep screen is chosen for every app.
+- **Sleep screen alerts**: a list to order (see below).
+- **Wake alerts**.
 
 ### Confirm
 
@@ -253,6 +273,7 @@ Tap the gear on Home.
 
 - **Update interval**: every 1, 2, 5 or 10 minutes, or **Manual only**.
 - **Internal URL** and **External URL**.
+- **Test connection**: tries the **Internal URL** and the **External URL** separately, so you can see which one works: **Works** and how long it took, or what went wrong (no answer, the name couldn't be looked up, a proxy's sign-in page instead of Home Assistant, a sign-in that ran out), with the exact error under it.
 - **Account**: signed in, using a token, or **Sign in**. **Sign out** also removes the Kindle's sign-in from Home Assistant.
 - **Long-lived token**.
 
@@ -264,10 +285,12 @@ The lists in Settings (Home sections, Shortcuts, Rooms, Cameras and the others) 
 2. **The eye** shows or hides it. Lists you add to (Quick tiles, the dashboard's tiles and scenes) have **✕** to remove one instead.
 3. **Undo** at the top puts back the last move, one at a time.
 
+The web page's Home Assistant tab (**Order**) draws Home as it looks, its sections, shortcuts, Quick tiles and rooms, to drag into order or to Hidden.
+
 ### Tips
 
-- Your KOReader gestures for the light, warmth, refresh, night mode, Wi-Fi and a screenshot, and the other apps' actions (Apps, Notes, To Do, Web server, Wikipedia, Syncthing, SSH), work on Home Assistant's screens too.
-- Swipe right on the first page of a screen to go back.
+- Your KOReader gestures for the light, warmth, refresh, night mode, Wi-Fi and a screenshot, and the other apps' actions (Launcher, Notes, To Do, Web server, Wikipedia, Syncthing, SSH), work on Home Assistant's screens too.
+- Swipe in from the left edge to go back (a sheet closes first). Other swipes turn pages. For a dark screen, use KOReader's **Night mode** (⋮ or the control center).
 - A diagonal swipe flashes the screen clean.
 - Hidden a device by mistake? Settings > **Devices > Hidden**, and tap it.
 - On its side, every screen uses the extra room: more tiles across, and the dashboard's camera on the right.
