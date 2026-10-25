@@ -202,6 +202,15 @@ return function(Notes)
         if not f then return info(_("Could not save the page.")) end
         f:write(OneNote.readableHtml(html, names, hasInk))
         f:close()
+        -- Not a book: the launcher's reading statistics leave it out (known as the statistics know a
+        -- file, by its partial MD5).
+        local okM, md5 = pcall(require("util").partialMD5, path)
+        if okM and md5 then
+            local skip = G_reader_settings:readSetting("apps_stats_skip_md5") or {}
+            table.insert(skip, md5)
+            while #skip > 300 do table.remove(skip, 1) end
+            G_reader_settings:saveSetting("apps_stats_skip_md5", skip)
+        end
         self:closeOneNote()
         if self.menu then UIManager:close(self.menu) end
         KO.openBook(path)

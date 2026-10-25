@@ -94,7 +94,7 @@ local PUZZLE_MENU_ONLY = {
     { key = "settings", label = _("Settings"), icon = "settings" },
 }
 local MARGIN_TOOLS = { "pen", "eraser", "lasso", "zoom", "undo", "redo" }   -- writing on a book's page
-local QUICK_TOOLS = { "pen", "hl", "eraser", "lasso", "undo", "redo" }       -- a quick note (notesquick.lua)
+local QUICK_TOOLS = { "pen", "hl", "eraser", "lasso", "undo", "redo", "refresh" }   -- a quick note (notesquick.lua)
 local SPREAD_TOOLS = { "pen", "hl", "eraser", "undo", "redo" }               -- two pages side by side
 -- Tidy handwriting (notestidy.lua): what each action does; papers whose ruled lines writing is set on.
 local TIDY = {

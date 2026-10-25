@@ -375,8 +375,8 @@ A notebook is portrait or landscape. New notebooks follow the way the Kindle is 
 
 Set a gesture to **General > Notes: quick note** (Settings > Taps and gestures > Gesture manager). From anywhere (a book, a menu, To Do) the gesture opens a writing pad over the lower part of the screen, with what you were looking at faded above it.
 
-- Write with the pen, highlighter, eraser and lasso; Undo and Redo work as usual.
-- Tap **✓** at the top of the toolbar (or use the gesture again) when you're done. What you wrote goes on a new page of the **Inbox** notebook, with the date and time at the top.
+- Write with the pen, highlighter, eraser and lasso; Undo and Redo work as usual, and **⟳** at the bottom of the toolbar refreshes the screen.
+- Tap **✓** at the top of the toolbar (or use the gesture again) when you're done. What you wrote goes on a new page of the **Quick Notes** notebook, with the date and time at the top. (It was called Inbox before; an Inbox from an earlier version is renamed.)
 - If you didn't write anything, nothing is kept.
 
 ![A quick note over the notebook list](img/notes/notes-quick-note.png)

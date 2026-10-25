@@ -181,6 +181,7 @@ Tap the **Reading statistics** tile. At the top:
 - **In a row**: the days you've read in a row (today counts once you read; until then it counts from yesterday). **Longest streak**: the most days in a row ever.
 - **In all**: your reading time in every book.
 - **Calendar**: KOReader's calendar of what you read each day.
+- **Wikipedia not counted** (tap to switch to **Wikipedia counted**): Wikipedia's articles are left out of the times, streaks and books unless you count them. OneNote pages you open from Notes are never counted. (KOReader's own calendar still shows everything.)
 
 **WHEN YOU READ** shows your reading by hour of the day ("Mostly 9 PM to 11 PM") and by day of the week ("Most on Saturday").
 

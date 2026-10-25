@@ -38,6 +38,61 @@ local function rows(conn, sql)
     return r or {}, r and r[1] and #r[1] or 0
 end
 
+-- ------------------------------------------------------------------ what's left out
+
+-- Not reading, so not counted: Wikipedia's articles (their author is "Wikipedia EN" and so on;
+-- counted when apps_stats_wikipedia is on) and the OneNote pages Notes opens to read (known by
+-- their files' partial MD5, as the statistics know a book: kept in apps_stats_skip_md5 by Notes,
+-- and any still in Notes' cache).
+Stats.SKIP_MD5 = "apps_stats_skip_md5"
+
+function Stats.countWikipedia() return G_reader_settings:isTrue("apps_stats_wikipedia") end
+
+function Stats.setCountWikipedia(on)
+    if on then G_reader_settings:makeTrue("apps_stats_wikipedia") else G_reader_settings:delSetting("apps_stats_wikipedia") end
+end
+
+local function oneNoteMD5s()
+    local list, seen = {}, {}
+    for __, m in ipairs(G_reader_settings:readSetting(Stats.SKIP_MD5) or {}) do
+        if type(m) == "string" and not seen[m] then seen[m] = true table.insert(list, m) end
+    end
+    local lfs = require("libs/libkoreader-lfs")
+    local dir = require("datastorage"):getDataDir() .. "/cache/onenote"
+    if lfs.attributes(dir, "mode") == "directory" then
+        for sub in lfs.dir(dir) do
+            local d = dir .. "/" .. sub
+            if sub ~= "." and sub ~= ".." and lfs.attributes(d, "mode") == "directory" then
+                for f in lfs.dir(d) do
+                    if f:match("%.html$") then
+                        local m = require("util").partialMD5(d .. "/" .. f)
+                        if m and not seen[m] then seen[m] = true table.insert(list, m) end
+                    end
+                end
+            end
+        end
+    end
+    return list
+end
+
+--- The statistics' book ids left out, as a SQL condition on `col` ("id_book NOT IN (…)"), or nil.
+function Stats.skipWhere(conn, col)
+    local ids = {}
+    local function add(sql)
+        local r = conn:exec(sql)
+        for i = 1, (r and r[1] and #r[1] or 0) do table.insert(ids, tonumber(r[1][i])) end
+    end
+    if not Stats.countWikipedia() then add("SELECT id FROM book WHERE authors LIKE 'Wikipedia%';") end
+    local md5s = oneNoteMD5s()
+    if #md5s > 0 then
+        local q = {}
+        for __, m in ipairs(md5s) do if m:match("^%x+$") then table.insert(q, "'" .. m .. "'") end end
+        if #q > 0 then add("SELECT id FROM book WHERE md5 IN (" .. table.concat(q, ",") .. ");") end
+    end
+    if #ids == 0 then return nil end
+    return col .. " NOT IN (" .. table.concat(ids, ",") .. ")"
+end
+
 local function hoursOf(conn, where)
     local hours = {}
     for h = 0, 23 do hours[h] = 0 end
@@ -53,9 +108,11 @@ end
 -- [0..6] (Sunday first), seconds each } or nil without the statistics.
 function Stats.summary()
     return withDB(function(conn)
+        local skip = Stats.skipWhere(conn, "id_book")
+        local where = skip and (" WHERE " .. skip) or ""
         local r, n = rows(conn, [[
             SELECT strftime('%Y-%m-%d', start_time, 'unixepoch', 'localtime') AS d, sum(duration)
-            FROM page_stat_data GROUP BY d ORDER BY d DESC;]])
+            FROM page_stat_data]] .. where .. " GROUP BY d ORDER BY d DESC;")
         local now = os.date("*t")
         local midnight = os.time({ year = now.year, month = now.month, day = now.day, hour = 0 })
         local today = os.date("%Y-%m-%d")
@@ -72,11 +129,11 @@ function Stats.summary()
         end
         out.streak = Model.streak(days, today, os.date("%Y-%m-%d", midnight - 12 * 3600))
         out.longest = Model.longestStreak(days)
-        out.hours = hoursOf(conn)
+        out.hours = hoursOf(conn, where)
         for w = 0, 6 do out.weekdays[w] = 0 end
         local wr, wn = rows(conn, [[
             SELECT CAST(strftime('%w', start_time, 'unixepoch', 'localtime') AS INTEGER), sum(duration)
-            FROM page_stat_data GROUP BY 1;]])
+            FROM page_stat_data]] .. where .. " GROUP BY 1;")
         for i = 1, wn do out.weekdays[tonumber(wr[1][i])] = tonumber(wr[2][i]) or 0 end
         return out
     end)
@@ -97,10 +154,11 @@ end
 function Stats.books()
     return withDB(function(conn)
         local out = {}
+        local skip = Stats.skipWhere(conn, "b.id")
         local r, n = rows(conn, [[
             SELECT b.id, b.title, b.authors, b.pages, b.last_open, sum(p.duration), count(DISTINCT p.page),
                    (SELECT q.page FROM page_stat AS q WHERE q.id_book = b.id ORDER BY q.start_time DESC LIMIT 1)
-            FROM book AS b JOIN page_stat AS p ON p.id_book = b.id
+            FROM book AS b JOIN page_stat AS p ON p.id_book = b.id]] .. (skip and (" WHERE " .. skip) or "") .. [[
             GROUP BY b.id ORDER BY b.last_open DESC;]])
         for i = 1, n do
             table.insert(out, pace({ id = tonumber(r[1][i]), title = r[2][i], authors = r[3][i],
@@ -343,6 +401,19 @@ function Stats.draw(view, c)
         c:icon("calendar-days", 14 + 18, y + 157, 18)
         c:text(14 + 44, y + 171, label, 12)
         c:hit(14, y + 142, bw, 48, function() Stats.calendar(ui) end)
+        -- Wikipedia's articles: left out unless turned on here (or on the web page's Reading tab).
+        local on = Stats.countWikipedia()
+        local wl = on and _("Wikipedia counted") or _("Wikipedia not counted")
+        local ww = c:width(wl, 12) + 64
+        local wx = 14 + bw + 10
+        c:box(wx, y + 148, ww, 36, { r = 18, border = C.BLACK, bw = 1.4 })
+        c:icon(on and "check" or "x", wx + 18, y + 157, 18)
+        c:text(wx + 44, y + 171, wl, 12)
+        c:hit(wx, y + 142, ww, 48, function()
+            Stats.setCountWikipedia(not on)
+            view.statsData = nil
+            view:refresh()
+        end)
     end)
     if s and s.total > 0 then
         heading(F, c, _("WHEN YOU READ"))

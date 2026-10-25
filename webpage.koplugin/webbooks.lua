@@ -101,10 +101,15 @@ function Web.reading()
     local ok, out = pcall(function()
         local now = os.date("*t")
         local midnight = os.time({ year = now.year, month = now.month, day = now.day, hour = 0 })
+        -- What the Launcher's statistics leave out (Wikipedia's articles, OneNote pages read), the same here.
+        local okS, Stats = pcall(require, "appsstats")
+        local skipBook = okS and Stats.skipWhere and Stats.skipWhere(conn, "id_book")
+        local skipId = okS and Stats.skipWhere and Stats.skipWhere(conn, "id")
         local byDay = {}
         local rows = conn:exec(string.format([[
             SELECT strftime('%%Y-%%m-%%d', start_time, 'unixepoch', 'localtime') AS d, sum(duration)
-            FROM page_stat_data WHERE start_time >= %d GROUP BY d;]], midnight - 400 * 86400))
+            FROM page_stat_data WHERE start_time >= %d]], midnight - 400 * 86400)
+            .. (skipBook and (" AND " .. skipBook) or "") .. " GROUP BY d;")
         if rows and rows[1] then
             for i = 1, #rows[1] do byDay[rows[1][i]] = tonumber(rows[2][i]) or 0 end
         end
@@ -122,15 +127,16 @@ function Web.reading()
         end
         local books = {}
         local okb, b = pcall(conn.exec, conn, [[SELECT title, authors, total_read_time, total_read_pages, last_open, pages, id
-            FROM book WHERE total_read_time > 0 ORDER BY last_open DESC LIMIT 40;]])
+            FROM book WHERE total_read_time > 0]] .. (skipId and (" AND " .. skipId) or "") .. " ORDER BY last_open DESC LIMIT 40;")
         if okb and b and b[1] then
             for i = 1, #b[1] do
                 table.insert(books, { title = b[1][i], authors = b[2][i], seconds = tonumber(b[3][i]) or 0,
                     read = tonumber(b[4][i]) or 0, last = tonumber(b[5][i]) or 0, pages = tonumber(b[6][i]), id = tonumber(b[7][i]) })
             end
         end
-        local total = tonumber(conn:rowexec("SELECT sum(duration) FROM page_stat_data;")) or 0
-        return { today = byDay[os.date("%Y-%m-%d", midnight + 12 * 3600)] or 0, streak = streak, days = days, books = books, total = total }
+        local total = tonumber(conn:rowexec("SELECT sum(duration) FROM page_stat_data"
+            .. (skipBook and (" WHERE " .. skipBook) or "") .. ";")) or 0
+        return { countWikipedia = okS and Stats.countWikipedia and Stats.countWikipedia() or false, today = byDay[os.date("%Y-%m-%d", midnight + 12 * 3600)] or 0, streak = streak, days = days, books = books, total = total }
     end)
     conn:close()
     return ok and out or nil
@@ -319,6 +325,15 @@ function Web.routes(server)
         local ev = events[req.json().action]
         if not ev then return res:error(400, "Push, pull or auto?") end
         UIManager:nextTick(function() r:handleEvent(require("ui/event"):new(ev)) end)
+        res:json({ ok = true })
+    end)
+
+    -- Wikipedia's articles in the statistics or not (the Launcher's Reading statistics has the same switch).
+    server:route("POST", "^/api/reading/wikipedia$", function(req, res)
+        local okS, Stats = pcall(require, "appsstats")
+        if not (okS and Stats.setCountWikipedia) then return res:error(404, NEEDS) end
+        Stats.setCountWikipedia(req.json().on == true)
+        G_reader_settings:flush()
         res:json({ ok = true })
     end)
 

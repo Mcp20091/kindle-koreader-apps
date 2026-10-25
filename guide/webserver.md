@@ -135,7 +135,7 @@ Moving, renaming and deleting work as on the Kindle: a book's reading progress, 
 
 ## Reading
 
-From KOReader's reading statistics (the Reading statistics plugin must be on):
+From KOReader's reading statistics (the Reading statistics plugin must be on). Wikipedia's articles are left out unless **Count Wikipedia articles** is on (the same switch as on the Kindle); OneNote pages read from Notes never count.
 
 ![Reading](img/apps/web-reading.png)
 

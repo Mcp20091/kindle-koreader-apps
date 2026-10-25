@@ -1,7 +1,7 @@
 --[[--
 Quick note: a writing pad over whatever is on the screen (a book, a menu,
 To Do), from a gesture (General > Notes: quick note). What is written goes
-on a new page of the Inbox notebook (made the first time); the top button
+on a new page of the Quick Notes notebook (made the first time; once called Inbox); the top button
 (✓) is Done. Nothing written: nothing kept.
 
 @module koplugin.notes.quick
@@ -25,7 +25,7 @@ local Screen = Device.screen
 local Quick = {}
 Quick.TOP = 0.42   -- the pad starts this far down the screen
 
---- A stroke from the pad onto the Inbox page: moved up by `dy`, scaled by
+--- A stroke from the pad onto the Quick Notes page: moved up by `dy`, scaled by
 -- `z` (a landscape pad on a portrait page), `top` from the page's top.
 function Quick.toPage(s, dy, z, top)
     local out = { t = s.t, c = s.c, d = s.d, f = s.f, w = math.max(1, math.floor(s.w * z + 0.5)), p = {} }
@@ -43,12 +43,19 @@ end
 return function(Notes)
     Notes.Quick = Quick
 
-    --- The Inbox notebook (made the first time).
+    --- The Quick Notes notebook (made the first time).
     function Notes:inbox()
         local id = Settings.get("inbox_id")
         local nb = id and self.store:read(id)
-        if nb then return nb end
-        nb = self.store:create(_("Inbox"), Screen:getWidth(), Screen:getHeight(), Settings.get("paper") or "narrow")
+        if nb then
+            -- (It was named Inbox before: renamed, unless the user named it themselves.)
+            if nb.name == "Inbox" or nb.name == _("Inbox") then
+                nb.name = _("Quick Notes")
+                self.store:save(nb)
+            end
+            return nb
+        end
+        nb = self.store:create(_("Quick Notes"), Screen:getWidth(), Screen:getHeight(), Settings.get("paper") or "narrow")
         if nb then Settings.set("inbox_id", nb.id) end
         return nb
     end
@@ -62,10 +69,12 @@ return function(Notes)
         if not self:penReady() then return end
         local open = self.editor and UIManager:isWidgetShown(self.editor) and self.editor.notebook
         if open and open.id == Settings.get("inbox_id") then
-            return KO.message(_("The Inbox is open: write in it here."))
+            return KO.message(_("Quick Notes is open: write in it here."))
         end
         local W, H = Screen:getWidth(), Screen:getHeight()
-        -- What is on the screen now, faded, above the pad.
+        -- What is on the screen now, faded, above the pad: drawn first, so a panel that just
+        -- closed (the control center's New note) isn't in it.
+        UIManager:forceRePaint()
         local shot = Blitbuffer.new(W, H, Blitbuffer.TYPE_BB8)
         shot:blitFrom(Screen.bb, 0, 0, 0, 0, W, H)
         shot:lightenRect(0, 0, W, H, 0.6)
@@ -78,10 +87,6 @@ return function(Notes)
             Paper.level = Settings.get("paper_lines") or "medium"
             Paper.paint(bg, "narrow", r[1], r[2] + ui:u(10), r[1] + r[3], r[2] + r[4], W, H, r[1])
             bg:paintRect(r[1], r[2] - 3, r[3], 3, Blitbuffer.COLOR_BLACK)
-            local label = T(_("Quick note: saved to %1"), _("Inbox"))
-            local lw = ui:textWidth(label, 10) + ui:u(20)
-            ui:box(bg, r[1] + ui:u(10), r[2] - ui:u(30), lw, ui:u(24), { fill = UI.WHITE, border = UI.BLACK, r = ui:u(6) })
-            ui:drawText(bg, label, r[1] + ui:u(20), r[2] - ui:u(18), 10, { bold = true })
             return bg
         end
         local nb = { id = "quick", name = _("Quick note"), paper = "plain", width = W, height = H,
@@ -139,7 +144,7 @@ return function(Notes)
                 ui:free()
                 self.quickEditor = nil
                 if inboxPage then
-                    require("notesko").toast(T(_("Saved to %1"), _("Inbox")))
+                    require("notesko").toast(T(_("Saved in %1"), _("Quick Notes")))
                 end
                 UIManager:setDirty("all", "full")
             end,

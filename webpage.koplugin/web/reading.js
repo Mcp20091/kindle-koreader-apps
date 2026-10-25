@@ -23,6 +23,11 @@ App.pages.reading = {
         stat('Last 7 days', time(week), time(week / 7) + ' a day'),
         stat('All time', time(r.total))));
 
+    main.append(App.setting('Count Wikipedia articles', App.toggle(!!r.countWikipedia, async on => {
+      await App.api('/api/reading/wikipedia', { json: { on } });
+      App.route();
+    }), 'Articles you read in Wikipedia are left out unless this is on. OneNote pages read from Notes are never counted.'));
+
     main.append(syncCard());
 
     // The last 30 days, a bar each (hover for the day and time; click for its reading).
