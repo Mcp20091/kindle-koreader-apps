@@ -268,6 +268,8 @@ function Pad:up(x, y)
         self.drag = nil
         -- (Remembered for next time.)
         G_reader_settings:saveSetting("apps_handwrite_top", self.strip.y / self.h)
+        -- (A clean picture where it ends: e-ink leaves ghosts of the steps on the way.)
+        UIManager:setDirty("all", "full")
     elseif self.stroke then
         self.stroke = nil
     elseif self.pressed then

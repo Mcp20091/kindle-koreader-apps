@@ -299,6 +299,16 @@ end
 function Panel:onCloseWidget()
     if self.canvas then self.canvas:release() end
     if shown == self then shown = nil end
+    -- The keyboard it put aside: back, unless what the panel opened is on screen now.
+    if self.keyboardBack then
+        local back = self.keyboardBack
+        self.keyboardBack = nil
+        UIManager:nextTick(function()
+            local top = UIManager:getTopmostVisibleWidget()
+            if top and (top.is_shared_popup or (top.covers_fullscreen and top ~= self.under)) then return end
+            back()
+        end)
+    end
 end
 
 --- The open library or book.
@@ -326,7 +336,12 @@ end
 -- quick buttons group to drop down, by its key).
 function CC.show(koMenu, open)
     if shown then return end
+    -- (KOReader keeps its keyboard above every window, where it would take the panel's taps and
+    -- pass them to the screen under it, such as SSH's live session: aside while the panel is open.)
+    local back = require("appspopup").keyboardAside()
+    local under = UIManager:getTopmostVisibleWidget()
     shown = Panel:new{ kui = currentUI(), koMenu = koMenu, open = open }
+    shown.keyboardBack, shown.under = back, under
     UIManager:show(shown, "ui", shown:region())
 end
 

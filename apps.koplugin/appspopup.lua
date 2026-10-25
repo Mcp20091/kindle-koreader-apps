@@ -64,6 +64,11 @@ function Box:init()
             Tap = { GestureRange:new{ ges = "tap", range = all } },
             Hold = { GestureRange:new{ ges = "hold", range = all } },
             Swipe = { GestureRange:new{ ges = "swipe", range = all } },
+            -- (Dragging the box by its title bar: a finger's pan, or the pen held then moved.)
+            Pan = { GestureRange:new{ ges = "pan", range = all } },
+            PanRelease = { GestureRange:new{ ges = "pan_release", range = all } },
+            HoldPan = { GestureRange:new{ ges = "hold_pan", range = all } },
+            HoldRelease = { GestureRange:new{ ges = "hold_release", range = all } },
         }
     end
     if Device:hasKeys() then self.key_events = { Close = { { Device.input.group.Back } } } end
@@ -137,6 +142,8 @@ function Box:render()
         -- (A line under the title, smaller and grey: what it is about.)
         local sub = self.subtitle and self.subtitle ~= "" and 18 or 0
         add(18 + 22 * #lines + sub, function(y)
+            -- A handle: the title bar drags the box (as the handwriting strip's band does).
+            c:box(x + bw / 2 - 22, y + 9, 44, 5, { r = 2.5, fill = C.MID })
             for i, l in ipairs(lines) do c:text(x + 18, y + 6 + 22 * i, l, 14, { bold = true }) end
             if sub > 0 then c:text(x + 18, y + 8 + 22 * #lines + 12, self.subtitle, 11, { color = C.GREY, maxw = bw - 36 }) end
             c:hline(x, y + 18 + 22 * #lines + sub - 1, bw, C.BLACK, 1.5)
@@ -265,6 +272,19 @@ function Box:render()
     for __, b in ipairs(blocks) do total = total + b.h end
     -- (While typing, at the top: the keyboard takes the bottom of the screen.)
     local y = self.typing and 24 or math.max(40, (c.H - total) / 2)
+    -- Moved by dragging its title bar (as the handwriting strip is by its band); kept on the screen.
+    if self.dragX or self.dragY then
+        -- (Never into KOReader's keyboard: it draws only its keys, so a box under it shows through,
+        -- and what the box leaves behind there isn't drawn over.)
+        local bottom = c.H
+        for __, e in ipairs(UIManager._window_stack or {}) do
+            local w = e.widget
+            if w.name == "VirtualKeyboard" and w.dimen and w.dimen.y and w.dimen.y > 0 then bottom = math.min(bottom, w.dimen.y / c.u) end
+        end
+        x = math.max(0, math.min(c.W - bw - 7, x + (self.dragX or 0)))
+        y = math.max(0, math.min(bottom - total - 7, y + (self.dragY or 0)))
+    end
+    self.titleRect = { x, y, bw, (self.title and self.title ~= "") and blocks[1].h or 30 }
     self.top = y
     c:box(x + 5, y + 5, bw, total, { r = 12, fill = C.MID })
     c:box(x, y, bw, total, { r = 12, fill = C.WHITE, border = C.BLACK, bw = 2 })
@@ -741,13 +761,104 @@ function Box:onTap(_, ges)
 end
 
 function Box:onHold(_, ges)
+    -- (Held on the title bar: the start of a drag with the pen, if it moves.)
+    if ges and ges.pos and self:inTitle(ges.pos) then
+        self.holdStart = ges.pos
+        return true
+    end
     -- (A hold of its own, such as AI for this on an AI button; else as a tap.)
     local hit = self.canvas and ges and ges.pos and self.canvas:find(ges.pos.x, ges.pos.y)
     if hit and hit.hold then hit.hold() return true end
     return self:onTap(_, ges)
 end
 
+-- ------------------------------------------------------------------ dragging
+
+function Box:inTitle(pos)
+    local c, r = self.canvas, self.titleRect
+    if not (c and r and pos) then return false end
+    local x, y = pos.x / c.u, pos.y / c.u
+    return x >= r[1] and x < r[1] + r[3] and y >= r[2] and y < r[2] + r[4]
+end
+
+function Box:startDrag(pos)
+    self.drag = { px = pos.x, py = pos.y, x0 = self.dragX or 0, y0 = self.dragY or 0, dx = 0, dy = 0 }
+    -- KOReader's keyboard steps aside while dragging: it's above the box, so it would take the
+    -- touch where the finger lets go (a key typed), and the box mustn't go under it.
+    for __, e in ipairs(UIManager._window_stack or {}) do
+        local w = e.widget
+        if w.name == "VirtualKeyboard" and w.inputbox and w.inputbox.onCloseKeyboard then
+            self.drag.keyboard = w.inputbox
+            pcall(w.inputbox.onCloseKeyboard, w.inputbox)
+        end
+    end
+end
+
+-- The box where the finger is now: drawn again now and then (every 12 pixels and 0.15 s at
+-- most, as e-ink can), and where it ends.
+function Box:dragTo(pos, final)
+    local d, c = self.drag, self.canvas
+    if not (d and c and pos) then return end
+    local dx, dy = (pos.x - d.px) / c.u, (pos.y - d.py) / c.u
+    local now = require("socket").gettime()
+    if not final and ((math.abs(dx - d.dx) + math.abs(dy - d.dy)) * c.u < 12 or (d.at and now - d.at < 0.15)) then return end
+    d.at, d.dx, d.dy = now, dx, dy
+    self.dragX, self.dragY = d.x0 + dx, d.y0 + dy
+    self:redraw()
+end
+
+function Box:endDrag(pos)
+    if not self.drag then return false end
+    self:dragTo(pos, true)
+    local input = self.drag.keyboard
+    self.drag = nil
+    if input then
+        -- Back, and the box drawn again above it if it's where the keyboard goes.
+        pcall(input.onShowKeyboard, input)
+        self:redraw()
+    end
+    -- (A clean picture where it ends: e-ink leaves ghosts of the steps on the way.)
+    UIManager:setDirty("all", "full")
+    return true
+end
+
+function Box:onPan(_, ges)
+    if not self.drag then
+        local start = ges.start_pos or ges.pos
+        if not self:inTitle(start) then return true end
+        self:startDrag(start)
+    end
+    self:dragTo(ges.pos)
+    return true
+end
+
+function Box:onPanRelease(_, ges)
+    self:endDrag(ges and ges.pos)
+    return true
+end
+
+function Box:onHoldPan(_, ges)
+    if not self.drag then
+        if not (self.holdStart and self:inTitle(self.holdStart)) then return true end
+        self:startDrag(self.holdStart)
+    end
+    self:dragTo(ges.pos)
+    return true
+end
+
+function Box:onHoldRelease(_, ges)
+    self.holdStart = nil
+    self:endDrag(ges and ges.pos)
+    return true
+end
+
 function Box:onSwipe(_, ges)
+    -- A quick flick on the title bar: the box moves by as much.
+    if ges.end_pos and self:inTitle(ges.pos) then
+        self:startDrag(ges.pos)
+        self:endDrag(ges.end_pos)
+        return true
+    end
     if (self.kind == "menu" or self.kind == "read") and (self.pages or 1) > 1 then
         if ges.direction == "west" or ges.direction == "north" then self:turn(1) return true end
         if ges.direction == "east" or ges.direction == "south" then self:turn(-1) return true end
@@ -795,6 +906,22 @@ function Box:onCloseWidget()
     for __, o in ipairs(self.kind == "pictures" and self.options or {}) do
         if o.image then o.image:free() o.image = nil end
     end
+    -- The keyboard that stepped aside for this box: back once whatever the box led to is shown.
+    if self.keyboardBack then
+        local back = self.keyboardBack
+        self.keyboardBack = nil
+        UIManager:nextTick(function()
+            -- (Not while another box from it is up, such as the model list after Model: that one
+            -- takes it over when it closes.)
+            for __, e in ipairs(UIManager._window_stack or {}) do
+                if e.widget.is_shared_popup and e.widget ~= self and not e.widget.closed and e.widget.kind ~= "toast" then
+                    e.widget.keyboardBack = e.widget.keyboardBack or back
+                    return
+                end
+            end
+            back()
+        end)
+    end
     if self.field then
         self.typing = false
         pcall(self.field.onCloseKeyboard, self.field)
@@ -802,7 +929,36 @@ function Box:onCloseWidget()
     end
 end
 
+-- KOReader keeps its keyboard above every other window, so a box opened while it's up (a hold on
+-- an AI button in SSH's live session, say) would be under it: it steps aside while the box is
+-- open and comes back after, if its text box is still there. (A request box has its own.)
+--- Puts KOReader's keyboard aside (for a window shown over it); returns a function that brings
+-- it back if the window its text box is in is still open, or nil when there was none.
+function Popup.keyboardAside()
+    local stack = UIManager._window_stack or {}
+    for i = #stack, 1, -1 do
+        local w = stack[i].widget
+        if w.name == "VirtualKeyboard" and w.inputbox and w.inputbox.onCloseKeyboard then
+            local input = w.inputbox
+            -- (The window the text box is in: the keyboard comes back only while that's open.)
+            local owner = i > 1 and stack[i - 1].widget or nil
+            pcall(input.onCloseKeyboard, input)
+            return function()
+                local open = false
+                for __, e in ipairs(UIManager._window_stack or {}) do if e.widget == owner then open = true end end
+                if open then pcall(input.onShowKeyboard, input) end
+            end
+        end
+    end
+end
+
+local function keyboardAside(box)
+    if box.kind == "request" or box.kind == "toast" or box.kind == "undo" or box.kind == "wait" then return end
+    box.keyboardBack = Popup.keyboardAside()
+end
+
 local function show(box)
+    keyboardAside(box)
     UIManager:show(box, box.kind == "toast" and "fast" or "ui", box:region())
     return box
 end

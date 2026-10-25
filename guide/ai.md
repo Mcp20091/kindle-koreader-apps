@@ -44,6 +44,8 @@ For every service, pick a model that reads pictures: Notes and Crosswords send p
 
 **AI for this**: hold a button that uses AI (Ask, a hint, Write a command…), or the pen in a text box, for a short menu: **Service** picks which service does that job, and **Model** loads that service's models (as above) and picks one for this job only, or **The service's** to go back to the one set on its page. For Claude, Groq and OpenRouter it also shows **Usage** (as on their pages). **AI settings…** opens the AI page.
 
+![AI for this: a hold on Ask, the AI and model that do that job](img/apps/ai-for-this.png)
+
 **Usage** (on Claude's, Groq's and OpenRouter's pages, and on the web page's AI tab) shows what's left until the service's limits reset, for the services that say. Claude and Groq send their limits with each answer, so it shows the requests and tokens left as of the last answer (after Try a prompt or any AI feature), with when they reset. OpenRouter is asked when you tap it: what you've used today and this month, your key's limit and what's left of it, and your credit. Gemini and your local AI don't say, so they have no Usage.
 
 **No paid key?** Get a free Gemini key at aistudio.google.com. On free tiers, the service may use what you send to improve its products, so keep private pages on Claude, a paid tier or your local AI.

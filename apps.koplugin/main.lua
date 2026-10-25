@@ -203,7 +203,7 @@ do
         configured = function() return require("appsai").any() end,
         run = function(Test) return require("appsai").tests(Test) end }
     PS.registerSetup{ key = "ai", order = 40, icon = "sparkles", title = _("AI"),
-        text = _("Notes uses an AI to read your handwriting (search, To Do, OneNote) and to answer Ask; Crosswords for hints and checks. Pick one from the list: Claude, Gemini, OpenRouter, Groq, your own local AI, or any OpenAI-compatible service. No paid key? Gemini has a free key at aistudio.google.com."),
+        text = _("An AI turns your handwriting into text in the apps' text boxes, and helps in Notes (Ask, reading pages), Crosswords (hints, checks) and SSH (explaining output, writing commands). Pick one: Claude, Gemini, OpenRouter, Groq, your own local AI, or any OpenAI-compatible service. Each lists its current models. Later you can give each job its own AI or model, or hold any AI button to switch it there. No paid key? Gemini has a free key at aistudio.google.com."),
         done = function() return require("appsai").any() end,
         doneText = _("Set up"),
         action = _("Set up the AI"),
