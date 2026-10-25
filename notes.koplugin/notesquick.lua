@@ -40,6 +40,28 @@ function Quick.toPage(s, dy, z, top)
     return out
 end
 
+--- Peek: the screen the quick note was opened over, as it was, full screen; any touch goes back.
+function Quick.peek(bb, back)
+    local InputContainer = require("ui/widget/container/inputcontainer")
+    local GestureRange = require("ui/gesturerange")
+    local Geom = require("ui/geometry")
+    local W, H = Screen:getWidth(), Screen:getHeight()
+    local all = Geom:new{ x = 0, y = 0, w = W, h = H }
+    local view = InputContainer:new{ dimen = all, covers_fullscreen = true }
+    view.ges_events = { Tap = { GestureRange:new{ ges = "tap", range = all } },
+        Hold = { GestureRange:new{ ges = "hold", range = all } },
+        Swipe = { GestureRange:new{ ges = "swipe", range = all } } }
+    function view:paintTo(target, x, y) target:blitFrom(bb, x, y, 0, 0, W, H) end
+    local function close()
+        UIManager:close(view, "full")
+        if back then back() end
+        return true
+    end
+    view.onTap, view.onHold, view.onSwipe = close, close, close
+    UIManager:show(view, "full")
+    require("notesko").toast(_("Tap to go back to your note"), 2)
+end
+
 return function(Notes)
     Notes.Quick = Quick
 
@@ -77,16 +99,30 @@ return function(Notes)
         UIManager:forceRePaint()
         local shot = Blitbuffer.new(W, H, Blitbuffer.TYPE_BB8)
         shot:blitFrom(Screen.bb, 0, 0, 0, 0, W, H)
+        -- (As it was, for Peek.)
+        local plain = shot:copy()
         shot:lightenRect(0, 0, W, H, 0.6)
         local ui = UI.new()
         local inboxPage, inboxId   -- the page made for this note, once there is ink
+        local discarded = false
         local function bgFor(ed)
             local r = ed.pageRect
             local bg = shot:copy()
             bg:paintRect(r[1], r[2], r[3], r[4], Blitbuffer.COLOR_WHITE)
             Paper.level = Settings.get("paper_lines") or "medium"
             Paper.paint(bg, "narrow", r[1], r[2] + ui:u(10), r[1] + r[3], r[2] + r[4], W, H, r[1])
-            bg:paintRect(r[1], r[2] - 3, r[3], 3, Blitbuffer.COLOR_BLACK)
+            -- The edge between the pad and the picture (above the pad, or below it when flipped),
+            -- and its handle: drag it to make the pad taller or shorter.
+            local hw, hh = ui:u(60), ui:u(7)
+            local hx = r[1] + math.floor((r[3] - hw) / 2)
+            if ed.quick.flip then
+                local e = r[2] + r[4]
+                bg:paintRect(r[1], e, r[3], 3, Blitbuffer.COLOR_BLACK)
+                ui:box(bg, hx, e + ui:u(11), hw, hh, { fill = UI.MID, r = math.floor(hh / 2) })
+            else
+                bg:paintRect(r[1], r[2] - 3, r[3], 3, Blitbuffer.COLOR_BLACK)
+                ui:box(bg, hx, r[2] - ui:u(18), hw, hh, { fill = UI.MID, r = math.floor(hh / 2) })
+            end
             return bg
         end
         local nb = { id = "quick", name = _("Quick note"), paper = "plain", width = W, height = H,
@@ -95,6 +131,7 @@ return function(Notes)
             newPageId = Store.newPageId,
             imageDir = function() return DataStorage:getDataDir() .. "/cache" end,
             save = function(__, book)
+                if discarded then return true end
                 local strokes = book.pages[1].strokes
                 if #strokes == 0 and not inboxPage then return true end
                 local inbox = inboxId and self.store:read(inboxId) or self:inbox()
@@ -138,9 +175,39 @@ return function(Notes)
             page = 1,
             store = store,
             quiet = true,
-            quick = { top = math.floor(H * Quick.TOP), background = bgFor },
+            quick = { top = math.floor(H * (Settings.get("quick_top") or Quick.TOP)), background = bgFor,
+                flip = Settings.get("quick_flip") == true,
+                -- The edge dragged, or the pad swapped to the other half: so next time too.
+                moved = function(frac, flip)
+                    Settings.set("quick_top", frac)
+                    Settings.set("quick_flip", flip and true or nil)
+                end,
+                -- Peek: the screen as it was, whole, until a tap.
+                peek = function(ed) Quick.peek(plain, function() UIManager:setDirty(ed, "full") end) end,
+                -- Discard: nothing kept (the Quick Notes page taken out if it was made).
+                discard = function(ed)
+                    KO.confirm{ text = _("Discard this quick note?"), ok = _("Discard"), danger = true, onOk = function()
+                        discarded = true
+                        if inboxPage and inboxId then
+                            local inbox = self.store:read(inboxId)
+                            if inbox then
+                                for i, p in ipairs(inbox.pages) do
+                                    if p.id == inboxPage then
+                                        if #inbox.pages > 1 then table.remove(inbox.pages, i) else p.strokes, p.items = {}, nil end
+                                        break
+                                    end
+                                end
+                                self.store:save(inbox)
+                                self:refresh()
+                            end
+                        end
+                        inboxPage = nil
+                        ed:close()
+                    end }
+                end },
             on_close = function()
                 shot:free()
+                plain:free()
                 ui:free()
                 self.quickEditor = nil
                 if inboxPage then

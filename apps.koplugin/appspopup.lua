@@ -55,6 +55,11 @@ function Box:init()
     self.w, self.h = Screen:getWidth(), Screen:getHeight()
     self.dimen = Geom:new{ x = 0, y = 0, w = self.w, h = self.h }
     if self.kind == "toast" then self.toast = true end
+    -- KOReader's keyboard is a modal window, kept above everything shown after it, and it can come
+    -- back while a box is open (SSH's live session after Run command, say): a tap it doesn't take
+    -- goes on to the "always active" windows, top first, so the box gets its own taps (and not the
+    -- terminal under it).
+    if self.kind ~= "toast" and self.kind ~= "undo" then self.is_always_active = true end
     if self.kind == "undo" then
         -- Only its Undo answers (see Box:handleEvent); any other touch goes on to the screen under it.
         self.no_uncover_flash = true

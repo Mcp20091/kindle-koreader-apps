@@ -87,6 +87,8 @@ local shown
 
 function Panel:init()
     self.w, self.h = Screen:getWidth(), Screen:getHeight()
+    -- (As the shared pop-ups: its taps its own even with KOReader's keyboard above it.)
+    self.is_always_active = true
     self.dimen = Geom:new{ x = 0, y = 0, w = self.w, h = self.h }
     local all = Geom:new{ x = 0, y = 0, w = self.w, h = self.h }
     self.ges_events = {

@@ -204,7 +204,7 @@ Done tasks, tasks hidden on sleep and hidden lists are left out.
 - **Tap action**: **Open task** or **Quick actions**.
 - **Postpone by**: the usual number of days (1 to 60).
 
-- **Reminder alerts**: reminders pop up on the Kindle while KOReader is open, with **Snooze**, **Open** and **Done**. **Snooze** brings it back in 15 or 30 minutes, 1 or 3 hours, or tomorrow at 9 AM, on the Kindle only (To Do's reminder on your phone stays as it was). A reminder you don't answer stays in Notifications. Ones missed in the last two hours (while asleep) show when it wakes.
+- **Reminder alerts**: reminders pop up on the Kindle while KOReader is open, with **Snooze**, **Open** and **Done**. **Snooze** brings it back in 15 or 30 minutes, 1 or 3 hours, tomorrow at 9 AM, or **Custom…** (type a number, then **Minutes**, **Hours** or **Days**), on the Kindle only (To Do's reminder on your phone stays as it was). A reminder you don't answer stays in Notifications. Ones missed in the last two hours (while asleep) show when it wakes.
 
 ### Sync, sleep screen and account
 

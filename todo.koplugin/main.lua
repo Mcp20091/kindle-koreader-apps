@@ -1911,6 +1911,31 @@ function Todo:snoozeReminder(list, task)
     end
     local morning = self:moment(self:today() + 1, 9 * 60)
     table.insert(items, { text = T(_("Tomorrow %1"), self:clockAt(morning)), fn = function() snoozeTo(morning) end })
+    -- Any number of minutes, hours or days (the launcher's box, with the number keyboard): the
+    -- number typed, then its unit's button.
+    local P = require("pluginshare").popup
+    if P and P.request then
+        table.insert(items, { text = _("Custom…"), fn = function()
+            local function unit(name, icon, seconds, most, primary)
+                return { icon = icon, text = name, primary = primary, needsText = true, fn = function(text)
+                    local n = tonumber(text)
+                    if not n or n <= 0 or n > most then
+                        return notify(T(_("Type a number, up to %1."), most))
+                    end
+                    snoozeTo(os.time() + math.floor(n * seconds))
+                end }
+            end
+            P.request{ title = _("Snooze for"), subtitle = _("Type a number, then pick minutes, hours or days"),
+                text = "", number = true, typing = true,
+                onCancel = function() self:snoozeReminder(list, task) end,
+                buttons = {
+                    { icon = "x", text = _("Cancel"), cancel = true },
+                    unit(_("Minutes"), "clock", 60, 24 * 60, true),
+                    unit(_("Hours"), "clock", 3600, 24 * 7),
+                    unit(_("Days"), "calendar-days", 86400, 30),
+                } }
+        end })
+    end
     require("todoko").list(_("Snooze for"), items, function() self:showReminder(list, task, true) end)
 end
 

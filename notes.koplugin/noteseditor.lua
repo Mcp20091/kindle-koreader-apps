@@ -94,7 +94,7 @@ local PUZZLE_MENU_ONLY = {
     { key = "settings", label = _("Settings"), icon = "settings" },
 }
 local MARGIN_TOOLS = { "pen", "eraser", "lasso", "zoom", "undo", "redo" }   -- writing on a book's page
-local QUICK_TOOLS = { "pen", "hl", "eraser", "lasso", "undo", "redo", "refresh" }   -- a quick note (notesquick.lua)
+local QUICK_TOOLS = { "pen", "hl", "eraser", "lasso", "undo", "redo", "peek", "swap", "refresh", "discard" }   -- a quick note (notesquick.lua)
 local SPREAD_TOOLS = { "pen", "hl", "eraser", "undo", "redo" }               -- two pages side by side
 -- Tidy handwriting (notestidy.lua): what each action does; papers whose ruled lines writing is set on.
 local TIDY = {
@@ -308,10 +308,15 @@ function Editor:layout()
     else
         self.pageRect = { 0, 0, self.w - self.bar_w - 2, self.h }
     end
-    -- A quick note: only the pad below what was on the screen takes ink.
+    -- A quick note: only the pad takes ink, below what was on the screen (or above it: flip).
+    -- quick.top is the edge between the two.
     if self.quick then
         local r = self.pageRect
-        self.pageRect = { r[1], self.quick.top, r[3], self.h - self.quick.top }
+        if self.quick.flip then
+            self.pageRect = { r[1], 0, r[3], self.quick.top }
+        else
+            self.pageRect = { r[1], self.quick.top, r[3], self.h - self.quick.top }
+        end
     end
     if self.spread then
         self:spreadLayout()
@@ -1266,6 +1271,12 @@ function Editor:paintToolbar(bb)
             self.undoButton = { x0, y - math.floor((pitch - box) / 2), bw, pitch }
         elseif key == "redo" then
             button(y, "redo-2", function() self:doRedo() end, false, #self.redo == 0)
+        elseif key == "swap" and self.quick then
+            button(y, "arrow-up-down", function() self:swapQuick() end, false, false, key)
+        elseif (key == "peek" or key == "discard") and self.quick then
+            -- A quick note's own: the whole screen behind it for a moment; or the note thrown away.
+            local fn = self.quick[key]
+            button(y, key == "peek" and "eye" or "trash-2", function() if fn then fn(self) end end, false, fn == nil, key)
         elseif key == "done" then
             button(y, "circle-check", function() self:toggleDone() end, self.notebook.pages[self.page].done == true, false, key)
         elseif key:match("^g:") then
@@ -4495,8 +4506,13 @@ function Editor:penDown(x, y, tool, width)
         self.press = { x = x, y = y, moved = false }
         return
     end
-    -- A quick note: nothing above the pad.
-    if self.quick and y < self.pageRect[2] then
+    -- A quick note's top edge (its handle): dragged, the pad is taller or shorter.
+    if self.quick and not self:hitAt(x, y) and math.abs(y - self:quickEdge()) <= self.ui:u(26) then
+        self.quickDrag = { from = y, top = self.quick.top }
+        return
+    end
+    -- A quick note: nothing outside the pad.
+    if self.quick and (y < self.pageRect[2] or y >= self.pageRect[2] + self.pageRect[4]) then
         self.press = { x = x, y = y, moved = true }
         return
     end
@@ -4640,6 +4656,7 @@ function Editor:previewHighlight(x0, y0, x1, y1, width)
 end
 
 function Editor:penMove(x, y, width)
+    if self.quickDrag then return self:dragQuick(y) end
     if self.stripDrag then return self:dragStrip(y) end
     if self.cardDrag then return self:dragClueCard(x, y) end
     if self.press then
@@ -4757,6 +4774,7 @@ function Editor:penUp()
     if self.busy then self.penUpAt = time.now() end
     self.busy = false
     self.penTool = nil
+    if self.quickDrag then return self:dragQuick(nil, true) end
     if self.stripDrag then return self:dropStrip() end
     if self.cardDrag then return self:dropClueCard() end
     if self.press then
@@ -6096,6 +6114,66 @@ function Editor:saveNow()
         logger.err("Notes: could not save", self.notebook.id, why)
         KO.message(T(_("Could not save the notebook:\n%1"), tostring(why)))
     end
+end
+
+--- A quick note's pad moved up or down by its top edge: what's written moves with it (as the
+-- handwriting strip's does), drawn again now and then while dragging, and where it ends
+-- (remembered for the next quick note, a full refresh there).
+function Editor:dragQuick(y, final)
+    local d = self.quickDrag
+    if not d then return end
+    local u = self.ui:u(1)
+    local to = d.last or self.quick.top
+    if y then to = math.floor(math.max(u * 60, math.min(self.h - u * 160, d.top + y - d.from))) end
+    local now = time.now()
+    if not final and (math.abs(to - self.quick.top) < 12 or (d.at and time.to_ms(now - d.at) < 150)) then
+        d.last = to
+        return
+    end
+    d.at, d.last = now, to
+    local dy = to - self.quick.top
+    if dy ~= 0 then
+        -- (Flipped, the pad's top stays at the top of the screen: the ink stays where it is.)
+        if not self.quick.flip then self:shiftQuickInk(dy) end
+        self.quick.top = to
+        self:layout()
+        self:renderPage()
+        self:repaint(nil, final and "full" or "ui")
+    end
+    if final then
+        self.quickDrag = nil
+        if self.quick.moved then self.quick.moved(to / self.h, self.quick.flip) end
+        if dy == 0 then self:repaint(nil, "full") end
+    end
+end
+
+-- The edge between a quick note's pad and the picture of the screen.
+function Editor:quickEdge()
+    local r = self.pageRect
+    return self.quick.flip and r[2] + r[4] or r[2]
+end
+
+function Editor:shiftQuickInk(dy)
+    for __, st in ipairs(self.notebook.pages[self.page].strokes or {}) do
+        for i = 2, #st.p, 2 do st.p[i] = st.p[i] + dy end
+    end
+end
+
+--- A quick note's pad to the other half: on top with the picture below, or the other way
+-- round (as tall as it was; what's written moves with it; remembered for next time).
+function Editor:swapQuick()
+    local q = self.quick
+    local edge = self.h - q.top
+    if q.flip then
+        self:shiftQuickInk(edge)
+    else
+        self:shiftQuickInk(-q.top)
+    end
+    q.flip, q.top = not q.flip, edge
+    self:layout()
+    self:renderPage()
+    self:repaint(nil, "full")
+    if q.moved then q.moved(q.top / self.h, q.flip) end
 end
 
 function Editor:close()
