@@ -208,7 +208,9 @@ You need a Kindle Scribe with a jailbreak and KOReader. The [Kindle Modding jail
 
 1. On this repo's [Releases](../../releases) page, download **kindle-plugins.zip** from the latest release, and unzip it on your computer. Inside is one folder per app (`apps.koplugin`, `todo.koplugin` and so on).
 2. Connect the Kindle to the computer with its USB cable. It shows up as a drive.
-3. Copy the contents of the zip into `koreader/plugins/` on the Kindle; if a folder of the same name is already there, replace it. Alternatively, you can copy specific folders over if you only want some of the plugins: keep `apps.koplugin` (the launcher) for the home screen and the shared pieces, and take Notes along with Crosswords.
+3. Copy the contents of the zip into `koreader/plugins/` on the Kindle, replacing any folders with the same name.
+
+   Only want some of the plugins? Copy just those folders, plus `apps.koplugin` (the launcher, which the others share). Crosswords also needs `notes.koplugin`.
 4. Eject the Kindle, then restart KOReader: in KOReader's menu, the last tab (**☰**) > **Exit** > **Restart KOReader**.
 
 ### Getting started
