@@ -130,7 +130,23 @@ end
 
 --- For a screen's handleEvent: a gesture action's event that the screen
 -- did not take goes to KOReader underneath (not a broadcast: that got there).
+-- Pen strokes Notes takes are kept out of KOReader's gestures, so KOReader saw no input
+-- while you wrote: its Automatic dimmer dimmed the screen and its sleep timer ran (a finger
+-- touch woke them). Each pen event tells them the screen is in use, once a second at most.
+local penActiveAt = 0
+function KO.penActive()
+    local now = os.time()
+    if now == penActiveAt then return end
+    penActiveAt = now
+    if UIManager.event_hook then UIManager.event_hook:execute("InputEvent") end
+end
+
+-- (Never a screen's own showing or closing: a screen closed during a gesture's action handed
+-- its CloseWidget on, and KOReader's file browser took it for its own and tore itself down,
+-- leaving every app's plugin gone while it was still on the screen.)
+local OWN = { onCloseWidget = true, onShow = true }
 function KO.passEvent(kui, event)
+    if event and OWN[event.handler] then return end
     if Dispatcher.apps_running > 0 and UIManager.apps_broadcasting == 0 and kui and kui.handleEvent then
         return kui:handleEvent(event)
     end

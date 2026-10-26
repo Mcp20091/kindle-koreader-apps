@@ -108,7 +108,12 @@ end
 
 --- For a screen's handleEvent: a gesture action's event that the screen
 -- did not take goes to KOReader underneath (not a broadcast: that got there).
+-- (Never a screen's own showing or closing: a screen closed during a gesture's action handed
+-- its CloseWidget on, and KOReader's file browser took it for its own and tore itself down,
+-- leaving every app's plugin gone while it was still on the screen.)
+local OWN = { onCloseWidget = true, onShow = true }
 function KO.passEvent(kui, event)
+    if event and OWN[event.handler] then return end
     if Dispatcher.apps_running > 0 and UIManager.apps_broadcasting == 0 and kui and kui.handleEvent then
         return kui:handleEvent(event)
     end

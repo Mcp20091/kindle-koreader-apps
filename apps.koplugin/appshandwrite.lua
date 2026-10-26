@@ -447,6 +447,13 @@ function Pad:onShow()
         self.stylusHook = function(inp, slot)
             if Pen.isFinger(slot, inp.pen_slot) then return false end
             if UIManager:getTopmostVisibleWidget() ~= self then return false end
+            -- (Writing is use: KOReader's dimmer and sleep timer told, once a second at most;
+            -- these pen events are kept from its gestures, so it wouldn't see them.)
+            local now = os.time()
+            if now ~= self.activeAt and UIManager.event_hook then
+                self.activeAt = now
+                UIManager.event_hook:execute("InputEvent")
+            end
             -- A pen touch that starts off the strip is KOReader's (a tap on the box above).
             if slot.id == -1 then
                 local off = self.penOff

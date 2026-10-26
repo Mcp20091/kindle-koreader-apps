@@ -4338,6 +4338,7 @@ function Editor:onShow()
                 -- A finger (while the pen hovers) goes on to the toolbar.
                 if Pen.isFinger(slot, inp.pen_slot) then return false end
                 if heldByGestures(inp, slot) then return false end
+                KO.penActive()
                 -- KOReader sees the pen too: its events wake Notes to read
                 -- the digitizer now, so with the pen away Notes needn't keep
                 -- asking (it checks only now and then).
@@ -4356,6 +4357,7 @@ function Editor:onShow()
             self.stylusHook = function(inp, slot)
                 if Pen.isFinger(slot, inp.pen_slot) then return false end
                 if heldByGestures(inp, slot) then return false end
+                KO.penActive()
                 return self:onStylus(slot)
             end
             self.prevStylus = input.stylus_callback
