@@ -202,7 +202,7 @@ Tap an app to see what it does. Each one links to its chapter of the guide.
 
 ## Installing
 
-You need a Kindle Scribe with a jailbreak and KOReader. The [Kindle Modding jailbreak wizard](https://kindlemodding.org/jailbreak-wizard.html) finds the right jailbreak for your Kindle and its software version, and links to installing KOReader. This project isn't made by or affiliated with Kindle Modding or KOReader, and jailbreaking is at your own risk. Kindle is a trademark of Amazon; this project isn't affiliated with or endorsed by Amazon.
+You need a Kindle Scribe with a jailbreak and KOReader. (Another Kindle with KOReader? Most apps should work, but they were only tested on a Scribe, and Notes and Crosswords need its pen. Point your AI coding agent at this repo and its AGENTS.md: its "Not a Kindle Scribe?" section walks it through making the changes for your device.) The [Kindle Modding jailbreak wizard](https://kindlemodding.org/jailbreak-wizard.html) finds the right jailbreak for your Kindle and its software version, and links to installing KOReader. This project isn't made by or affiliated with Kindle Modding or KOReader, and jailbreaking is at your own risk. Kindle is a trademark of Amazon; this project isn't affiliated with or endorsed by Amazon.
 
 ### Installing the zip
 

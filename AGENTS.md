@@ -2,6 +2,42 @@
 
 KOReader plugins (Lua) for a jailbroken Kindle Scribe. Together they work like one small system inside KOReader: the Launcher (apps.koplugin; shown to the user as "Launcher"), and apps that share one title bar, one notifications list, one settings design and one pop-up look. Each plugin folder has its own `AGENTS.md` with what's specific to it; this file covers what they share.
 
+## Not a Kindle Scribe?
+
+Everything here was built and tested only on a **Kindle Scribe (1st generation)**: a 1860 x 2480 screen at 300 dpi, with a pen. If the user wants it on another device, **stop and ask them first**:
+
+1. Which device (for a Kindle: KOReader > Help > About, or the model on the box; for example "Kindle Paperwhite 11th generation").
+2. Whether it has a pen.
+3. Its screen size and dpi, if they know (otherwise look them up from the model and say what you found).
+4. Their KOReader version (Notes needs 2026.07 or later).
+5. Which apps they want. For a device without a pen, offer the choices below for Notes and Crosswords.
+
+Then go through this list. Each line is Scribe-specific, with where it lives and what to do elsewhere.
+
+| What | Where | On another device |
+|---|---|---|
+| The pen read straight from its digitizer (the input device named "WacomDigitizer"), not through KOReader's touch, so writing keeps up | `notes.koplugin/notespen.lua` (`Pen.findDevice`), `apps.koplugin/appspen.lua` (a copy) | Another pen: check its name in `/proc/bus/input/devices` and pass it. No pen: Notes falls back to KOReader's stylus input, which a finger isn't; see the choices below. |
+| Palm rejection: a finger touching while the pen is near, or just after it, is a resting palm (it can't write or turn pages) | `notes.koplugin/noteseditor.lua` (`palmLikely`, the stylus hook) | No pen: nothing to reject; leave it. |
+| A firm pen press arrives as a hold (longer than KOReader's 0.5 s), so a hold with no action of its own works as a tap | every screen's hit handling (`(hit.hold or hit.tap)`), Buttons with `hold_callback = callback` | Harmless without a pen; leave it. |
+| Handwriting input: a strip to write text by hand in text boxes, read by the user's AI (`PS.handwriting.available()`: an AI that reads handwriting is set up) | `apps.koplugin/appshandwrite.lua` (`PS.handwriting`) | No pen: it takes KOReader's stylus input, else plain touches, so a finger writes in it; the on-screen keyboard stays in every box. Nothing to change. |
+| Notes and quick notes: handwritten notebooks | `notes.koplugin/` | No pen: see the choices below. |
+| Crosswords: puzzles are Notes pages, answers written by hand | `crosswords.koplugin/` (needs Notes) | No pen: see the choices below. |
+| E-ink refresh: on the Scribe (a MediaTek Kindle) only a "full" refresh clears ghosting, so screens refresh "full" where others would "flashui" | `KO.showFull`, `flash_on_uncover`, the screens' `setDirty` calls | Other Kindles: the same code works; if screens flash more than needed, "flashui" may be enough there. |
+| Layouts in units of the screen: one unit is the shorter side / 620 (3 px on the Scribe) | `apps.koplugin/appscanvas.lua` and each app's canvas | Scales by itself; look at every screen at the device's size in the emulator for anything cramped. |
+| The emulator at the Scribe's size | the Testing section, each plugin's AGENTS.md (`EMULATE_READER_W/H/DPI`) | Use the device's width, height and dpi. |
+| The guide PDF at the Scribe's page size, and written for it (the pen, its screen) | `apps.koplugin/docs/guide/build.py` (`PAGE`), `guide/` | Set `PAGE` to the device's screen; reword or drop the pen parts. |
+| Updates come from this repo | Settings > Launcher > Update from (`apps.koplugin/appsupdate.lua`, `DEFAULT_REPO`) | In a fork, set `DEFAULT_REPO` to it (or the user sets Update from), or this repo's releases overwrite their changes. |
+
+The rest (the power manager, the sleep cover, lipc, the firewall, Syncthing's 32-bit ARM program) is the same on the Kindles KOReader runs on. As anywhere here, prove device behaviour with a log-only probe on the device before building on it.
+
+**Choices for a device without a pen** (offer them; build only what the user picks):
+
+- **Leave out Notes and Crosswords** (minutes): don't install the two folders. The launcher hides tiles of plugins that aren't there, and Crosswords needs Notes anyway.
+- **Notes as typed notes** (an afternoon): Notes already has typed text boxes on a page (`notestextui.lua`). Make a new note open a text box with the on-screen keyboard, and hide the pen tools from the toolbar (`Settings.toolOrder` in `notessettings.lua`). Keep existing notebooks readable.
+- **Crosswords by typing** (a real project): a tap on a square selects it and the word it's in, the on-screen keyboard types a letter into each square in turn, and checking compares the typed letters instead of reading handwriting. The grid comes from `notescrossword.lua` (`Crossword.squaresOf`, `Crossword.squareAt`); the answers are in the puzzle.
+
+When it's done, build the zip the way the README says and keep the changes on a branch of the user's fork, so later updates from here can be merged.
+
 ## Layout
 
 ```

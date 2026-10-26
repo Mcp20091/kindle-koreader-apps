@@ -68,7 +68,9 @@ end
 
 --- Reads a host's status (its shown stats, Docker, pinned services) and
 -- keeps it as host.last = { at, v }; then its alerts. done(v | nil, why).
--- opts.password: asked already (⟳ on a host that asks).
+-- opts.password: asked already (⟳ on a host that asks). opts.auto: one of the
+-- checks; PAUSE_AFTER of those failing in a row pause the host's checks
+-- (host.paused) until a read of yours (its page, ⟳) gets an answer.
 function Net.status(plugin, host, done, opts)
     opts = opts or {}
     done = done or function() end
@@ -79,8 +81,17 @@ function Net.status(plugin, host, done, opts)
         Net.busy[host.id] = nil
         if not out then
             host.lastError = why and (msg or why) or nil
+            if opts.auto then
+                host.fails, host.failedAt = (host.fails or 0) + 1, os.time()
+                if host.fails >= Net.PAUSE_AFTER then
+                    host.paused = true
+                    logger.info("SSH: checks paused for a host after", host.fails, "failed reads")
+                end
+                plugin:saved()
+            end
             return done(nil, why)
         end
+        host.fails, host.failedAt, host.paused = nil, nil, nil
         local raw = S.parse(out)
         -- (not known yet: the answer says which system it is; and one
         -- detected as Debian or FreeBSD may turn out to be TrueNAS or pfSense)
@@ -181,6 +192,9 @@ end
 
 -- ------------------------------------------------------------------ checks
 
+-- Failed checks in a row that pause a host's checks.
+Net.PAUSE_AFTER = 3
+
 -- Every how many minutes (0: off): the host's own, or every host's.
 function Net.every(plugin, host)
     if host.check ~= nil then return host.check end
@@ -208,7 +222,9 @@ function Net.tick(plugin)
     local due = {}
     for __, h in ipairs(plugin.store.data.hosts) do
         local every = Net.every(plugin, h)
-        if every and every > 0 and now - (h.last and h.last.at or 0) >= every * 60 and Net.quiet(plugin, h) then
+        -- (a failed read waits its turn too; a paused host waits for you)
+        local since = math.max(h.last and h.last.at or 0, h.failedAt or 0)
+        if every and every > 0 and not h.paused and now - since >= every * 60 and Net.quiet(plugin, h) then
             due[#due + 1] = h
         end
     end
@@ -225,7 +241,7 @@ function Net.tick(plugin)
         Net.status(plugin, h, function(v)
             if not v then Net.online[h.id] = { ok = false, at = os.time() } end
             next()
-        end)
+        end, { auto = true })
     end
     if #due > 0 then
         logger.info("SSH: checking", #due, "hosts")

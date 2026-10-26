@@ -230,6 +230,7 @@ local function hostLine(plugin, h)
         parts[#parts + 1] = osLabel(h)
         parts[#parts + 1] = authLabel(plugin, h)
     end
+    if h.paused then parts[#parts + 1] = _("Checks paused") end
     return table.concat(parts, " · ")
 end
 
@@ -610,6 +611,10 @@ function Screens.hostItems(plugin, host)
     -- Status
     t[#t + 1] = { band = _("STATUS"), right = statusRight(plugin, host),
         callback = function() Screens.stats(plugin, host) end }
+    -- (its checks paused: it didn't answer several in a row)
+    if host.paused and not Net.busy[host.id] then
+        t[#t + 1] = { note = T(_("Its checks are paused: it didn't answer %1 in a row. Tap ⟳ (or open it when it's on) and they start again."), host.fails or Net.PAUSE_AFTER) }
+    end
     if v then
         local tiles = {}
         for __, id in ipairs(S.shown(host)) do
