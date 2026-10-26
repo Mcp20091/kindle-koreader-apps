@@ -156,7 +156,7 @@ A PC or NAS that's off or asleep can be woken from the Kindle, when its network 
 
 ## SSH settings
 
-**⋮ > Settings** (or the launcher's **Settings > SSH**): **Check hosts** (how often every host's status is read: off, or every 5, 15, 30 or 60 minutes, or every 3 hours), **Stats under each host** on the SSH page, **Dark terminal**, and **AI settings**.
+**⋮ > Settings** (or the launcher's **Settings > SSH**): **Check hosts** (how often every host's status is read: off, or every 5, 15, 30 or 60 minutes, or every 3 hours), **Stats under each host** on the SSH page, **Dark terminal**, **Text size** (the live session's text, 10 to 24; the next session opens with it), and **AI settings**.
 
 ## Running a command
 

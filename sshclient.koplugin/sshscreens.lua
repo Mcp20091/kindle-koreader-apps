@@ -1988,6 +1988,23 @@ function Screens.settingsItems(plugin, redo)
             Dark.set(not Dark.isOn())
             redo()
         end }
+    -- (KOReader's own setting, shared with its Terminal emulator.)
+    local size = G_reader_settings:readSetting("terminal_font_size", 14)
+    t[#t + 1] = { setting = true, text = _("Text size"), value = tostring(size),
+        hint = _("The next live session opens with it (the same as KOReader's Terminal emulator)"),
+        callback = function()
+            local sizes = {}
+            for __, n in ipairs({ 10, 12, 14, 16, 18, 20, 22, 24 }) do
+                sizes[#sizes + 1] = { n, n == 14 and T(_("%1 (default)"), n) or tostring(n) }
+            end
+            pickNumber(_("Text size"), size, sizes, function(n)
+                if not n then return end
+                G_reader_settings:saveSetting("terminal_font_size", n)
+                redo()
+                local S = package.loaded["sshsession"]
+                if S and S.current and S.current.open then KO.toast(_("The next live session opens with it"), 3) end
+            end)
+        end }
     if require("pluginshare").ai then
         t[#t + 1] = { band = _("AI") }
         t[#t + 1] = { setting = true, text = _("AI settings"), value = require("sshai").available() and require("pluginshare").ai.jobName("ssh") or _("Not set up"),
