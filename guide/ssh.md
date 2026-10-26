@@ -79,7 +79,7 @@ The pencil in the title bar is **Edit host**: name, address, user, port, system,
 
 **PIN** (optional, off until you set one): **Set a PIN** (4 to 8 digits) in **Edit host**. The host then asks for it before its page or a live session opens, and before its saved commands run from a gesture or the launcher; once typed, it's open for 5 minutes. After 5 wrong tries, wait a minute. **Remove PIN** turns it off.
 
-**App PIN** (also optional): **SSH settings > Set an app PIN** asks for a PIN when SSH opens, and before a host's page, a live session or a command opened from outside it (the launcher, a gesture). Once typed, it's open for 5 minutes. A host with its own PIN asks for that one too.
+**App PIN** (also optional): **SSH settings > Set an app PIN** asks for a PIN when SSH opens, and before a host's page, a live session or a command opened from outside it (the launcher, a gesture). Once typed, it's open for 5 minutes. A host with its own PIN asks for that one too. **⋮ > Lock now** (with any PIN set) asks for them all again at once.
 
 **Run a command**: type a command and tap **Run**. **Commands** pastes one from your lists (see below), and **Save** keeps the command on this host. With handwriting set up (**Settings > AI**), tap the pen at the end of the box to write the command instead; without the launcher, it's **Write it**. Names and the AI's question boxes have the pen too; addresses, user names, ports and passwords don't, as they need exact values.
 

@@ -368,7 +368,9 @@ function View:status(tile)
         end)
         return bookTitle(file) .. (pct and string.format(" · %d%%", math.floor(pct * 100 + 0.5)) or "")
     elseif key == "settings" then
-        return _("Every app's settings")
+        -- (a newer release seen, until it's installed)
+        local tag = try(function() return require("appsupdate").available(self.apps) end)
+        return tag and T(_("Update available: %1"), tag) or _("Every app's settings")
     elseif key == "kosettings" then
         return _("Device, screen, network and more")
     elseif key == "wikipedia" then
@@ -2402,6 +2404,7 @@ function View:settingsRows()
                     self:refresh()
                 end }
         end },
+        { _("Install a version"), _("Any release, an older one too"), function() require("appsupdate").pickVersion(self.apps) end },
         { _("Check automatically"), require("appsupdate").auto(), function()
             local U = require("appsupdate")
             U.setAuto(not U.auto())

@@ -1,6 +1,6 @@
-2026-10-25 22:53
+2026-10-25 23:01
+Oct 25  Diagnostics keep a longer log history (no noise, across restarts); updater: What's new after an update, Update available on the Settings tile, Install a version; SSH: Lock now, the output pop-up where it was dragged
 Oct 25  Export check: the public repo as owner/repo alone is allowed too (the updater's default)
 Oct 25  Guide: the update source as the repo's full address
 Oct 25  Updater: Reinstall when already up to date
 Oct 25  Launcher: updates from GitHub (Check for updates, Update from owner/repo, Check automatically once a day on Wi-Fi), installed with the old version kept; the release zip says its version (apps.koplugin/release.txt); zip installs keep Syncthing's run bit
-Oct 25  SSH output pop-up: its buttons centred (the shared button row can be centred)

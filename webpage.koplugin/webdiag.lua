@@ -246,6 +246,76 @@ function Diag.watchLogging()
     UIManager:scheduleIn(60, Diag.logTask)
 end
 
+-- ------------------------------------------------------------------ the log's history
+
+-- KOReader trims crash.log to its last half megabyte or so at each start, and with
+-- detailed logging on that's a few minutes. So its lines, without the noise (every touch,
+-- every redraw and picture drawn), are kept here as well, across restarts, up to 2 MB:
+-- hours. The diagnostics file has it (log-history.txt).
+local LOG_HISTORY = DataStorage:getSettingsDir() .. "/log-history.txt"
+local LOG_HISTORY_MAX = 2 * 1024 * 1024
+local NOISE = { "input event =>", "blitFrom", "not painting", "painting widget", "setDirty", "_refresh", "_repaint",
+    "mxc_update", "refresh: ", "dither", "ImageWidget", "renderSVG", "cache image",
+    "routeStylusEvents", "onInputEvent", "Lower widget", "not refreshing", "covered widget", "line in ", "in pan state",
+    "in tap state", "set up hold timer" }
+
+local function noise(line)
+    for __, n in ipairs(NOISE) do
+        if line:find(n, 1, true) then return true end
+    end
+    return false
+end
+
+--- crash.log's new lines (by their time, so a restart's trimmed copy isn't added twice),
+-- without the noise, onto the history; the history cut to its last 2 MB.
+function Diag.keepHistory()
+    local f = io.open(crashLog(), "rb")
+    if not f then return end
+    local size = f:seek("end")
+    local from = setting("history_at") or 0
+    local last = setting("history_last") or 0
+    -- (smaller than where it was read to: trimmed at a start, so read it again by time)
+    if size < from then from = 0 end
+    f:seek("set", from)
+    local text = f:read("*a") or ""
+    f:close()
+    local out, keep = {}, false
+    for line in text:gmatch("[^\n]+") do
+        local t = stamp(line)
+        if t then keep = t >= last and not noise(line) if keep and t > last then last = t end
+        elseif keep and #line < 400 then
+            -- (a traceback or a message's next lines, under a line kept)
+        else
+            keep = false
+        end
+        if keep then out[#out + 1] = line end
+    end
+    setSetting("history_at", size)
+    setSetting("history_last", last)
+    if #out == 0 then return end
+    local h = io.open(LOG_HISTORY, "ab")
+    if not h then return end
+    h:write(table.concat(out, "\n"), "\n")
+    local hsize = h:seek("end")
+    h:close()
+    if hsize > LOG_HISTORY_MAX * 1.25 then
+        local all = readFile(LOG_HISTORY) or ""
+        local cut = all:find("\n", #all - LOG_HISTORY_MAX, true) or (#all - LOG_HISTORY_MAX)
+        local w = io.open(LOG_HISTORY, "wb")
+        if w then w:write(all:sub(cut + 1)) w:close() end
+    end
+end
+
+--- Kept every few minutes, and when the Kindle goes to sleep (web server's onSuspend).
+function Diag.watchHistory()
+    if Diag.historyTask then return end
+    Diag.historyTask = function()
+        pcall(Diag.keepHistory)
+        UIManager:scheduleIn(5 * 60, Diag.historyTask)
+    end
+    UIManager:scheduleIn(90, Diag.historyTask)
+end
+
 -- ------------------------------------------------------------------ network
 
 -- Wi-Fi's signal from /proc/net/wireless: link quality (of 70) and level (dBm).
@@ -384,6 +454,8 @@ function Diag.bundle()
     if not w:open(path, "zip") then return nil, w.err or "Can't write the zip" end
     local function add(name, data) if data and data ~= "" then w:addFileFromMemory(name, data) end end
     add("crash.log", tail(crashLog(), 2 * 1024 * 1024))
+    pcall(Diag.keepHistory)
+    add("log-history.txt", readFile(LOG_HISTORY))
     add("sleep-update.log", tail(DataStorage:getDataDir() .. "/sleep-update.log", 512 * 1024))
     local okv, versions = pcall(function() return require("websystem").versions() end)
     add("versions.json", okv and json.encode(versions) or nil)

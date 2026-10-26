@@ -372,6 +372,8 @@ function Apps:init()
         UIManager:scheduleIn(3, setupAtStart)
         -- A newer release (Check automatically, once a day, only when already on Wi-Fi).
         UIManager:scheduleIn(60, function() pcall(require("appsupdate").daily, Apps.instance) end)
+        -- Just updated: its notes, once.
+        UIManager:scheduleIn(4, function() pcall(require("appsupdate").whatsNew, Apps.instance) end)
     end
     Apps.instance = self
     -- The apps' title bar on a tap at the top of a book or the library (appsreaderbar.lua).

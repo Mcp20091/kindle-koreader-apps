@@ -52,16 +52,33 @@ end
 
 --- ⋮: Add host, Run on several hosts, Keys, Command list, then Recent apps,
 -- Light, Night mode and Refresh screen.
+--- Every PIN asked again at once (SSH's own and the hosts'): SSH's pages close.
+function UI.lock(plugin)
+    M.unlocked = {}
+    UI.home()
+    KO.toast(_("SSH locked"), 2)
+end
+
+--- Whether there's a PIN to lock with (SSH's own, or a host's).
+local function anyPin(plugin)
+    if plugin.store.data.app_pin then return true end
+    for __, h in ipairs(plugin.store.data.hosts or {}) do if h.pin then return true end end
+    return false
+end
+
 function UI.more()
     local plugin = UI.plugin
     if not plugin then return end
-    KO.menu(plugin.ui, {
+    local items = {}
+    if anyPin(plugin) then items[#items + 1] = { _("Lock now"), function() UI.lock(plugin) end } end
+    for __, it in ipairs({
         { _("Add host"), function() UI.addHost(plugin) end },
         { _("Run on several hosts"), function() UI.several(plugin) end },
         { _("Keys"), function() UI.keys(plugin) end },
         { _("Command list"), function() UI.commandList(plugin) end },
         { _("History"), function() require("sshscreens").history(plugin) end },
-    }, function() require("sshscreens").settings(plugin) end,
+    }) do items[#items + 1] = it end
+    KO.menu(plugin.ui, items, function() require("sshscreens").settings(plugin) end,
     -- (SSH's dark terminal gives way to KOReader's Night mode)
     function() Dark.release() end)
 end

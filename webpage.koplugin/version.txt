@@ -1,6 +1,6 @@
-2026-10-25 22:50
+2026-10-25 23:01
+Oct 25  Diagnostics keep a longer log history (no noise, across restarts); updater: What's new after an update, Update available on the Settings tile, Install a version; SSH: Lock now, the output pop-up where it was dragged
 Oct 25  Launcher: updates from GitHub (Check for updates, Update from owner/repo, Check automatically once a day on Wi-Fi), installed with the old version kept; the release zip says its version (apps.koplugin/release.txt); zip installs keep Syncthing's run bit
 Oct 25  Notes and crosswords: KOReader's light swipes along the edge ignored unless Swipes change the light is on (Notes settings, Crossword settings, web page)
 Oct 25  Crosswords: Undo after a tick, how long (Off, 2, 3, 5 or 8 seconds; 3 to start with), on the Kindle and the web page
 Oct 25  Crosswords: ticking a clue on its card closes the card (Undo unticks it and brings it back); Clue card shows every clue to start with
-Oct 25  Keep awake (web server, dashboard, control center): reset the Kindle's sleep timer every 4 minutes, as KOReader does, instead of preventScreenSaver, so the cover and power button still sleep it; the can't-sleep box taken out

@@ -71,6 +71,8 @@ function WebPage:init()
         pcall(Diag.note, "start")
     end
     Diag.watchLogging()
+    -- (the log's lines kept, without the noise, across KOReader's restarts)
+    Diag.watchHistory()
     self:shareWithApps()
 end
 
@@ -241,6 +243,7 @@ end
 -- sleep screen; waking says so.
 function WebPage:onSuspend()
     pcall(require("webdiag").note, "sleep")
+    pcall(require("webdiag").keepHistory)
     if running then
         logger.info("Web server: stopped as the Kindle went to sleep")
         WebPage.stoppedBySleep = true

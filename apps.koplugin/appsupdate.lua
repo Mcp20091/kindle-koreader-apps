@@ -10,7 +10,9 @@ Do's client_id.txt, Notes' notes_defaults.lua) carry over; the Syncthing program
 its run bit.
 
 With Check automatically on (it is to start with), once a day while the Kindle is
-already on Wi-Fi: a notification when there's a newer release.
+already on Wi-Fi: a notification when there's a newer release, and a line on the
+launcher's Settings tile until it's installed. After an update, its notes show once
+(What's new). Install a version picks any of the repo's releases, an older one too.
 ]]
 
 local DataStorage = require("datastorage")
@@ -174,7 +176,41 @@ function U.latest(done)
             if a.name == ASSET then zip = a.browser_download_url end
         end
         if not zip then return done(nil, T(_("The latest release (%1) has no %2."), r.tag_name, ASSET)) end
+        local s = settings()
+        s.update_latest = r.tag_name
+        G_reader_settings:saveSetting("apps", s)
         done({ tag = r.tag_name, notes = r.body or "", url = r.html_url, zip = zip })
+    end)
+end
+
+--- A newer release seen by the last check ("v1.0.13"), until it's installed; else nil.
+function U.available(plugin)
+    local tag = settings().update_latest
+    if tag and U.newer(tag, U.installed(plugin)) and U.installed(plugin) then return tag end
+end
+
+--- The repo's releases, newest first (at most 20): done({ { tag, notes, zip, pre } }) or done(nil, why).
+function U.releases(done)
+    if NetworkMgr:isConnected() == false then return done(nil, _("The Kindle isn't on Wi-Fi.")) end
+    local path = cacheDir() .. "/releases.json"
+    fetch("https://api.github.com/repos/" .. U.repo() .. "/releases?per_page=20", path, nil, function(ok, why)
+        if not ok then return done(nil, why) end
+        local f = io.open(path, "r")
+        local text = f and f:read("*a")
+        if f then f:close() end
+        local okJ, list = pcall(decode, text or "")
+        if not (okJ and type(list) == "table") then return done(nil, _("GitHub's answer couldn't be read.")) end
+        local out = {}
+        for __, r in ipairs(list) do
+            local zip
+            for __, a in ipairs(r.assets or {}) do
+                if a.name == ASSET then zip = a.browser_download_url end
+            end
+            if zip and not r.draft then
+                out[#out + 1] = { tag = r.tag_name, notes = r.body or "", zip = zip, pre = r.prerelease == true }
+            end
+        end
+        done(out)
     end)
 end
 
@@ -318,13 +354,65 @@ local function restart(plugin)
     end
 end
 
--- Downloads and installs a release, then offers the restart.
+-- Downloads and installs a release, then offers the restart; its notes are kept to show
+-- once the new version runs (What's new).
 local function run(plugin, rel)
     local wait = KO.wait and KO.wait(T(_("Downloading %1…"), rel.tag))
     U.install(plugin, rel, function(names, why)
         if wait then wait:close() end
         if not names then return KO.message(T(_("The update didn't go through, so nothing changed.\n\n%1"), tostring(why))) end
+        local s = settings()
+        s.update_whatsnew = { tag = rel.tag, notes = rel.notes or "" }
+        G_reader_settings:saveSetting("apps", s)
         restart(plugin)
+    end)
+end
+
+--- After an update: its notes, once, when that version is the one running.
+function U.whatsNew(plugin)
+    local s = settings()
+    local w = s.update_whatsnew
+    if type(w) ~= "table" then return end
+    if U.installed(plugin) ~= w.tag then return end
+    s.update_whatsnew = nil
+    G_reader_settings:saveSetting("apps", s)
+    local notes = tostring(w.notes or ""):gsub("\r", "")
+    if notes == "" then notes = _("No notes for this release.") end
+    local P = require("pluginshare").popup
+    if P and P.read then
+        return P.read{ title = T(_("What's new in %1"), w.tag), text = notes }
+    end
+    KO.message{ title = T(_("What's new in %1"), w.tag), text = notes }
+end
+
+--- Install a version: the repo's releases to pick from (the one installed and the latest
+-- marked), then the one picked installed (an older one too: going back).
+function U.pickVersion(plugin)
+    local wait = KO.wait and KO.wait(T(_("Getting %1's releases…"), U.repo()))
+    U.releases(function(list, why)
+        if wait then wait:close() end
+        if not list then return KO.message(T(_("Couldn't get the releases.\n\n%1"), tostring(why))) end
+        if #list == 0 then return KO.message(T(_("%1 has no releases with %2."), U.repo(), ASSET)) end
+        local have = U.installed(plugin)
+        local latest
+        for __, r in ipairs(list) do if not r.pre then latest = latest or r.tag end end
+        local items = {}
+        for __, r in ipairs(list) do
+            local marks = {}
+            if r.tag == have then marks[#marks + 1] = _("installed") end
+            if r.tag == latest then marks[#marks + 1] = _("latest") end
+            if r.pre then marks[#marks + 1] = _("test") end
+            items[#items + 1] = { text = r.tag .. (#marks > 0 and (" · " .. table.concat(marks, ", ")) or ""), checked = r.tag == have,
+                fn = function()
+                    local older = have and U.newer(have, r.tag)
+                    local notes = (r.notes or ""):gsub("\r", "")
+                    if #notes > 1200 then notes = notes:sub(1, 1200) .. "…" end
+                    KO.confirm{ title = T(_("Install %1"), r.tag),
+                        text = (older and T(_("This goes back from %1 to an older version.\n\n"), have) or "") .. notes,
+                        ok = _("Install"), onOk = function() run(plugin, r) end }
+                end }
+        end
+        KO.list(_("Install a version"), items)
     end)
 end
 

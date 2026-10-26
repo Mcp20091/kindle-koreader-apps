@@ -104,6 +104,12 @@ function Out:initPopup()
     self.dimen = Geom:new{ x = 0, y = 0, w = sw, h = sh }
     local w, h = math.floor(sw * 0.92), math.floor(sh * 0.62)
     self.box = Geom:new{ x = math.floor((sw - w) / 2), y = math.floor((sh - h) / 2), w = w, h = h }
+    -- (where it was dragged last time, if it still fits)
+    local at = G_reader_settings:readSetting("ssh_output_at")
+    if type(at) == "table" and tonumber(at.x) and tonumber(at.y) then
+        self.box.x = math.max(0, math.min(sw - w, at.x))
+        self.box.y = math.max(0, math.min(sh - h, at.y))
+    end
     local range = function() return self.dimen end
     -- (the title bar drags it; below it, holds select the text)
     local below = function()
@@ -191,6 +197,7 @@ function Out:endDrag(pos)
     if not self.drag then return false end
     self:dragTo(pos, true)
     self.drag = nil
+    G_reader_settings:saveSetting("ssh_output_at", { x = self.box.x, y = self.box.y })
     -- (a clean picture where it ends: e-ink leaves ghosts of the steps on the way)
     UIManager:setDirty("all", "full")
     return true
