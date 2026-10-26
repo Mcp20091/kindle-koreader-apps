@@ -16,7 +16,7 @@ jobs:
     if: github.repository == 'Mcp20091/kindle-koreader-apps'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: The tag's message, for the notes
         run: |
