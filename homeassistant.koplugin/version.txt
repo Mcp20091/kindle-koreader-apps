@@ -1,0 +1,6 @@
+2026-10-25 21:08
+Oct 25  A screen closed during a KOReader gesture's action no longer hands its close on to the file browser (which tore itself down: Home Assistant, the web server and the other apps stopped answering until a restart)
+Oct 25  Keep awake (web server, dashboard, control center): reset the Kindle's sleep timer every 4 minutes, as KOReader does, instead of preventScreenSaver, so the cover and power button still sleep it; the can't-sleep box taken out
+Oct 25  Lists with more pages end in a "More on page 2 of 3" bar (every app); Library Home: servers and folders first, with a setting
+Oct 25  Home Assistant: Plex on Media (who's watching, Scan clients, Scan a library)
+Oct 24  Settings: rows for the launcher's search, opened at a row

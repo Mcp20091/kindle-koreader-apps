@@ -1,0 +1,43 @@
+# A version tag (v1.2.3, its message the release notes) pushed to the public repo: the release
+# made here. The Syncthing program downloaded from the Syncthing project and checked, the plugins
+# zipped as they go on the Kindle, and the zip and the guide PDF put on the release.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    # (Only the public repo makes releases.)
+    if: github.repository == 'Mcp20091/kindle-koreader-apps'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: The tag's message, for the notes
+        run: |
+          git fetch --depth=1 origin "+refs/tags/${GITHUB_REF_NAME}:refs/tags/${GITHUB_REF_NAME}"
+          git tag -l --format='%(contents)' "$GITHUB_REF_NAME" > "$RUNNER_TEMP/notes.md"
+          cat "$RUNNER_TEMP/notes.md"
+
+      - name: Syncthing for the Kindle (ARM), checked
+        run: sh syncthing.koplugin/tools/fetch-syncthing.sh "$RUNNER_TEMP" arm
+
+      - name: The zip
+        run: python3 tools/release_zip.py kindle-plugins.zip "$RUNNER_TEMP/syncthing"
+
+      - name: The release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # (A tag with a dash, such as v1.2.3-test, is a pre-release: never the latest.)
+          case "$GITHUB_REF_NAME" in
+            *-*) latest="--prerelease" ;;
+            *) latest="--latest" ;;
+          esac
+          gh release create "$GITHUB_REF_NAME" kindle-plugins.zip "Kindle Apps Guide.pdf" \
+            --title "$GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/notes.md" --verify-tag $latest

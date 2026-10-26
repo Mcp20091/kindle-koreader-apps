@@ -1,0 +1,6 @@
+2026-10-25 20:21
+Oct 25  Notes and crosswords: KOReader's light swipes along the edge ignored unless Swipes change the light is on (Notes settings, Crossword settings, web page)
+Oct 25  Crosswords: Undo after a tick, how long (Off, 2, 3, 5 or 8 seconds; 3 to start with), on the Kindle and the web page
+Oct 25  Crosswords: ticking a clue on its card closes the card (Undo unticks it and brings it back); Clue card shows every clue to start with
+Oct 25  Keep awake (web server, dashboard, control center): reset the Kindle's sleep timer every 4 minutes, as KOReader does, instead of preventScreenSaver, so the cover and power button still sleep it; the can't-sleep box taken out
+Oct 25  Web server: trying to sleep while it keeps the Kindle awake says so (Stop and sleep); its notification says the Kindle won't sleep until it's stopped

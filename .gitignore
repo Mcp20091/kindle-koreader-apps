@@ -1,2 +1,2 @@
-# Written by the export for the release zip; not part of the repo.
-*/version.txt
+# (Nothing to ignore: each plugin's version.txt, written by the export, is in the repo,
+# where GitHub's release workflow zips it.)

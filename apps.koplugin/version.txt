@@ -1,0 +1,6 @@
+2026-10-25 21:08
+Oct 25  A screen closed during a KOReader gesture's action no longer hands its close on to the file browser (which tore itself down: Home Assistant, the web server and the other apps stopped answering until a restart)
+Oct 25  Writing with the pen counts as use: KOReader's Automatic dimmer and sleep timer told (Notes, crosswords, quick notes, the handwriting strip), so the screen no longer dims while you write
+Oct 25  Keep awake (web server, dashboard, control center): reset the Kindle's sleep timer every 4 minutes, as KOReader does, instead of preventScreenSaver, so the cover and power button still sleep it; the can't-sleep box taken out
+Oct 25  Setup: a step can show only when it applies (when); the Library's servers step only with the Library picked
+Oct 25  Lists with more pages end in a "More on page 2 of 3" bar (every app); Library Home: servers and folders first, with a setting

@@ -1,0 +1,6 @@
+2026-10-25 21:08
+Oct 25  A screen closed during a KOReader gesture's action no longer hands its close on to the file browser (which tore itself down: Home Assistant, the web server and the other apps stopped answering until a restart)
+Oct 25  Writing with the pen counts as use: KOReader's Automatic dimmer and sleep timer told (Notes, crosswords, quick notes, the handwriting strip), so the screen no longer dims while you write
+Oct 25  Notes and crosswords: KOReader's light swipes along the edge ignored unless Swipes change the light is on (Notes settings, Crossword settings, web page)
+Oct 25  Crosswords: the clue card closes only once every clue on it is ticked
+Oct 25  Crosswords: Undo after a tick, how long (Off, 2, 3, 5 or 8 seconds; 3 to start with), on the Kindle and the web page
