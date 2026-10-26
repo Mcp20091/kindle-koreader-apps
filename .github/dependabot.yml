@@ -1,0 +1,8 @@
+# The workflows' actions kept up to date (the plugins are plain Lua: nothing else to update).
+# A pull request here is applied in the private repo, which the export copies over.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
