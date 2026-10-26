@@ -299,10 +299,10 @@ local function describe(host, res, why)
 end
 
 --- Runs a command on a host and shows what it printed.
-function Run.command(plugin, host, cmd)
+function Run.command(plugin, host, cmd, opts)
     -- a command with blanks ({service}): they're asked for first
     if #require("sshstats").blanks(cmd) > 0 then
-        return require("sshscreens").fillBlanks(plugin, host, cmd, function(filled) Run.command(plugin, host, filled) end)
+        return require("sshscreens").fillBlanks(plugin, host, cmd, function(filled) Run.command(plugin, host, filled, opts) end)
     end
     Run.prepare(plugin, host, function(password)
         local db = plugin.store:dbclient()
@@ -315,11 +315,11 @@ function Run.command(plugin, host, cmd)
             { text = T(_("Running on %1…\n\n%2"), M.hostName(host), cmd) }, function(results, why)
                 local text, r = describe(host, results[1], why)
                 if r.problem == "changed_host" then
-                    return Run.changed(plugin, host, r, function() Run.command(plugin, host, cmd) end)
+                    return Run.changed(plugin, host, r, function() Run.command(plugin, host, cmd, opts) end)
                 end
                 local function show()
-                    Run.show(plugin, T("%1: %2", M.hostName(host), cmd), text, function() Run.command(plugin, host, cmd) end,
-                        { host = host, cmd = cmd })
+                    Run.show(plugin, T("%1: %2", M.hostName(host), cmd), text, function() Run.command(plugin, host, cmd, opts) end,
+                        { host = host, cmd = cmd, full = opts and opts.full })
                 end
                 -- A long one (a minute or more) is also kept in Notifications, one
                 -- per host: this host's earlier one goes (its output was seen, or
@@ -408,10 +408,12 @@ function Run.many(plugin, hosts, cmd)
     end)
 end
 
---- The output page: monospace, with Copy all and Run again (long-press a word
--- to copy it, or long-press and drag to copy a part); with an AI set up,
--- Explain and Summarize (sshai). ctx: { host or hosts, cmd }. The last one
--- is kept for the web page's AI help (plugin.lastOutput).
+--- The output: monospace, with Copy all and Run again (long-press a word to copy
+-- it, or long-press and drag to copy a part); with an AI set up, Explain and
+-- Summarize (sshai). ctx: { host or hosts, cmd, full }. One host's output shows in a
+-- pop-up (with Live session on that host and Full screen) unless `full`; several
+-- hosts', and with `full`, on the full page. The last one is kept for the web page's
+-- AI help (plugin.lastOutput).
 function Run.show(plugin, title, text, again, ctx)
     ctx = ctx or {}
     plugin.lastOutput = { host = ctx.host and ctx.host.id, cmd = ctx.cmd, text = text, title = title }
@@ -445,6 +447,24 @@ function Run.show(plugin, title, text, again, ctx)
             page:onClose()
             again()
         end }
+        local popup = ctx.host and not ctx.full
+        if popup then
+            -- (Find is on the full page: Full screen.)
+            table.remove(buttons, 1)
+            buttons[#buttons + 1] = { icon = "terminal", text = _("Live session"), fn = function()
+                page:onClose()
+                require("sshui").session(plugin, ctx.host)
+            end }
+            buttons[#buttons + 1] = { icon = "maximize", text = _("Full screen"), fn = function()
+                page:onClose()
+                local c = {}
+                for k, v in pairs(ctx) do c[k] = v end
+                c.full = true
+                Run.show(plugin, title, text, again, c)
+            end }
+            page = require("sshoutput").show{ title = title, text = text, buttons = buttons, popup = true }
+            return
+        end
         Dark.enter()
         page = require("sshoutput").show{ title = title, text = text, buttons = buttons, onClosed = function() Dark.leave() end }
         return

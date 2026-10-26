@@ -1,6 +1,6 @@
-2026-10-25 22:19
+2026-10-25 22:27
+Oct 25  SSH output pop-up: its buttons centred (the shared button row can be centred)
+Oct 25  SSH: a command's output in a pop-up (dragged by its title, Live session and Full screen buttons; hold a quick command for Run full screen); its text follows Text size
 Oct 25  SSH settings: Text size for the live session (KOReader's terminal size, 10 to 24)
 Oct 25  Lists with more pages end in a "More on page 2 of 3" bar (every app); Library Home: servers and folders first, with a setting
 Oct 25  SSH: the PIN box narrower still (just its two buttons wide)
-Oct 25  Pop-ups: a text box can be narrower (width); SSH's PIN box uses it
-Oct 25  SSH: an optional PIN per host (asked before its page, a live session or its commands; open for 5 minutes)

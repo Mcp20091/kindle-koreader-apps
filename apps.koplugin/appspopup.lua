@@ -390,9 +390,9 @@ Popup.labels = labels
 
 -- A row of buttons, each an icon over a short label, the main one black:
 -- { icon, text, primary }; act(b) when tapped. 76 tall. Each is as wide as one of
--- five in a row (a row of two doesn't stretch), lined up on the right. Without
--- labels: just the icons, in squares.
-local function iconButtons(c, x, y, bw, buttons, act)
+-- five in a row (a row of two doesn't stretch), lined up on the right (`center`: in
+-- the middle). Without labels: just the icons, in squares.
+local function iconButtons(c, x, y, bw, buttons, act, center)
     -- The colours of the canvas it's drawn on (another app's canvas has its own: Wikipedia's,
     -- Syncthing's), so any app can draw these buttons on its screen.
     local K = c.FILL and c or C
@@ -405,6 +405,7 @@ local function iconButtons(c, x, y, bw, buttons, act)
     for __, b in ipairs(buttons) do if not b.icon then allIcons = false end end
     if not withLabels and allIcons then w = math.min(w, 56) end
     local bx = x + bw - 18 - (n * w + gap * (n - 1))
+    if center then bx = x + (bw - (n * w + gap * (n - 1))) / 2 end
     for __, b in ipairs(buttons) do
         -- (enabled = false: greyed, no fill, not tappable, such as Save on what's saved already.)
         local off = b.enabled == false

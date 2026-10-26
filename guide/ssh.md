@@ -162,7 +162,7 @@ A PC or NAS that's off or asleep can be woken from the Kindle, when its network 
 
 While a command runs, the Kindle shows **Running on …**; tap **Stop** to stop it. Commands stop by themselves after 5 minutes. The Kindle keeps working meanwhile: the connection runs in the background.
 
-The output opens in a page with a monospace font. Colour codes are removed. If the command failed, the end says why: **Exit status 1**, **Can't sign in** (check the user name, password or key), or **Can't connect** (check the address, and that the device is on).
+The output opens in a pop-up over the host's page, in a monospace font whose size follows **SSH settings > Text size**. Drag the pop-up by its title bar; tap ✕ or outside it to close it. Its buttons: **Copy all**, **Explain** and **Summarize** (with an AI set up), **Run again**, **Live session** (a live session on the same host) and **Full screen** (the output on a full page, with **Find**). Hold a quick command and pick **Run full screen** to go straight to the full page. Output from several hosts at once opens on the full page. Colour codes are removed. If the command failed, the end says why: **Exit status 1**, **Can't sign in** (check the user name, password or key), or **Can't connect** (check the address, and that the device is on).
 
 ![The output of a command](img/ssh/output.png)
 

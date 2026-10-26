@@ -77,7 +77,7 @@ function Screens.runCommand(plugin, host, cmd, opts)
     Screens.fillBlanks(plugin, host, cmd, function(filled)
         local function go()
             if opts.session or M.usesSudo(filled) then return UI().session(plugin, host, filled) end
-            Run().command(plugin, host, filled)
+            Run().command(plugin, host, filled, { full = opts.full })
         end
         if opts.ask then
             return KO.confirm{ title = T(_("%1 on %2?"), opts.name or filled, M.hostName(host)), text = filled,
@@ -1071,6 +1071,9 @@ end
 function Screens.quickHold(plugin, host, q)
     KO.list(q.name, {
         { text = _("Run"), fn = function() Screens.runCommand(plugin, host, q.cmd, { ask = q.ask, name = q.name, session = q.session }) end },
+        { text = _("Run full screen"), enabled = not q.session, fn = function()
+            Screens.runCommand(plugin, host, q.cmd, { ask = q.ask, name = q.name, session = q.session, full = true })
+        end },
         { text = _("Edit and run"), fn = function()
             UI().runDialog(plugin, host, q.cmd, function(cmd) Screens.runCommand(plugin, host, cmd) end)
         end },

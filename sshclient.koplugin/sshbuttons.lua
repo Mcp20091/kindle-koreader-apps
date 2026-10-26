@@ -36,7 +36,7 @@ end
 -- over a short label, the main one black: { icon, text, primary }; act(b)
 -- when tapped. 76 tall. Each is as wide as one of five in a row, lined up on
 -- the right. Without labels: just the icons, in squares.
-local function iconButtons(c, x, y, bw, buttons, act)
+local function iconButtons(c, x, y, bw, buttons, act, center)
     local gap = 10
     local n = math.max(1, #buttons)
     local w = math.min((bw - 36 - gap * (n - 1)) / n, (bw - 36 - gap * 4) / 5)
@@ -45,6 +45,7 @@ local function iconButtons(c, x, y, bw, buttons, act)
     for __, b in ipairs(buttons) do if not b.icon then allIcons = false end end
     if not withLabels and allIcons then w = math.min(w, 56) end
     local bx = x + bw - 18 - (n * w + gap * (n - 1))
+    if center then bx = x + (bw - (n * w + gap * (n - 1))) / 2 end
     for __, b in ipairs(buttons) do
         c:box(bx, y + 10, w, 56, { r = 14, fill = b.primary and C.FILL or C.WHITE, border = C.BLACK, bw = 1.2 })
         if b.icon and not withLabels then
@@ -71,6 +72,7 @@ local Foot = InputContainer:extend{
     buttons = nil,
     turn = nil,
     bare = false,     -- the buttons only (no page counter), in `height` pixels
+    center = false,   -- the buttons in the middle (a pop-up's), not on the right
     height = nil,
 }
 
@@ -101,7 +103,7 @@ function Foot:draw()
         -- (the buttons in the middle of the height given)
         local top = math.max(0, (self.height / c.u - 76) / 2)
         local act = function(b) if b.fn then b.fn() end end;
-        ((P and P.iconButtons) or iconButtons)(c, 0, top, bw, self.buttons or {}, act)
+        ((P and P.iconButtons) or iconButtons)(c, 0, top, bw, self.buttons or {}, act, self.center)
         return c
     end
     if self.pages > 1 then
@@ -112,7 +114,7 @@ function Foot:draw()
         c:hit(mid, 0, 70, PAGES_H, function() if self.turn then self.turn(1) end end)
     end
     local act = function(b) if b.fn then b.fn() end end;
-    (shared or iconButtons)(c, 0, PAGES_H, bw, self.buttons or {}, act)
+    (shared or iconButtons)(c, 0, PAGES_H, bw, self.buttons or {}, act, self.center)
     return c
 end
 
