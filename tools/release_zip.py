@@ -1,10 +1,12 @@
 """The release zip: every plugin folder as it goes on the Kindle (no tests, no notes for coding
 agents), with the Syncthing program and the notice its licence asks for.
 
-    python3 tools/release_zip.py OUT.zip SYNCTHING
+    python3 tools/release_zip.py OUT.zip SYNCTHING [TAG]
 
 SYNCTHING is the Syncthing program for the Kindle (32-bit ARM), as syncthing.koplugin/tools/
-fetch-syncthing.sh downloads and checks it. Run from the repo's root (GitHub's release workflow does).
+fetch-syncthing.sh downloads and checks it. TAG (the release, v1.2.3) goes in apps.koplugin/release.txt,
+where the launcher's updater reads what's installed. Run from the repo's root (GitHub's release
+workflow does).
 """
 import os
 import sys
@@ -16,6 +18,7 @@ ROOT = os.path.dirname(HERE)
 
 def main():
     out, prog = sys.argv[1], sys.argv[2]
+    tag = sys.argv[3] if len(sys.argv) > 3 else None
     head = open(prog, 'rb').read(20)
     # (The Kindle's build: an ELF file for 32-bit ARM.)
     if head[1:4] != b'ELF' or int.from_bytes(head[18:20], 'little') != 40:
@@ -38,6 +41,9 @@ def main():
         z.writestr(info, open(prog, 'rb').read())
         z.write(os.path.join(HERE, 'SYNCTHING-NOTICE.txt'), 'syncthing.koplugin/SYNCTHING-NOTICE.txt')
         n += 2
+        if tag:
+            z.writestr('apps.koplugin/release.txt', tag + '\n')
+            n += 1
     print('%s: %d plugins, %d files' % (out, len(plugins), n))
 
 

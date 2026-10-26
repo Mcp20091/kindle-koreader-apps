@@ -28,7 +28,7 @@ jobs:
         run: sh syncthing.koplugin/tools/fetch-syncthing.sh "$RUNNER_TEMP" arm
 
       - name: The zip
-        run: python3 tools/release_zip.py kindle-plugins.zip "$RUNNER_TEMP/syncthing"
+        run: python3 tools/release_zip.py kindle-plugins.zip "$RUNNER_TEMP/syncthing" "$GITHUB_REF_NAME"
 
       - name: The release
         env:

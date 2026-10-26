@@ -2391,6 +2391,21 @@ function View:settingsRows()
         -- Every app that's set up, tested the way its own Test connection does (appstest.lua).
         { _("Connection check"), _("Every app that's set up"), function() require("appstest").open(self) end },
         { heading = _("PLUGINS") },
+        -- Updates from GitHub (appsupdate.lua): the release installed, a check, and the repo.
+        { _("Check for updates"), require("appsupdate").installed(self.apps) or _("Version not known"),
+            function() require("appsupdate").check(self.apps) end },
+        { _("Update from"), require("appsupdate").repo(), function()
+            local U = require("appsupdate")
+            KO.askText{ title = _("Update from"), text = U.repo(), hint = "owner/repo", pen = false, ok = _("Save"),
+                done = function(t)
+                    if not U.setRepo(t) then return KO.message(_("Type it as owner/repo, as on GitHub (empty: the usual one).")) end
+                    self:refresh()
+                end }
+        end },
+        { _("Check automatically"), require("appsupdate").auto(), function()
+            local U = require("appsupdate")
+            U.setAuto(not U.auto())
+        end },
         { _("Undo a plugin update"), "", function() require("appsundo").undoMenu(self.apps) end },
     }
     local list = {}

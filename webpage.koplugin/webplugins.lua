@@ -19,6 +19,8 @@ local Web = {}
 
 -- Files in a plugin's folder that are the user's, not the plugin's.
 local KEEP = { "client_id.txt", "notes_defaults.lua" }
+-- Files that are programs (run, not read): their run bit put back.
+local RUNNABLE = { ["syncthing.koplugin/syncthing"] = true }
 local MAX_ZIP = 60 * 1024 * 1024
 
 local function writeFile(path, data)
@@ -99,6 +101,7 @@ function Web.install(dir, plugins)
             local folder = (stage .. "/" .. rel):match("^(.*)/[^/]+$")
             util.makePath(folder)
             if not writeFile(stage .. "/" .. rel, data) then error("Couldn't write " .. name .. "/" .. rel) end
+            if RUNNABLE[name .. "/" .. rel] then os.execute("chmod 755 '" .. stage .. "/" .. rel .. "'") end
         end
         if lfs.attributes(dest, "mode") == "directory" then
             -- The user's own files carry over.

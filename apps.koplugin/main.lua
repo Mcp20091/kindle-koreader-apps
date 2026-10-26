@@ -370,6 +370,8 @@ function Apps:init()
         end
         -- Set up your Kindle, while nothing is set up yet (after the other apps have started).
         UIManager:scheduleIn(3, setupAtStart)
+        -- A newer release (Check automatically, once a day, only when already on Wi-Fi).
+        UIManager:scheduleIn(60, function() pcall(require("appsupdate").daily, Apps.instance) end)
     end
     Apps.instance = self
     -- The apps' title bar on a tap at the top of a book or the library (appsreaderbar.lua).
@@ -481,6 +483,11 @@ end
 -- Back from sleep: the time asleep doesn't count as idle.
 function Apps:onResume()
     idle.bytes, idle.at = Apps.networkBytes(), os.time()
+end
+
+-- Wi-Fi on: the day's check for a newer release, if it hasn't been done (appsupdate.lua).
+function Apps:onNetworkConnected()
+    UIManager:scheduleIn(30, function() pcall(require("appsupdate").daily, Apps.instance) end)
 end
 
 function Apps:save()

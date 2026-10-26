@@ -945,17 +945,11 @@ function UI.editHost(plugin, host)
         t[#t + 1] = { band = _("PIN") }
         t[#t + 1] = { setting = true, text = host.pin and _("Change PIN") or _("Set a PIN"), value = host.pin and _("On") or _("Off"),
             hint = _("Asked before this host's page or a live session opens (again after 5 minutes)"), callback = function()
-                ask(_("New PIN (4 to 8 digits)"), "", function(pin)
-                    if not M.pinOk(pin) then return info(_("A PIN is 4 to 8 digits.")) end
-                    ask(_("The same PIN again"), "", function(again)
-                        if again ~= pin then return info(_("The PINs don't match.")) end
-                        host.pin = M.pinHash(host, pin)
-                        M.unlocked[host.id] = os.time()
-                        plugin:saved()
-                        redo()
-                        KO.toast(_("PIN set"), 2)
-                    end, { number = true, password = true, width = 230, ok = _("Set") })
-                end, { number = true, password = true, width = 230, ok = _("Next") })
+                UI.editPin(host, function(hash)
+                    host.pin = hash
+                    plugin:saved()
+                    redo()
+                end)
             end }
         if host.pin then
             t[#t + 1] = { setting = true, text = _("Remove PIN"), callback = function()
@@ -1038,27 +1032,60 @@ end
 --- done() once the host's PIN is typed (at once when it has none, or was
 -- opened with it in the last 5 minutes). Five wrong tries: a minute's wait.
 UI.pinFails = {}
-function UI.withPin(host, done)
-    if not M.needsPin(host) then return done() end
-    local f = UI.pinFails[host.id]
+local function askPin(target, title, done)
+    if not M.needsPin(target) then return done() end
+    local f = UI.pinFails[target.id]
     if f and f.n >= 5 and os.time() - f.at < 60 then
         return info(T(_("Too many wrong PINs. Try again in %1 s."), 60 - (os.time() - f.at)))
     end
-    ask(T(_("PIN for %1"), M.hostName(host)), "", function(pin)
-        if M.unlock(host, pin) then
-            UI.pinFails[host.id] = nil
+    ask(title, "", function(pin)
+        if M.unlock(target, pin) then
+            UI.pinFails[target.id] = nil
             return done()
         end
-        f = UI.pinFails[host.id] or { n = 0 }
+        f = UI.pinFails[target.id] or { n = 0 }
         f.n, f.at = f.n + 1, os.time()
-        UI.pinFails[host.id] = f
+        UI.pinFails[target.id] = f
         KO.toast(_("Wrong PIN"), 2)
     end, { number = true, password = true, width = 230, ok = _("Open") })
 end
 
+--- SSH's own PIN (SSH settings > App PIN), as a host's: { id = "app", pin }.
+function UI.appLock(plugin)
+    local data = plugin and plugin.store and plugin.store.data
+    return { id = "app", pin = data and data.app_pin }
+end
+
+--- done() once SSH's own PIN is typed (at once without one, or within 5 minutes of it).
+function UI.withAppPin(plugin, done)
+    askPin(UI.appLock(plugin or UI.plugin), _("PIN for SSH"), done)
+end
+
+--- done() once the PINs are typed: SSH's own, then the host's.
+function UI.withPin(host, done, plugin)
+    UI.withAppPin(plugin or UI.plugin, function()
+        askPin(host, T(_("PIN for %1"), M.hostName(host)), done)
+    end)
+end
+
+--- Sets, changes or removes a PIN kept as target.pin by save(hash or nil).
+function UI.editPin(target, save)
+    ask(_("New PIN (4 to 8 digits)"), "", function(pin)
+        if not M.pinOk(pin) then return info(_("A PIN is 4 to 8 digits.")) end
+        ask(_("The same PIN again"), "", function(again)
+            if again ~= pin then return info(_("The PINs don't match.")) end
+            save(M.pinHash(target, pin))
+            M.unlocked[target.id] = os.time()
+            KO.toast(_("PIN set"), 2)
+        end, { number = true, password = true, width = 230, ok = _("Set") })
+    end, { number = true, password = true, width = 230, ok = _("Next") })
+end
+
 function UI.host(plugin, host)
     if not host then return end
-    if M.needsPin(host) then return UI.withPin(host, function() UI.host(plugin, host) end) end
+    if M.needsPin(UI.appLock(plugin)) or M.needsPin(host) then
+        return UI.withPin(host, function() UI.host(plugin, host) end, plugin)
+    end
     if UI.hostMenu then UIManager:close(UI.hostMenu) end
     UI.plugin = plugin
     local Screens = require("sshscreens")
@@ -1076,7 +1103,9 @@ end
 --- A live session; cmd (optional): typed in once it's open. An open session
 -- to the same host is used again (brought to the front) instead.
 function UI.session(plugin, host, cmd)
-    if M.needsPin(host) then return UI.withPin(host, function() UI.session(plugin, host, cmd) end) end
+    if M.needsPin(UI.appLock(plugin)) or M.needsPin(host) then
+        return UI.withPin(host, function() UI.session(plugin, host, cmd) end, plugin)
+    end
     local S = require("sshsession")
     local cur = S.current
     if cmd and cur and cur.open and cur.host == host then
@@ -1155,6 +1184,7 @@ function UI.refreshMain(plugin)
 end
 
 function UI.show(plugin)
+    if M.needsPin(UI.appLock(plugin)) then return UI.withAppPin(plugin, function() UI.show(plugin) end) end
     if UI.mainMenu then UI.mainMenu:onCloseAllMenus() end
     UI.plugin = plugin
     local PS = require("pluginshare")

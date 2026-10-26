@@ -347,6 +347,9 @@ For a dark screen, use **Night mode** (the quick button, the control center or *
 
 ### Plugins
 
+- **Check for updates**: shows the version installed. Tap it to look for a newer release; when there is one, you see its notes and **Update**, which downloads it, checks it, installs it and offers to restart KOReader. If anything goes wrong, nothing changes. When you're up to date it offers **Reinstall**, to install the same version again.
+- **Update from**: where updates come from, as owner/repo on GitHub (this project's own, github.com/Mcp20091/kindle-koreader-apps, to start with). Change it to follow a fork; leave it empty to go back.
+- **Check automatically**: on to start with. Once a day, only while the Kindle is already on Wi-Fi, a notification says when there's a newer release; tap it to see what's new and update.
 - **Undo a plugin update**: lists the plugins that have an earlier version, each as "name (before <date>)". Pick one and confirm with **Go back**; KOReader restarts. With none to undo it says "No plugin has an earlier version to go back to."
 
 ## In a book and in the library

@@ -1984,6 +1984,26 @@ function Screens.settingsItems(plugin, redo)
             redo()
             UI().refreshMain(plugin)
         end }
+    -- SSH's own PIN (a host can have its own too: Edit host)
+    t[#t + 1] = { band = _("PIN") }
+    t[#t + 1] = { setting = true, text = data.app_pin and _("Change app PIN") or _("Set an app PIN"), value = data.app_pin and _("On") or _("Off"),
+        hint = _("Asked when SSH opens, and before a host's page, a live session or a command from outside it (again after 5 minutes)"),
+        callback = function()
+            UI().editPin(UI().appLock(plugin), function(hash)
+                data.app_pin = hash
+                plugin:saved()
+                redo()
+            end)
+        end }
+    if data.app_pin then
+        t[#t + 1] = { setting = true, text = _("Remove app PIN"), callback = function()
+            data.app_pin = nil
+            M.unlocked.app = nil
+            plugin:saved()
+            redo()
+            KO.toast(_("PIN removed"), 2)
+        end }
+    end
     t[#t + 1] = { band = _("LIVE SESSION") }
     local Dark = require("sshdark")
     t[#t + 1] = { toggle = Dark.isOn(), text = _("Dark terminal"), sub = _("Also the moon and sun key in a live session"),

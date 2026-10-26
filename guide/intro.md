@@ -128,7 +128,7 @@ Home Assistant can also add **Sleep screen alerts** to any of these sleep screen
 
 ## Updating the plugins
 
-New versions come as one file, **kindle-plugins.zip**, on the Releases page of github.com/Mcp20091/kindle-koreader-apps. Download it to your phone or computer, then:
+New versions come as one file, **kindle-plugins.zip**, on the Releases page of github.com/Mcp20091/kindle-koreader-apps. The easiest way: in Settings > **Launcher**, tap **Check for updates**, then **Update** (it also tells you by itself, once a day on Wi-Fi). Or download the zip to your phone or computer, then:
 
 1. On the Kindle, start the web server: **Tools > Web server > Start web server** (or **Web server** in the control center).
 2. On your phone or computer, open the address it shows.
