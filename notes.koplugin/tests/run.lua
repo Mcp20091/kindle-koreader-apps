@@ -970,6 +970,7 @@ do
     package.loaded["ui/uimanager"] = { broadcastEvent = function() end }
     local KO = require("notesko")
     check("light on two fingers", KO.notesSafe("two_finger_swipe_north", { increase_frontlight = 0 }), true)
+    check("no light on an edge swipe (Swipes change the light off)", KO.notesSafe("one_finger_swipe_left_edge_up", { increase_frontlight = 0 }), false)
     check("refresh multiswipe", KO.notesSafe("multiswipe", { full_refresh = true }), true)
     check("folder shortcuts left out", KO.notesSafe("two_finger_swipe_west", { folder_shortcuts = true }), false)
     check("an app's own action", KO.notesSafe("one_finger_swipe_left_edge_up", { todo_add = true, settings = {} }), true)

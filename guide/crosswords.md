@@ -310,6 +310,8 @@ Crosswords has its own settings, full screen like the other apps' settings: tap 
   - **Clue size**: **Normal** or **Large**. Large clues that don't fit carry on to more clue pages; the grid stays put.
   - **Clue boxes**: the tick box before each clue. **On** to start with.
   - **Clue card**: when you tap a number in the grid, a card for **Every clue** (to start with) or for **Clues on other pages** only.
+  - **Swipes change the light**: off to start with, so a hand brushing the screen's edge while you solve doesn't change the brightness or warmth (KOReader's light swipes). The same switch as in Notes > Settings.
+  - **Notes settings** (at the bottom): crosswords are Notes pages, so the pen, the toolbar, gestures and the rest are set in Notes' settings; this opens them without leaving the puzzle.
   - **Toolbar side**: **Left** or **Right**.
   - **Toolbar buttons**: which of the **⋯** menu's items go on the toolbar (see "Your toolbar buttons").
 - **SOLVING**

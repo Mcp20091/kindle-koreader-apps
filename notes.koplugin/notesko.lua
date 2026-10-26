@@ -52,7 +52,17 @@ end
 
 --- A gesture Notes hands on: one a resting palm can't make, doing only what
 -- makes sense over Notes.
+-- KOReader's light swipes along an edge (brighter, dimmer, warmth) left out unless Notes >
+-- Settings > Swipes change the light: a hand brushing the screen's edge while writing set
+-- them off. (Two fingers are meant: those still work.)
+local LIGHT = { increase_frontlight = true, decrease_frontlight = true, set_frontlight = true,
+    increase_frontlight_warmth = true, decrease_frontlight_warmth = true, set_frontlight_warmth = true }
+
 function KO.notesSafe(id, actions)
+    local okS, S = pcall(require, "notessettings")
+    if tostring(id):find("edge", 1, true) and not (okS and S.get("light_swipes") == true) and type(actions) == "table" then
+        for k in pairs(actions) do if LIGHT[k] then return false end end
+    end
     return KO.palmSafe(id) and KO.overApps(actions)
 end
 

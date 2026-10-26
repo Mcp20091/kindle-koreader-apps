@@ -1745,6 +1745,16 @@ function Notes:crosswordSettings(changed, rowsOnly)
                 done()
             end)
         end)
+        -- (Notes' own switch: crosswords are Notes pages.)
+        local light = Settings.get("light_swipes") == true
+        pick(_("Swipes change the light"), light and _("On") or _("Off"), function()
+            Settings.choose(_("Swipes change the light") .. "\n" .. _("KOReader's brighter, dimmer and warmth swipes along the screen's edge. Off, a hand brushing the edge while you write doesn't change the light. The same switch as Notes > Settings."),
+                { { "off", _("Off") }, { "on", _("On") } }, light and "on" or "off", function(v)
+                    if v == nil then return end
+                    Settings.set("light_swipes", v == "on")
+                    done()
+                end)
+        end)
         local right = Settings.get("side") == "right"
         pick(_("Toolbar side"), right and _("Right") or _("Left"), function()
             Settings.choose(_("Toolbar side"), { { "left", _("Left") }, { "right", _("Right") } }, right and "right" or "left", function(v)
@@ -1801,6 +1811,10 @@ function Notes:crosswordSettings(changed, rowsOnly)
             -- (No AI service set up: one row, and no AI items anywhere.)
             open(_("AI services"), _("Not set up"), function() self:handwritingSettings() end)
         end
+
+        -- Crosswords are Notes pages: the pen, the toolbar, gestures and the rest are Notes' settings.
+        heading(_("Writing, toolbar and gestures"))
+        open(_("Notes settings"), _("Shared with Notes"), function() self:showSettings(nil, true) end)
         return rows
     end
     -- (Only the rows, for the launcher's search.)

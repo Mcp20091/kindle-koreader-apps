@@ -513,6 +513,7 @@ Open Notes' settings from **⋮ > Settings** in the notebook list, ⚙ at the bo
 - **Page header (date and page number)**.
 - **Template lines**: Light, Medium or Dark.
 - **KOReader gestures (two fingers, edge swipes)**.
+- **Swipes change the light**: off to start with, so KOReader's brighter, dimmer and warmth swipes along the edge are ignored in notebooks and crosswords (a hand brushing the edge while you write set them off). Turn it on to use them here too.
 
 Light and Night mode are KOReader's own: use the drop-down panel (tap the time and battery) or **⋮**. The time and battery always show; whether the time is 12- or 24-hour follows KOReader's own setting (Settings > Time and date).
 
@@ -569,7 +570,7 @@ Light and Night mode are KOReader's own: use the drop-down panel (tap the time a
 
 ### KOReader gestures in Notes
 
-The gestures you set up in KOReader's Gesture manager also work inside Notes, as long as they can't be a resting palm: two-finger taps and swipes, pinch, spread, rotate, edge swipes and multiswipes. For example, an edge swipe can change the light or open a QuickMenu. One-finger taps and swipes on the page don't trigger them. Turn this off with **KOReader gestures** in Settings > Display.
+The gestures you set up in KOReader's Gesture manager also work inside Notes, as long as they can't be a resting palm: two-finger taps and swipes, pinch, spread, rotate, edge swipes and multiswipes. For example, an edge swipe can open a QuickMenu. Edge swipes that change the light are left out unless **Swipes change the light** is on in Settings (two-finger ones still work). One-finger taps and swipes on the page don't trigger them. Turn this off with **KOReader gestures** in Settings > Display.
 
 ### Notes actions for gestures
 

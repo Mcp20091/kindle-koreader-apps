@@ -16,7 +16,7 @@ local SETTINGS = {
     side = "string", folded = "boolean", quick_buttons = "boolean", side_button = "string", whole_eraser = "boolean", paper = "string",
     pressure = "boolean", sort = "string", snap_hold = "boolean", level_lines = "boolean", join_ends = "boolean",
     smooth = "number", order = "table", custom = "table",
-    buttons = "table", favorites = "table", deghost = "number", ko_gestures = "boolean",
+    buttons = "table", favorites = "table", deghost = "number", ko_gestures = "boolean", light_swipes = "boolean",
     close_action = "string", suggest_names = "boolean", paper_lines = "string",
     eraser_hl = "boolean", pen_feel = "string", spread_turn = "boolean", name_date = "string", sort_default = "string", recent_mode = "string", show_recent = "boolean", hidden = "table", page_buttons = "table",
     onenote_auto = "boolean", onenote_picked_only = "boolean", onenote_text = "boolean",

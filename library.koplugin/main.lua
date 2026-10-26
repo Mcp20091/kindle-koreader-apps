@@ -152,9 +152,11 @@ function Library:onDispatcherRegisterActions()
 end
 
 function Library:addToMainMenu(menu_items)
+    -- (The reader's menu has a "filemanager" tab; the file browser's doesn't, and a hint to a
+    -- menu that isn't there crashes KOReader's menu: its first tab there.)
     menu_items.library_app = {
         text = _("Library"),
-        sorting_hint = "filemanager",
+        sorting_hint = self.ui and self.ui.document and "filemanager" or "filemanager_settings",
         callback = function() V().open(self) end,
     }
 end

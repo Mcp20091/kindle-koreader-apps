@@ -53,6 +53,7 @@ local DEFAULTS = {
     suggest_names = false,               -- the AI suggests a name for notebooks still named by date
     name_date = "off",                   -- the date added to names you give: off, before, after
     zoom_strip = 1,                      -- where the zoom strip is: 0 the top of the page, 1 the bottom
+    light_swipes = false,                -- KOReader's light swipes (brighter, dimmer, warmth) work in Notes too
     ko_gestures = true,                  -- your KOReader gestures (two fingers, edge swipes, multiswipes) for the light, refresh, Wi-Fi, … work in Notes
 }
 
@@ -509,6 +510,9 @@ function Settings.show(changed, extra)
         options({ "light", "medium", "dark" }, LINES), "paper_lines", "medium"))
     add(row(T(_("KOReader gestures (two fingers, edge swipes): %1"), onOff(Settings.get("ko_gestures") ~= false)), function()
         Settings.set("ko_gestures", Settings.get("ko_gestures") == false)
+    end))
+    add(row(T(_("Swipes change the light: %1"), onOff(Settings.get("light_swipes") == true)), function()
+        Settings.set("light_swipes", Settings.get("light_swipes") ~= true)
     end))
 
     add(heading(_("Toolbar")))

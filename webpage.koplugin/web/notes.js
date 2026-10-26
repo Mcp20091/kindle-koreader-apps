@@ -633,7 +633,8 @@ App.pages.notes = {
       h('div', { class: 'card' }, h('h2', {}, 'Screen'),
         App.setting('Template lines', App.select([['light', 'Light'], ['medium', 'Medium'], ['dark', 'Dark']], st.paper_lines || 'medium', set('paper_lines'))),
         App.setting('Full refresh', App.select([['6', 'Every 6 pauses'], ['3', 'Every 3 pauses'], ['1', 'Every pause'], ['0', 'Never']], on('deghost', 6), (v) => set('deghost')(Number(v)))),
-        App.setting('KOReader gestures', App.toggle(on('ko_gestures', true), set('ko_gestures')), 'Two fingers, edge swipes and multiswipes work in Notes.')));
+        App.setting('KOReader gestures', App.toggle(on('ko_gestures', true), set('ko_gestures')), 'Two fingers, edge swipes and multiswipes work in Notes.'),
+        App.setting('Swipes change the light', App.toggle(on('light_swipes', false), set('light_swipes')), 'Off: KOReader’s brighter, dimmer and warmth swipes along the edge are ignored in notebooks and crosswords, so a hand at the edge doesn’t change the light.')));
   },
 
   accounts(s) {
