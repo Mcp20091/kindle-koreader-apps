@@ -1,2 +1,5 @@
 # (Nothing to ignore: each plugin's version.txt, written by the export, is in the repo,
 # where GitHub's release workflow zips it.)
+
+# The emulator scripts' screenshots and logs (dev/, which stays in the private repo).
+dev/emu/out/

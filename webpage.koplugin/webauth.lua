@@ -96,8 +96,8 @@ function Auth.check(password)
     return diff == 0
 end
 
---- A new session (kept across restarts when `remember`); returns the Set-Cookie header value.
-function Auth.newSession(remember)
+--- A new session (kept across restarts when `remember`; Secure over HTTPS, `secure`); returns the Set-Cookie header value.
+function Auth.newSession(remember, secure)
     local token = random(16)
     sessions[token] = os.time()
     if remember then
@@ -105,7 +105,7 @@ function Auth.newSession(remember)
         t[tokenHash(token)] = os.time() + KEEP
         settings():saveSetting("sessions", t)
         settings():flush()
-        return "kosess=" .. token .. "; Path=/; Max-Age=" .. KEEP .. "; HttpOnly; SameSite=Strict"
+        return "kosess=" .. token .. "; Path=/; Max-Age=" .. KEEP .. "; HttpOnly; SameSite=Strict" .. (secure and "; Secure" or "")
     end
     return "kosess=" .. token .. "; Path=/; HttpOnly; SameSite=Strict"
 end
@@ -175,7 +175,7 @@ function Auth.routes(server, dir)
             Auth.failed(address)
             return res:error(403, "Wrong password.")
         end
-        res:send(require("json").encode({ ok = true }), "application/json", { ["Set-Cookie"] = Auth.newSession(b.remember == true) })
+        res:send(require("json").encode({ ok = true }), "application/json", { ["Set-Cookie"] = Auth.newSession(b.remember == true, req.secure) })
     end)
 
     server:route("POST", "^/api/logout$", function(req, res)
@@ -194,7 +194,7 @@ function Auth.routes(server, dir)
         end
         if #pw < 4 then return res:error(400, "Use at least 4 characters.") end
         Auth.set(pw)
-        res:send(require("json").encode({ ok = true, set = true }), "application/json", { ["Set-Cookie"] = Auth.newSession(true) })
+        res:send(require("json").encode({ ok = true, set = true }), "application/json", { ["Set-Cookie"] = Auth.newSession(true, req.secure) })
     end)
 
     server:route("GET", "^/api/password$", function(req, res) res:json({ set = Auth.isSet() }) end)

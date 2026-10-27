@@ -74,6 +74,12 @@ function WebPage:init()
     -- (the log's lines kept, without the noise, across KOReader's restarts)
     Diag.watchHistory()
     self:shareWithApps()
+    -- KOReader restarted by an update from the page: the server on again (once, quietly), so
+    -- the page that's waiting for it comes back by itself.
+    if setting("start_after_restart", false) then
+        setSetting("start_after_restart", nil)
+        UIManager:scheduleIn(3, function() self:start(function() end) end)
+    end
 end
 
 --- What the apps share (Apps' PluginShare): the web server's settings as a
@@ -104,6 +110,8 @@ function WebPage:shareWithApps()
                 { _("Stop after 30 minutes unused"), setting("idle_stop", true), function() setSetting("idle_stop", not setting("idle_stop", true)) end },
                 { _("Port"), tostring(setting("port", 8080)), function() w:askPort() end },
                 { heading = _("SECURITY") },
+                { _("HTTPS (encrypted)"), setting("https", false), function() w:setHttps(not setting("https", false)) end },
+                { _("Certificate"), w:certificateText(), function() w:certificateMenu() end },
                 { _("Password"), Auth.isSet() and _("On") or _("Off"), function() w:askPassword() end },
                 Auth.isSet() and { _("Remove password"), "", function()
                     Auth.clear()
@@ -165,6 +173,21 @@ function WebPage:addToMainMenu(menu_items)
                 text = _("Stop after 30 minutes of inactivity"),
                 checked_func = function() return setting("idle_stop", true) end,
                 callback = function() setSetting("idle_stop", not setting("idle_stop", true)) end,
+            },
+            {
+                text = _("HTTPS (encrypted)"),
+                checked_func = function() return setting("https", false) end,
+                keep_menu_open = true,
+                callback = function(touchmenu)
+                    self:setHttps(not setting("https", false))
+                    if touchmenu then touchmenu:updateItems() end
+                end,
+            },
+            {
+                text_func = function() return T(_("Certificate: %1"), self:certificateText()) end,
+                enabled_func = function() return setting("https", false) end,
+                keep_menu_open = true,
+                callback = function(touchmenu) self:certificateMenu(touchmenu) end,
             },
             {
                 text_func = function() return require("webauth").isSet() and _("Password: On") or _("Password: Off") end,
@@ -266,10 +289,131 @@ function WebPage:onNetworkDisconnecting()
     if running then self:stop(_("Web server stopped because Wi-Fi was turned off.")) end
 end
 
-function WebPage:address()
+--- The page's address: at the name your certificate was issued for, or (`byIp`, or
+-- without one) at the Kindle's address on the Wi-Fi.
+function WebPage:address(byIp)
     if not running then return "" end
-    local port = running.port == 80 and "" or (":" .. running.port)
-    return "http://" .. (localIp() or "?") .. port
+    local port = running.port == (running.https and 443 or 80) and "" or (":" .. running.port)
+    return (running.https and "https://" or "http://") .. ((not byIp and running.host) or localIp() or "?") .. port
+end
+
+-- ------------------------------------------------------------------ HTTPS (webtls.lua)
+
+--- Turns HTTPS on or off; a running server starts again with it.
+function WebPage:setHttps(on)
+    setSetting("https", on)
+    self:restart()
+end
+
+--- A running server stopped and started again (HTTPS or its certificate changed), then `ready()`.
+function WebPage:restart(ready)
+    if not running then return end
+    self:stop(nil, true)
+    self:start(ready)
+end
+
+--- Which certificate HTTPS uses and until when ("the Kindle's, until 2027-11-27").
+function WebPage:certificateText()
+    local own = setting("https_own", false)
+    local info = require("webtls").info(own)
+    if not info then return own and _("yours, can't be read") or _("made when HTTPS starts") end
+    local who = own and _("yours") or _("the Kindle's")
+    if info.daysLeft < 0 then return T(_("%1, ended %2"), who, info["until"]) end
+    return T(_("%1, until %2"), who, info["until"])
+end
+
+--- Kindle's own or yours, or a new one of the Kindle's own. (Yours is pasted or
+-- uploaded on the web page: a key isn't typed on a Kindle.)
+function WebPage:certificateMenu(touchmenu)
+    local Tls = require("webtls")
+    local own = setting("https_own", false)
+    local function use(o)
+        setSetting("https_own", o)
+        self:restart()
+        if touchmenu then touchmenu:updateItems() end
+    end
+    local dialog
+    local buttons = {}
+    if own then
+        table.insert(buttons, { { text = _("Use the Kindle's own"), callback = function()
+            UIManager:close(dialog)
+            use(false)
+        end } })
+    elseif Tls.info(true) then
+        table.insert(buttons, { { text = _("Use yours"), callback = function()
+            UIManager:close(dialog)
+            use(true)
+        end } })
+    end
+    table.insert(buttons, { { text = _("Make a new one"), callback = function()
+        UIManager:close(dialog)
+        local ok, why = Tls.make(localIp())
+        if not ok then return require("webcommon").message(why) end
+        require("webcommon").toast(_("A new certificate. Browsers warn about it once more."), 3)
+        use(false)
+    end } })
+    table.insert(buttons, { { text = _("Close"), callback = function() UIManager:close(dialog) end } })
+    dialog = require("webcommon").buttonDialog{
+        title = T(_("Certificate: %1\n\nThe Kindle's own is made here; browsers warn about it once. Yours is pasted or uploaded on the web page (System > HTTPS)."), self:certificateText()),
+        buttons = buttons,
+    }
+end
+
+-- The page's System > HTTPS: what's in use, on and off, yours pasted or uploaded.
+-- A change answers first (with the address to go to), then the server starts again.
+function WebPage:httpsRoutes(server)
+    local Tls = require("webtls")
+    local function state()
+        local own = setting("https_own", false)
+        local yours = Tls.info(true)
+        return { on = setting("https", false), running = running and running.https or false, own = own,
+            kindle = Tls.info(false), yours = yours, address = self:address() }
+    end
+    -- Where the page will be once the server has started again.
+    local function nextAddress()
+        if not setting("https", false) then return "http://" .. (localIp() or "?") .. ":" .. running.port end
+        local yours = setting("https_own", false) and Tls.info(true)
+        local host = yours and Tls.hostOf(yours.names) or localIp() or "?"
+        return "https://" .. host .. ":" .. running.port
+    end
+    local function restartSoon()
+        UIManager:scheduleIn(1, function() self:restart(function() end) end)
+    end
+    server:route("GET", "^/api/https$", function(req, res) res:json(state()) end)
+    -- { on, own }: either or both.
+    server:route("POST", "^/api/https$", function(req, res)
+        local b = req.json()
+        if b.own == true and not Tls.info(true) then return res:error(400, "No certificate of yours: paste or upload one.") end
+        if b.on ~= nil then setSetting("https", b.on == true) end
+        if b.own ~= nil then setSetting("https_own", b.own == true) end
+        res:json({ ok = true, address = nextAddress() })
+        restartSoon()
+    end)
+    -- { cert, key } (PEM text): checked, kept, and used.
+    server:route("POST", "^/api/https/cert$", function(req, res)
+        local b = req.json()
+        local info, why = Tls.saveOwn(b.cert, b.key)
+        if not info then return res:error(400, why) end
+        setSetting("https", true)
+        setSetting("https_own", true)
+        res:json({ ok = true, yours = info, address = nextAddress() })
+        restartSoon()
+    end)
+    server:route("POST", "^/api/https/forget$", function(req, res)
+        Tls.forgetOwn()
+        local was = setting("https_own", false)
+        setSetting("https_own", false)
+        res:json({ ok = true, address = nextAddress() })
+        if was then restartSoon() end
+    end)
+    -- A new one of the Kindle's own (used from now).
+    server:route("POST", "^/api/https/new$", function(req, res)
+        local ok, why = Tls.make(localIp())
+        if not ok then return res:error(500, why) end
+        setSetting("https_own", false)
+        res:json({ ok = true, kindle = Tls.info(false), address = nextAddress() })
+        if setting("https", false) then restartSoon() end
+    end)
 end
 
 function WebPage:keepsAwake()
@@ -350,6 +494,7 @@ function WebPage:routes(server)
     local Auth = require("webauth")
     server.guard = function(req, res) return Auth.guard(req, res, dir) end
     Auth.routes(server, dir)
+    self:httpsRoutes(server)
     server:route("GET", "^/$", function(req, res) res:file(dir .. "index.html", "index.html", true) end)
     server:route("GET", "^/static/([%w%._%-]+)$", function(req, res)
         res:file(dir .. req.captures[1], req.captures[1], true)
@@ -371,6 +516,8 @@ function WebPage:routes(server)
     require("webwikipedia").routes(server)
     require("websyncthing").routes(server)
     require("webssh").routes(server)
+    require("webflashforge").routes(server)
+    require("webpangolin").routes(server)
     require("webplugins").routes(server, self)
     require("websearch").routes(server)
     require("websystem").routes(server, self)
@@ -429,8 +576,22 @@ function WebPage:start(ready)
     NetworkMgr:runWhenOnline(function()
         if running then return ready() end
         local port = setting("port", 8080)
+        -- HTTPS: a certificate that can't be used (yours ended, say) leaves the server on
+        -- plain HTTP, and says so, rather than not starting.
+        local tls, made, tlsWhy, host
+        if setting("https", false) then
+            local Tls = require("webtls")
+            local own = setting("https_own", false)
+            tls, made = Tls.context(own, localIp())
+            if not tls then
+                tlsWhy, made = made, nil
+            elseif own then
+                host = Tls.hostOf((Tls.info(true) or {}).names)
+            end
+        end
         local server = Server.new{
             port = port,
+            tls = tls,
             json = require("json"),
             onStart = function(method, target)
                 -- A change to the files: the library's list of every file is read again.
@@ -455,7 +616,7 @@ function WebPage:start(ready)
         end
         firewall(port, true)
         UIManager:insertZMQ(server)
-        running = { server = server, port = port, last = os.time() }
+        running = { server = server, port = port, last = os.time(), https = tls ~= nil, host = host }
         self:keepAwake()
         self:watchIdle()
         startWatchdog()
@@ -469,6 +630,12 @@ function WebPage:start(ready)
                 open = function() self:showAddress() end }
         end
         ready()
+        if tlsWhy then
+            logger.warn("Web server: HTTPS didn't start:", tlsWhy)
+            require("webcommon").message(T(_("HTTPS didn't start (%1), so the web server is on plain HTTP.\n\nTools > Web server > HTTPS turns HTTPS off; Certificate there switches to the Kindle's own."), tlsWhy))
+        elseif made then
+            require("webcommon").toast(_("A new certificate. Browsers warn about it once more."), 3)
+        end
     end)
 end
 
@@ -526,9 +693,14 @@ end
 
 function WebPage:showAddress()
     local url = self:address()
+    local also = ""
+    if running and running.host then also = also .. T(_("\n(or %1)"), self:address(true)) end
+    if running and running.https and not running.host then
+        also = also .. _("\n\nThe first time, the browser warns about the Kindle's own certificate: Advanced > Proceed.")
+    end
     local dialog
     dialog = require("webcommon").buttonDialog{
-        title = T(_("On a phone or computer on the same Wi-Fi, go to\n\n%1\n\nAvailable while the web server is running and the Kindle is awake."), url),
+        title = T(_("On a phone or computer on the same Wi-Fi, go to\n\n%1%2\n\nAvailable while the web server is running and the Kindle is awake."), url, also),
         title_align = "center",
         buttons = { {
             { text = _("QR code"), callback = function()

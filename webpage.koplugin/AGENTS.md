@@ -50,6 +50,9 @@ The Notes, Crosswords, Wikipedia, Syncthing and SSH parts (`webnotes`, `webcross
 together with those plugins.
 
 What it saves:
+- `koreader/settings/webpage-https-{key,cert}.pem` (the Kindle's own certificate) and
+  `webpage-https-own-{key,cert}.pem` (yours): in a backup only with Include keys and sign-ins. `G_reader_settings` `webpage_https`
+  and `webpage_https_own`.
 - `koreader/settings/webpage.lua`: the port, the options and the password as a salted hash (never
   the password). Kept sessions are stored as hashes.
 - `G_reader_settings`: `webpage`, `web_dashboard` (the Dashboard tab's parts) and
@@ -66,8 +69,8 @@ plugin that owns it (To Do's sync, for example, runs in To Do's own background j
 ## How it uses the shared pieces
 
 - `PS.registerSettings{ key = "webpage", … }` opens the settings as an Apps page (`PS.settingsPage`):
-  on or off, the address, Keep the Kindle awake, Stop after 30 minutes unused, the port, the password
-  and Undo a plugin update.
+  on or off, the address, Keep the Kindle awake, Stop after 30 minutes unused, the port, HTTPS and its
+  certificate, the password and Undo a plugin update.
 - `PS.registerSetup` adds the web page password step (order 70).
 - The control center's Web server button and the launcher's tile start and stop it.
 - The Dashboard tab reuses each tab's own calls.
@@ -84,8 +87,17 @@ plugin that owns it (To Do's sync, for example, runs in To Do's own background j
   folder (`client_id.txt`, `notes_defaults.lua`) carry over. KOReader restarts afterwards.
 - **Restoring a backup** restarts KOReader. The plugins keep their settings in memory and would
   write the old ones back otherwise. Sign-ins and keys are left out of a backup unless asked for.
-- **The password** keeps casual visitors out. The page is plain HTTP, not encrypted. A wrong
+- **The password** keeps casual visitors out; without HTTPS the page isn't encrypted. A wrong
   password delays the next try, but never by blocking the loop.
+- **HTTPS** (`webtls.lua`, optional, off to start with): LuaSec wraps each accepted connection.
+  `waitEvent` peeks at the first byte (`recv` with `MSG_PEEK`): a TLS hello is wrapped and its
+  handshake moved on a step per pass (`dohandshake` with timeout 0, never waited for); plain HTTP gets
+  a 302 to `https://` (not 301, and no HSTS, so turning HTTPS off works at once). A request already
+  read inside LuaSec shows as `dirty()`, not in `select`. LuaSec connections have no `getpeername`:
+  the address is taken before wrapping. The Kindle's own certificate is made with KOReader's
+  libcrypto (LibreSSL, `libs/libcrypto.so.N`) through ffi; yours is pasted or uploaded on System > HTTPS
+  and checked first. A certificate that can't be used leaves the server on HTTP with a message, never
+  stopped: the Kindle's menu is the way out. Keys go in a backup only with Include keys and sign-ins. `dev/emu/shot.sh https` drives it.
 - **Methods named `on…`** are treated as event handlers: only the first return value comes back
   and errors are swallowed.
 - **Online checks:** `NetworkMgr:isConnected()`, not `isOnline()`.

@@ -27,6 +27,7 @@ local _ = require("gettext")
 
 local Bar = require("appsbar")
 local Canvas = require("appscanvas")
+local KO = require("appsko")
 
 local C = Canvas
 
@@ -176,11 +177,29 @@ function Search.run(ui, q)
         for key, e in pairs(PS.settingsApps or {}) do
             local name = e.name or key
             -- (One that's an app too, such as Fonts, is listed once, as the app.)
+            -- (Hidden from the Settings list: found here still, and a hold shows it there again;
+            -- one that's an app too gets that on the app's result.)
+            local Hub = require("appshub")
+            local hidden = view and Hub.isHidden(view, key)
+            local function showAgain()
+                KO.list(name, { { text = _("Show in Settings"), fn = function()
+                    Hub.setHidden(view, key, false)
+                    KO.toast(_("Shown in Settings again."), 3)
+                end } })
+            end
+            if hidden and name:lower():find(x, 1, true) and seen[name:lower()] then
+                for __, r in ipairs(out) do
+                    if r.title:lower() == name:lower() and not r.hold then
+                        r.sub = (r.sub and r.sub ~= "" and (r.sub .. " · ") or "") .. _("hidden from Settings (hold to show it)")
+                        r.hold = showAgain
+                    end
+                end
+            end
             if name:lower():find(x, 1, true) and not seen[name:lower()] then
-                table.insert(out, { title = name, sub = _("Settings"), open = function()
+                table.insert(out, { title = name, sub = hidden and _("Settings · hidden from the list (hold to show it)") or _("Settings"), open = function()
                     if view then view.mode = "hub" end
                     pcall(e.open)
-                end })
+                end, hold = hidden and showAgain or nil })
             end
         end
         -- Each setting by its name ("labels" finds Button labels): an app's `settings` list, or the
@@ -313,7 +332,7 @@ function Search.draw(view, c)
                     view.mode = "tiles"
                     view:render()
                     if it.open then it.open() end
-                end)
+                end, it.hold)
             end)
         end
     end

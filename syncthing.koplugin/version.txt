@@ -1,6 +1,6 @@
-2026-10-25 19:06
+2026-10-27 18:33
+Oct 27  Syncthing: the Kindle's program (v2.1.2, 32-bit ARM, as released and checked) and its notice in git, so a branch's zip has them; the release zip and the export's zip add it once, runnable
 Oct 25  Lists with more pages end in a "More on page 2 of 3" bar (every app); Library Home: servers and folders first, with a setting
 Oct 25  ID box: a hold (a firm pen press) does what a tap does
 Oct 25  Every screen, every app: icon buttons for On/Off and Accept/Ignore, Details/Help/Web GUI as the launcher's reading pages with Copy, this Kindle's ID in a launcher-style box with Copy; guide and screenshots
 Oct 24  The launcher's search finds Syncthing's settings by name (registerSettings rows; one page, so open shows it)
-Oct 24  Typing boxes (Add device, Add folder, Web GUI password, Port) in the launcher's request box with icon buttons and the pen; KOReader's InputDialog only without the launcher

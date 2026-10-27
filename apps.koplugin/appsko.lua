@@ -29,7 +29,7 @@ end
 --- Gesture actions that make sense over these apps (by name). Others open
 -- the library's folders or a book's menus over them.
 local OVER_APPS = { "frontlight", "warmth", "refresh", "night_mode", "wifi", "screenshot",
-    "^apps_", "^notes_", "^todo_", "^homeassistant_", "^webpage_", "^wikipedia_", "^syncthing_", "^toggle_syncthing_server$", "^sshclient_" }
+    "^apps_", "^notes_", "^todo_", "^homeassistant_", "^webpage_", "^wikipedia_", "^syncthing_", "^toggle_syncthing_server$", "^sshclient_", "^flashforge_", "^pangolin_" }
 
 local function overApp(name)
     for __, pat in ipairs(OVER_APPS) do

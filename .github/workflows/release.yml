@@ -1,6 +1,7 @@
 # A version tag (v1.2.3, its message the release notes) pushed to the public repo: the release
 # made here. The Syncthing program downloaded from the Syncthing project and checked, the plugins
-# zipped as they go on the Kindle, and the zip and the guide PDF put on the release.
+# zipped as they go on the Kindle, each optional app (optional/) zipped on its own (kindle-<app>.zip,
+# which the launcher's updater installs on request), and the zips and the guide PDF put on the release.
 name: Release
 
 on:
@@ -30,6 +31,15 @@ jobs:
       - name: The zip
         run: python3 tools/release_zip.py kindle-plugins.zip "$RUNNER_TEMP/syncthing" "$GITHUB_REF_NAME"
 
+      - name: The optional apps' zips
+        run: |
+          python3 optional/build-zip.py
+          for z in optional/*.koplugin.zip; do
+            [ -f "$z" ] || continue
+            cp "$z" "kindle-$(basename "$z" .koplugin.zip).zip"
+          done
+          ls -l kindle-*.zip
+
       - name: The release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -39,5 +49,5 @@ jobs:
             *-*) latest="--prerelease" ;;
             *) latest="--latest" ;;
           esac
-          gh release create "$GITHUB_REF_NAME" kindle-plugins.zip "Kindle Apps Guide.pdf" \
+          gh release create "$GITHUB_REF_NAME" kindle-*.zip "Kindle Apps Guide.pdf" \
             --title "$GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/notes.md" --verify-tag $latest

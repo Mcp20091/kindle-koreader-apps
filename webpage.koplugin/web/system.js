@@ -10,7 +10,7 @@ App.pages.system = {
     main.append(h('h1', {}, 'System'),
       h('p', { class: 'sub' }, 'Keeping the Kindle’s plugins and settings in order. Something wrong? ',
         h('a', { href: '#system', onclick: (e) => { e.preventDefault(); diagnostics.scrollIntoView({ block: 'start' }); } }, 'Diagnostics'), '.'),
-      pluginsCard(), versionsCard(), backupCard(), autoBackupCard(), tabsCard(), passwordCard(), gesturesCard(),
+      githubCard(), pluginsCard(), versionsCard(), backupCard(), autoBackupCard(), tabsCard(), passwordCard(), httpsCard(), gesturesCard(),
       diagnostics,
       problemsCard(), healthCard(), networkCard(), sleepCard(), batteryCard(), logsCard());
 
@@ -162,26 +162,200 @@ App.pages.system = {
       return box;
     }
 
+    // How far an install has got: a line and a bar, shown once one starts.
+    function installProgress() {
+      const text = h('div', { class: 'small' });
+      const bar = h('progress', { max: 100, style: 'width:100%' });
+      const panel = h('div', { class: 'stack', style: 'display:none;margin-top:8px' }, text, bar);
+      return { panel, show(t, pct, failed) {
+        panel.style.display = '';
+        text.textContent = t;
+        text.style.color = failed ? 'var(--danger)' : '';
+        if (pct == null) bar.removeAttribute('value'); else bar.value = pct;
+        bar.style.display = failed ? 'none' : '';
+      } };
+    }
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+    // The zip sent with the browser counting what has gone (fetch can't tell).
+    function upload(f, p) {
+      return new Promise((resolve, reject) => {
+        const x = new XMLHttpRequest();
+        x.open('PUT', '/api/plugins/install');
+        p.show('Uploading ' + f.name + '… 0%', 0);
+        x.upload.onprogress = (e) => {
+          if (!e.lengthComputable) return;
+          const pct = Math.round(100 * e.loaded / e.total);
+          p.show('Uploading ' + f.name + '… ' + pct + '%', pct);
+        };
+        x.onload = () => {
+          let j = {};
+          try { j = JSON.parse(x.responseText); } catch (e) { /* not JSON */ }
+          if (x.status >= 200 && x.status < 300) resolve(j); else reject(new Error(j.error || 'The install failed'));
+        };
+        x.onerror = () => reject(new Error('The upload stopped. Check the Kindle’s Wi-Fi and try again.'));
+        x.send(f);
+      });
+    }
+
+    // Then the Kindle's own steps (checking and installing a plugin at a time), KOReader
+    // restarting, and this page again once the Kindle answers (it starts the web server itself).
+    async function followInstall(p) {
+      for (;;) {
+        let j = null;
+        try { j = await App.api('/api/plugins/progress'); } catch (e) { /* restarting already */ }
+        if (j && j.stage === 'failed') throw new Error('The update didn’t go through, so nothing changed. ' + (j.error || ''));
+        if (j && j.stage === 'done') { p.show('Installed. Restart KOReader to use it.', 100); return; }
+        if (j && (j.stage === 'receiving' || j.stage === 'downloading')) p.show(j.text || 'Getting the update…', j.total ? Math.round(100 * j.done / j.total) : null);
+        if (j && (j.stage === 'checking' || j.stage === 'installing')) p.show(j.text || 'Installing…', j.total ? Math.round(100 * j.done / j.total) : null);
+        if (!j || j.stage === 'restarting') break;
+        await sleep(1000);
+      }
+      p.show('Installed. KOReader is restarting: don’t turn the Kindle off. This page comes back by itself.', null);
+      let down = false;
+      const until = Date.now() + 4 * 60 * 1000;
+      while (Date.now() < until) {
+        await sleep(2000);
+        try {
+          const r = await fetch('/api/plugins/progress', { cache: 'no-store' });
+          const j = await r.json().catch(() => ({}));
+          if (down || j.stage === 'none' || r.status === 401) { location.reload(); return; }
+        } catch (e) { down = true; }
+      }
+      p.show('KOReader hasn’t answered yet. Once the Kindle shows its library again, start the web server there and reload this page.', null, true);
+    }
+
+    // Updates from GitHub, as on the Kindle (Settings > Updates): the repo, and once it's typed
+    // its releases and branches to pick from; the one picked is installed with its progress.
+    function githubCard() {
+      const box = h('div', { class: 'card stack', style: 'margin-top:16px' }, h('h2', {}, 'Update from GitHub'));
+      App.api('/api/update').then((u) => {
+        if (!u.launcher) { box.append(h('p', { class: 'muted small' }, 'Needs the launcher (apps.koplugin).')); return; }
+        const repo = h('input', { type: 'text', value: u.repo, placeholder: u.default, spellcheck: false, style: 'flex:1;min-width:220px' });
+        const pick = h('select', { disabled: true, style: 'flex:1;min-width:220px' }, h('option', {}, 'Looking up…'));
+        const note = h('div', { class: 'small muted' });
+        const go = h('button', { class: 'btn primary', disabled: true }, 'Install');
+        const p = installProgress();
+        // The optional apps of the version picked: each with Install, or Update and Remove.
+        const also = h('div', { class: 'small muted' });
+        const optional = h('div', { class: 'list-rows' });
+        const chosen = () => {
+          const [kind, ...rest] = pick.value.split(':');
+          return kind === 'branch' ? { branch: rest.join(':') } : { tag: rest.join(':') };
+        };
+        const busy = (on) => { for (const el of box.querySelectorAll('button, select, input')) el.disabled = on; };
+        const run = async (start) => {
+          busy(true);
+          try {
+            p.show('Starting…', null);
+            await start();
+            await followInstall(p);
+          } catch (e) { p.show(e.message, 0, true); }
+          busy(false);
+        };
+        let oseq = 0;
+        const lookOptional = async () => {
+          const mine = ++oseq;
+          also.textContent = '';
+          optional.replaceChildren(h('div', { class: 'small muted' }, 'Looking up the optional apps…'));
+          try {
+            let o = await App.api('/api/update/optional', { json: chosen() });
+            while (o.pending && mine === oseq) { await sleep(1000); o = await App.api('/api/update/optional'); }
+            if (mine !== oseq) return;
+            if (o.error) throw new Error(o.error);
+            const apps = App.arr(o.apps);
+            const mine2 = apps.filter((a) => a.installed).map((a) => a.title);
+            also.textContent = mine2.length ? 'Also updates: ' + mine2.join(', ') + '.' : '';
+            optional.replaceChildren(h('div', { class: 'group-head' }, 'Optional apps (from ' + o.tag + ')'));
+            if (!apps.length) optional.append(h('div', {}, h('span', { class: 'small muted grow' }, 'None in this version.')));
+            for (const a of apps) {
+              const sel = chosen();
+              optional.append(h('div', {},
+                h('span', { class: 'grow' }, h('div', {}, a.title), a.description ? h('div', { class: 'small muted' }, a.description) : null,
+                  h('div', { class: 'small' }, a.installed ? 'Installed' : 'Not installed')),
+                h('button', { class: 'btn small' + (a.installed ? '' : ' primary'), onclick: async () => {
+                  if (!await App.confirm((a.installed ? 'Update ' : 'Install ') + a.title, (a.installed ? 'Update ' : 'Install ') + a.title + ' from ' + o.tag + '? KOReader restarts afterwards.', a.installed ? 'Update' : 'Install')) return;
+                  run(() => App.api('/api/update/install', { json: { ...sel, optional: a.folder } }));
+                } }, a.installed ? 'Update' : 'Install'),
+                a.installed ? h('button', { class: 'btn small danger', onclick: async () => {
+                  if (!await App.confirm('Remove ' + a.title, a.title + ' is taken off the Kindle. Update plugins (below) can bring it back. KOReader restarts afterwards.', 'Remove', true)) return;
+                  run(() => App.api('/api/update/remove', { json: { folder: a.folder } }));
+                } }, 'Remove') : null));
+            }
+          } catch (e) {
+            if (mine !== oseq) return;
+            optional.replaceChildren(h('div', {}, h('span', { class: 'small muted grow' }, 'Couldn’t look up the optional apps: ' + e.message)));
+          }
+        };
+        pick.addEventListener('change', lookOptional);
+        let seq = 0;
+        const look = async () => {
+          const mine = ++seq;
+          pick.disabled = go.disabled = true;
+          pick.replaceChildren(h('option', {}, 'Looking up ' + (repo.value.trim() || u.default) + '…'));
+          note.textContent = '';
+          try {
+            let l = await App.api('/api/update/list', { json: { repo: repo.value } });
+            while (l.pending && mine === seq) { await sleep(1000); l = await App.api('/api/update/list'); }
+            if (mine !== seq) return;
+            if (l.error) throw new Error(l.error);
+            const rel = App.arr(l.releases), br = App.arr(l.branches);
+            const latest = (rel.find((r) => !r.pre) || {}).tag;
+            const opts = [];
+            if (rel.length) opts.push(h('optgroup', { label: 'Releases' }, rel.map((r) => h('option', { value: 'tag:' + r.tag },
+              r.tag + (r.tag === latest ? ' · latest' : '') + (r.pre ? ' · test' : '') + (r.tag === u.installed ? ' · installed' : '')))));
+            if (br.length) opts.push(h('optgroup', { label: 'Branches' }, br.map((b) => h('option', { value: 'branch:' + b.name },
+              b.name + ' @ ' + String(b.sha || '').slice(0, 7) + (u.installed && u.installed === b.name + ' @ ' + String(b.sha || '').slice(0, 7) ? ' · installed' : '')))));
+            if (!opts.length) { pick.replaceChildren(h('option', {}, 'Nothing to install')); note.textContent = l.repo + ' has no releases with kindle-plugins.zip and no branches.'; return; }
+            pick.replaceChildren(...opts);
+            pick.disabled = go.disabled = false;
+            note.textContent = 'A branch is the code as it is now, not a release: it may not be finished.';
+            lookOptional();
+          } catch (e) {
+            if (mine !== seq) return;
+            pick.replaceChildren(h('option', {}, 'Couldn’t look it up'));
+            note.textContent = e.message;
+          }
+        };
+        let t;
+        repo.addEventListener('input', () => { clearTimeout(t); t = setTimeout(look, 800); });
+        go.addEventListener('click', async () => {
+          const [kind, ...rest] = pick.value.split(':');
+          const what = rest.join(':');
+          if (!await App.confirm('Install ' + what, 'Download ' + (kind === 'branch' ? 'the ' + what + ' branch' : what) + ' from ' + (repo.value.trim() || u.default)
+            + ' and install it? KOReader restarts afterwards. Installed now: ' + (u.installed || 'not known') + '.', 'Install')) return;
+          run(() => App.api('/api/update/install', { json: kind === 'branch' ? { branch: what } : { tag: what } }));
+        });
+        box.append(
+          h('p', { class: 'muted small' }, 'Installed: ' + (u.installed || 'not known') + '. Type a repo (owner/repo) and its releases and branches show to pick from. '
+            + 'Everything is checked before anything is put in place; the version replaced is kept (Update plugins, below, can go back).'),
+          h('div', { class: 'row' }, repo), h('div', { class: 'row' }, pick, go), also, note, optional, p.panel);
+        look();
+      }, () => box.append(h('p', { class: 'muted small' }, 'Not available.')));
+      return box;
+    }
+
     // Updating plugins: a zip of plugin folders, checked, installed, KOReader restarts.
     function pluginsCard() {
       const box = h('div', { class: 'card stack', style: 'margin-top:16px' }, h('h2', {}, 'Update plugins'),
-        h('p', { class: 'muted small' }, 'Zip one or more plugin folders (such as apps.koplugin), or the whole kindle-install folder, and install it here. Every file is checked first; if anything is wrong, nothing changes. Your own files in a plugin’s folder are kept, and the version it replaces is kept so you can go back, here or on the Kindle (Tools > Web server > Undo a plugin update, or Settings > Launcher > Undo a plugin update).'));
+        h('p', { class: 'muted small' }, 'Zip one or more plugin folders (such as apps.koplugin), or the whole kindle-install folder, and install it here. Every file is checked first; if anything is wrong, nothing changes. Your own files in a plugin’s folder are kept, and the version it replaces is kept so you can go back, here or on the Kindle (Tools > Web server > Undo a plugin update, or Settings > Updates > Undo a plugin update).'));
       const file = h('input', { type: 'file', accept: '.zip', style: 'display:none' });
+      const p = installProgress();
+      const pick = h('button', { class: 'btn primary', onclick: () => file.click() }, 'Install a zip…');
       file.addEventListener('change', async () => {
         const f = file.files[0];
         file.value = '';
         if (!f) return;
         if (!await App.confirm('Update plugins', 'Install the plugins in “' + f.name + '”? KOReader restarts afterwards.', 'Install')) return;
-        App.toast('Checking and installing…');
+        pick.disabled = true;
         try {
-          const r = await fetch('/api/plugins/install', { method: 'PUT', body: f });
-          const j = await r.json().catch(() => ({}));
-          if (!r.ok) throw new Error(j.error || 'Install failed');
-          App.toast('Installed ' + App.arr(j.installed).map((n) => n.replace(/\.koplugin$/, '')).join(', ') + '. ' + (j.restart ? 'KOReader is restarting…' : 'Restart KOReader to use them.'));
-        } catch (e) { App.toast(e.message, true); }
+          await upload(f, p);
+          await followInstall(p);
+        } catch (e) { p.show(e.message, 0, true); }
+        pick.disabled = false;
       });
       const back = h('div', { class: 'list-rows' });
-      box.append(h('div', {}, h('button', { class: 'btn primary', onclick: () => file.click() }, 'Install a zip…'), file), back);
+      box.append(h('div', {}, pick, file), p.panel, back);
       App.api('/api/plugins').then((p) => {
         const list = App.arr(p.backups);
         if (!list.length) return;
@@ -335,7 +509,9 @@ App.pages.system = {
         const pw = h('input', { type: 'password', placeholder: p.set ? 'New password' : 'Password', autocomplete: 'new-password' });
         box.append(
           h('p', { class: 'muted small' }, (p.set ? 'This page asks for a password. ' : 'Anyone on your Wi-Fi can open this page. ') +
-            'It’s plain HTTP on your home network: a password keeps casual visitors out, but it isn’t encryption. On the Kindle, Tools > Web server > Remove password removes it.'),
+            (location.protocol === 'https:' ? 'The page is encrypted (HTTPS), the password with it. '
+              : 'It’s plain HTTP on your home network: a password keeps casual visitors out, but it isn’t encryption (HTTPS, below, is). ') +
+            'On the Kindle, Tools > Web server > Remove password removes it.'),
           h('div', { class: 'row' }, pw,
             h('button', { class: 'btn primary', onclick: async () => {
               await App.api('/api/password', { json: { password: pw.value } }).then(() => { App.toast('Password set'); App.route(); }, App.fail);
@@ -346,6 +522,70 @@ App.pages.system = {
               }
             } }, 'Remove') : null,
             p.set ? h('button', { class: 'btn', onclick: async () => { await App.api('/api/logout', { json: {} }).catch(() => {}); location.href = '/login'; } }, 'Sign out') : null));
+      }, App.fail);
+      return box;
+    }
+
+    // HTTPS: on or off, the Kindle's own certificate or yours (pasted, or read from
+    // files here in the browser and sent as text). A change starts the server again;
+    // the page then goes to the address it answered with.
+    function httpsCard() {
+      const box = h('div', { class: 'card', style: 'margin-top:16px' }, h('h2', {}, 'HTTPS'));
+      const moveTo = (r, what) => {
+        App.toast(what + '. The web server is starting again…');
+        setTimeout(() => { location.href = r.address + '/' + location.hash; }, 3000);
+      };
+      const until = (c) => !c ? 'none yet' : (c.daysLeft < 0 ? 'ended ' + c.until : 'until ' + c.until + (c.daysLeft < 30 ? ' (' + c.daysLeft + ' days left)' : ''));
+      App.api('/api/https').then((s) => {
+        const notRunning = s.on && !s.running
+          ? h('p', { class: 'small', style: 'color:var(--danger)' }, 'HTTPS is on but didn’t start (the Kindle said why): the page is on plain HTTP. Use the Kindle’s own certificate, put yours in again, or turn HTTPS off.')
+          : null;
+        // Yours: two boxes to paste into, each with a file button that fills it.
+        const area = (placeholder) => h('textarea', { rows: 4, placeholder, spellcheck: false, style: 'width:100%;font-family:monospace;font-size:12px' });
+        const certText = area('-----BEGIN CERTIFICATE-----\n… (your certificate, then its chain if it has one)');
+        const keyText = area('-----BEGIN PRIVATE KEY-----\n… (its key, without a passphrase)');
+        const fileButton = (target, label) => {
+          const file = h('input', { type: 'file', accept: '.pem,.crt,.cer,.key,.txt', style: 'display:none' });
+          file.addEventListener('change', async () => {
+            if (file.files[0]) target.value = await file.files[0].text();
+            file.value = '';
+          });
+          return h('span', {}, file, h('button', { class: 'btn', onclick: () => file.click() }, label));
+        };
+        const plain = location.protocol !== 'https:';
+        box.append(...[
+          h('p', { class: 'muted small' }, 'Encrypts the page and everything on it, the password too. The Kindle makes its own certificate: '
+            + 'browsers warn about it once (Advanced > Proceed). With a certificate of yours for a name your network knows, they don’t. '
+            + 'No HSTS: turned off, the page works over plain HTTP again. On the Kindle: Tools > Web server > HTTPS.'),
+          notRunning,
+          App.setting('HTTPS', App.toggle(s.on, async (on) => {
+            await App.api('/api/https', { json: { on } }).then((r) => moveTo(r, on ? 'HTTPS on' : 'HTTPS off'), App.fail);
+          }), s.on ? 'Now at ' + s.address : 'Off: plain HTTP'),
+          App.setting('Certificate', App.select([['kindle', 'The Kindle’s own'], ['own', 'Yours']], s.own ? 'own' : 'kindle', async (v) => {
+            await App.api('/api/https', { json: { own: v === 'own' } }).then((r) => moveTo(r, 'Certificate changed'), (e) => { App.fail(e); App.route(); });
+          }), 'The Kindle’s own: ' + until(s.kindle) + ' (made again 30 days before it ends). Yours: '
+            + (s.yours ? until(s.yours) + (s.yours.names.length ? ', for ' + s.yours.names.join(', ') : '') : 'none') + '.'),
+          h('div', { class: 'row', style: 'margin-top:8px' },
+            h('button', { class: 'btn', onclick: async () => {
+              if (await App.confirm('New certificate', 'The Kindle makes a new certificate of its own and uses it. Browsers warn about it once more.', 'Make it')) {
+                await App.api('/api/https/new', { json: {} }).then((r) => (s.on ? moveTo(r, 'New certificate') : (App.toast('New certificate'), App.route())), App.fail);
+              }
+            } }, 'New certificate'),
+            s.yours ? h('button', { class: 'btn danger', onclick: async () => {
+              if (await App.confirm('Remove your certificate', 'Your certificate and key are deleted from the Kindle. HTTPS uses the Kindle’s own.', 'Remove', true)) {
+                await App.api('/api/https/forget', { json: {} }).then((r) => (s.on && s.own ? moveTo(r, 'Removed') : (App.toast('Removed'), App.route())), App.fail);
+              }
+            } }, 'Remove yours') : null),
+          h('h3', { style: 'margin-top:16px' }, 'Use your own certificate'),
+          plain ? h('p', { class: 'small', style: 'color:var(--danger)' }, 'This page is on plain HTTP: the key would cross your Wi-Fi unencrypted. Turn HTTPS on first (with the Kindle’s own), then put yours in.') : null,
+          h('div', { class: 'row' }, fileButton(certText, 'Certificate file…')), certText,
+          h('div', { class: 'row', style: 'margin-top:8px' }, fileButton(keyText, 'Key file…')), keyText,
+          h('div', { class: 'row', style: 'margin-top:8px' },
+            h('button', { class: 'btn primary', onclick: async () => {
+              await App.api('/api/https/cert', { json: { cert: certText.value, key: keyText.value } })
+                .then((r) => moveTo(r, 'Your certificate is in use until ' + r.yours.until), App.fail);
+            } }, 'Save and apply')),
+        ].filter(Boolean));   // (append writes a null out as "null")
       }, App.fail);
       return box;
     }

@@ -28,6 +28,9 @@ App.pages.home = {
         card('#wikipedia', 'Wikipedia', 'Saved articles, and saving new ones to the Kindle.', s.plugins.wikipedia),
         card('#syncthing', 'Syncthing', 'Folders, devices and requests.', s.plugins.syncthing),
         card('#ssh', 'SSH', 'Hosts, the command list and keys.', s.plugins.sshclient),
+        // (an optional app: its card only when it's installed)
+        s.plugins.flashforge ? card('#flashforge', 'FlashForge', 'Your 3D printer: the print, pause and cancel, the light and settings.', true) : null,
+        s.plugins.pangolin ? card('#pangolin', 'Pangolin', 'Your Pangolin server: sites, resources and clients, and turning them on or off.', true) : null,
         card('#fonts', 'Fonts', 'Your fonts, getting more, the default and the font settings.', s.plugins.apps),
         card('#koreader', 'KOReader', 'Folders, common settings and KOReader’s whole menu.', true),
         card('#system', 'System', 'Update plugins, backups, logs, gestures and the password.', true)),

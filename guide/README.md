@@ -20,6 +20,7 @@ The same guide as [Kindle Apps Guide.pdf](../Kindle%20Apps%20Guide.pdf), one pag
 - [Syncthing](setup.md#syncthing)
 - [SSH](setup.md#ssh)
 - [Weather](setup.md#weather)
+- [Updates](setup.md#updates)
 - [Library](setup.md#library)
 - [Wikipedia and Crosswords](setup.md#wikipedia-and-crosswords)
 - [If you skip it](setup.md#if-you-skip-it)

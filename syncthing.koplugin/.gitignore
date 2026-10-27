@@ -1,2 +1,2 @@
-# The Syncthing program (25 MB): tools/fetch-syncthing.sh downloads it.
-/syncthing
+# (The Syncthing program, syncthing, is in git: the Kindle's 32-bit ARM build, as
+# tools/fetch-syncthing.sh downloads and checks it, so a branch's zip has it too.)

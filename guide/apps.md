@@ -267,7 +267,11 @@ Both are part of every app's bar; see "Finding your way around" in Getting start
 
 ## Settings
 
-**⋮ > Settings** lists every app's settings in one place (see Getting started). **Web server** there opens its settings as a page: on or off, its address, **Keep the Kindle awake while on**, **Stop after 30 minutes unused**, the **Port**, the **Password** and **Undo a plugin update**. **KOReader** opens KOReader's most-used settings on one page (see "KOReader settings" below).
+**⋮ > Settings** lists every app's settings in one place (see Getting started), in groups to start with: **Getting started** (**Updates**, **Set up your Kindle**), **Settings** (Launcher, Edit home screen, Fonts, Gestures, Battery, KOReader), **Accounts** (AI, Microsoft), **Reading**, **Home**, **Writing** and **Tools**, the same as the home screen's suggested groups. An app installed later goes under **Other** until you place it.
+
+Hold a row for **Move up**, **Move down**, **Move to a group…** (or **New group…**) and **Hide**; hold a group's name to **Rename**, move or **Delete** it (its rows go to **Other**), or make a **New group…**. At the end, under **THIS LIST**: **Layout** (**Groups**, or **One list** without headings) and **Reset this list** (back to the suggested groups, nothing hidden). A hidden row is still found by search, marked **hidden from Settings**: hold it there and choose **Show in Settings**; the list says how many are hidden.
+
+**Updates** has its own page: **Check for updates**, **Update from**, **Install a version**, **Optional apps**, **Check automatically** and **Undo a plugin update** (see "Updates" below); on the list it shows the version installed, or **Update available**. **Web server** there opens its settings as a page: on or off, its address, **Keep the Kindle awake while on**, **Stop after 30 minutes unused**, the **Port**, the **Password** and **Undo a plugin update**. **KOReader** opens KOReader's most-used settings on one page (see "KOReader settings" below).
 
 ### KOReader settings
 
@@ -345,11 +349,16 @@ For a dark screen, use **Night mode** (the quick button, the control center or *
 - **Turn off when idle**: **Off**, or after 5, 15 or 30 minutes with no network use. Downloads, syncing and Home Assistant's updates count as use. It never turns Wi-Fi off while the web server is on, and time asleep doesn't count. A notice says when it happens.
 - **Connection check**: tests your internet connection and every app that's set up, the same way each app's own **Test connection** does. Under **WHAT TO TEST** every one is ticked to start with; untick the ones you don't want (**Select all** or **Select none** at the right), then **Test selected**. Each address shows **Works** and how long it took, or what went wrong in plain words with the exact error under it. What doesn't work also goes in KOReader's log and the web page's diagnostics file.
 
-### Plugins
+### Updates
+
+Settings > **Updates**:
 
 - **Check for updates**: shows the version installed. Tap it to look for a newer release; when there is one, you see its notes and **Update**, which downloads it, checks it, installs it and offers to restart KOReader. If anything goes wrong, nothing changes. When you're up to date it offers **Reinstall**, to install the same version again.
 - **Update from**: where updates come from, as owner/repo on GitHub (this project's own, github.com/Mcp20091/kindle-koreader-apps, to start with). Change it to follow a fork; leave it empty to go back.
-- **Install a version**: the releases to pick from, the installed one and the latest marked. Picking an older one goes back to it.
+- **Install a version**: the releases to pick from, the installed one and the latest marked, then the repo's branches (**Branch: main**, …). Picking an older release goes back to it. A branch installs the code as it is on it now (not a release, so it may not be finished); after that, **Check for updates** and the daily check look for newer commits on that branch instead of releases, until you install a release again.
+
+While an update installs, a pop-up says how far it is: **Downloading… 40%** (or how many MB, for a branch), then **Checking the update: notes (5 of 10)** and **Installing notes (5 of 10)**, a plugin at a time. The Kindle keeps answering meanwhile, so there's no need to restart it.
+- **Optional apps**: extra apps you can add (FlashForge, for a FlashForge 3D printer; Pangolin, for a Pangolin server), kept out of the main install. The list comes from where your updates come from (the latest release, or the branch you installed): each app with **installed** or **not installed**. Tap one to **Install** it, or to **Update** or **Remove** it. Once installed, an optional app is updated along with the rest. Removing one keeps it under **Undo a plugin update**, which can bring it back. KOReader restarts after each.
 - **Check automatically**: on to start with. Once a day, only while the Kindle is already on Wi-Fi, a notification says when there's a newer release; tap it to see what's new and update. Until it's installed, the launcher's **Settings** tile says **Update available**.
 
 After an update, its notes show once when KOReader starts again (**What's new in …**).

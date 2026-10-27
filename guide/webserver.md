@@ -20,13 +20,25 @@ The **Tools > Web server** menu (the same settings are in the launcher's **Setti
 - **Show address**: the address and QR code again.
 - **Keep Kindle awake while running**: on to start with, so it doesn't go to sleep while you use the page. If you put the Kindle to sleep yourself (the power button or the cover), the web server stops; when it wakes, a note says so. Start it again when you need it.
 - **Stop after 30 minutes of inactivity**: on to start with; stops by itself when no browser has used it for half an hour.
+- **HTTPS (encrypted)**: off to start with. On, the page and everything on it (the password too) is encrypted, at **https://…**. An old **http://** address is sent on to it. See [HTTPS](#https).
+- **Certificate**: which certificate HTTPS uses and until when. **Use the Kindle's own**, **Use yours** or **Make a new one**.
 - **Password: On / Off**: set a password (4 characters or more). Browsers then ask for it. **Remove password** takes it off.
 - **Undo a plugin update**: go back to a plugin's version before its last update.
 - **Port**: 8080 to start with.
 
 It also stops when Wi-Fi is turned off.
 
-> Anyone on your Wi-Fi can open the page while the web server runs, unless you set a password. The connection isn't encrypted, so start it when you need it and stop it after.
+> Anyone on your Wi-Fi can open the page while the web server runs, unless you set a password. Without HTTPS the connection isn't encrypted, so start it when you need it and stop it after.
+
+### HTTPS
+
+With **HTTPS** on, the Kindle makes a certificate of its own the first time. No browser knows it, so each one warns once: choose **Advanced > Proceed** (the words vary by browser). After that the page is encrypted. The certificate lasts about a year and the Kindle makes a new one a month before it ends; browsers warn once more then.
+
+To have no warning, use a certificate of yours for a name your network knows (from your own certificate authority, or a service such as Let's Encrypt, for a name your router or DNS points at the Kindle). On the page, **System > HTTPS**: paste the certificate (and its chain, if it has one) and its key, or pick their files, then **Save and apply**. The key must have no passphrase. The Kindle checks that they match and haven't ended before using them, and the address it shows is then at the certificate's name. Do this with the page already on HTTPS (the Kindle's own), so the key doesn't cross your Wi-Fi unencrypted.
+
+Yours is never replaced by the Kindle. If it ends, or can't be read, the web server starts on plain HTTP and the Kindle says why. On the Kindle, **Tools > Web server > HTTPS** turns HTTPS off, and **Certificate** switches back to the Kindle's own. Turned off, the page works over plain HTTP again straight away (browsers aren't told to insist on HTTPS).
+
+Both certificates and their keys go in a backup only with **Include keys and sign-ins** (System > Backup). Without it, a restored Kindle makes a new certificate of its own (browsers warn once more), and yours is pasted again.
 
 ## The page
 
@@ -227,19 +239,22 @@ KOReader's own settings, without leaving the launcher on the Kindle:
 
 - **Problems**: KOReader's crashes and freezes, read from its log, newest first. Tap one for the details. **Stopped without closing** usually means it froze and you restarted the Kindle by holding the power button. A freeze that it recovers from ("KOReader stopped answering") is only noticed while the web server runs. When KOReader ended badly, the launcher also says so the next time you open it.
 - **What's installed**: each plugin's version (the date it was made) and **What changed** in its latest updates.
+- **Update from GitHub**: the same as the Kindle's Settings > Launcher. Type a repo (owner/repo; this project's own to start with) and its releases and branches show in the list; pick one and **Install**. A branch is the code as it is on it now, not a release. Under it, **Optional apps** lists the apps that version offers (FlashForge, …) with **Install**, or **Update** and **Remove**; the installed ones are updated with the rest (**Also updates: …**).
 - **Update plugins**: **Install a zip…** installs new versions of the plugins (see Getting started). Everything in the zip is checked first; if anything is wrong, nothing changes. Under **Earlier versions kept**, **Go back** puts a plugin back as it was before its update.
+- While either installs, a bar shows how far it is, here and in a pop-up on the Kindle: the upload (or download), then checking and installing a plugin at a time. Then KOReader restarts; don't turn the Kindle off. The web server starts again by itself and this page comes back on its own.
 - **Battery**: the level, and KOReader's battery statistics since the last charge (awake, asleep, the last charge, each with how much an hour), what is on now that uses power, and **Reset statistics**. The same as the launcher's Battery screen.
 - **Health**: KOReader's memory and the Kindle's free memory, how long KOReader and the Kindle have been running, and:
   - **Detailed logging**: KOReader writes much more to its log, for tracking down a problem. It turns itself off after a day.
   - **Download a diagnostics file**: one zip with the logs, versions, problems, sleep history, memory, battery and network, to send when something goes wrong. Besides the end of KOReader's log, it has a longer history of it (the last hours, kept across restarts, without the lines for every touch and redraw). No passwords, keys or sign-ins.
 - **Network**: Wi-Fi, its signal and the Kindle's address, and the connection check (the same as the Kindle's Settings > Launcher > **Connection check**): tick what to test (your internet connection and each app that's set up), then **Test selected**. Each address shows how long it took, or what went wrong with the exact error. The last results are in the diagnostics file.
 - **Sleep and wake**: each time the Kindle slept and woke (and when KOReader started), how long, and the battery at each end. A Kindle that never sleeps, or keeps waking, shows here.
-- **Backup**: **Download backup** saves one zip with every app's settings (To Do, Notes and Crosswords, Home Assistant, the launcher, your KOReader gestures, the web server, Wikipedia, Syncthing, and SSH's hosts and commands) and all your notebooks; the card lists them. Wikipedia's saved articles stay out (download them again). **Include keys and sign-ins** adds the sign-ins and keys too: Home Assistant's and Microsoft's sign-ins, the AI keys, SSH's passwords and keys, and Syncthing's own folder (its device keys and database). Keep that file private. **Restore from a backup…** puts one back (Syncthing stops first); KOReader restarts.
+- **Backup**: **Download backup** saves one zip with every app's settings (To Do, Notes and Crosswords, Home Assistant, the launcher, your KOReader gestures, the web server, Wikipedia, Syncthing, and SSH's hosts and commands) and all your notebooks; the card lists them. Wikipedia's saved articles stay out (download them again). **Include keys and sign-ins** adds the sign-ins and keys too: Home Assistant's and Microsoft's sign-ins, the AI keys, SSH's passwords and keys, the web server's HTTPS certificates and keys, and Syncthing's own folder (its device keys and database). Keep that file private. **Restore from a backup…** puts one back (Syncthing stops first); KOReader restarts.
 - **Automatic backups**: **Weekly backup** saves a backup on the Kindle once a week (settings and notebooks, without sign-ins), keeping the last 2, 4 or 8. **Back up now** makes one straight away; each has **Download** and **Delete**.
 - **Logs**: KOReader's own log and the sleep screen updates' log. **Show the end** shows the latest lines; **Download** saves the whole file. Handy when something goes wrong, or to check that sleep screen updates are working.
 - **Gestures**: what each KOReader gesture does, in the library and in a book, the same as the launcher's Gestures screen. To look at only: gestures are changed on the Kindle.
 - **Tabs**: the order of the tabs at the top, and which are hidden. Drag a tab to move it, or into **Hidden**; on a phone, tap one for **Move up**, **Move down** and **To Hidden**. Home and System always show. It's kept on the Kindle, so every phone and computer shows the same tabs. **Reset** puts them all back.
 - **Password**: set, change or remove the page's password, and **Sign out**.
+- **HTTPS**: on or off, the Kindle's own certificate or yours (pasted, or from files), **New certificate** and **Remove yours**. See [HTTPS](#https).
 
 ![Battery and Health on the System tab](img/apps/web-system.png)
 

@@ -45,11 +45,14 @@ apps.koplugin/          the launcher, and the shared pieces every app uses (thro
 homeassistant.koplugin  todo.koplugin  notes.koplugin  crosswords.koplugin (needs Notes)
 wikipedia.koplugin  syncthing.koplugin  sshclient.koplugin  webpage.koplugin (the web server)
 library.koplugin        books and folders (stands in for KOReader's file browser; the reader stays KOReader's)
+optional/               extra apps you can add, not in the main install zip: each folder and its own
+                        zip (build-zip.py). flashforge.koplugin: a FlashForge 3D printer over the Wi-Fi;
+                        pangolin.koplugin: a Pangolin server's sites, resources and clients (its Integration API)
 guide/                  the user guide: one Markdown chapter per app, img/, build.py, chapters.txt
 Kindle Apps Guide.pdf   the guide, built from guide/
 ```
 
-A plugin folder is what gets copied to `koreader/plugins/` on the Kindle. `sshclient.koplugin` has that name because KOReader ships its own `SSH.koplugin` (an SSH server).
+A plugin folder is what gets copied to `koreader/plugins/` on the Kindle. An optional app (in `optional/`) follows every rule here; the launcher and the web page show it only when it's installed (a tile's `plugin`, the web page's `plugins.<name>`), and nothing else may depend on it. `sshclient.koplugin` has that name because KOReader ships its own `SSH.koplugin` (an SSH server).
 
 ## Design principles
 

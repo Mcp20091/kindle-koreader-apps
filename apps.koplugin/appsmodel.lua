@@ -28,6 +28,10 @@ Model.TILES = {
     { key = "syncthing", name = "Syncthing", icon = "folder-sync", plugin = "syncthing", event = "ShowSyncthing" },
     -- (The SSH plugin's folder is sshclient.koplugin: KOReader's own SSH server is SSH.koplugin.)
     { key = "ssh", name = "SSH", icon = "terminal", plugin = "sshclient", event = "ShowSSH" },
+    -- A FlashForge 3D printer (optional/flashforge.koplugin: only there when it's installed).
+    { key = "flashforge", name = "FlashForge", icon = "printer", plugin = "flashforge", event = "ShowFlashForge" },
+    -- A Pangolin server (optional/pangolin.koplugin: only there when it's installed).
+    { key = "pangolin", name = "Pangolin", icon = "shield-check", plugin = "pangolin", event = "ShowPangolin" },
     { key = "web", name = "Web server", icon = "globe", plugin = "webpage" },
     -- Screens set up once or looked at now and then: off to start with (each is in
     -- Settings and search too); Edit home screen shows them.
@@ -308,7 +312,7 @@ Model.SUGGESTED_GROUPS = {
     { key = "reading", name = "Reading", icon = "book-open", tiles = { "library", "readingtime", "wikipedia" } },
     { key = "home", name = "Home", icon = "house", tiles = { "ha", "dashboard", "weather" } },
     { key = "writing", name = "Writing", icon = "notebook-pen", tiles = { "notes", "crosswords" } },
-    { key = "tools", name = "Tools", icon = "terminal", tiles = { "ssh", "syncthing", "web" } },
+    { key = "tools", name = "Tools", icon = "terminal", tiles = { "todo", "ssh", "syncthing", "web", "flashforge", "pangolin" } },
     { key = "device", name = "Device", icon = "power", tiles = { "wifi", "light", "night", "exit" } },
 }
 

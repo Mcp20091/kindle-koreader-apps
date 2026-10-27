@@ -77,6 +77,10 @@ The SSH app needs nothing on the Kindle. The device you connect to needs an SSH 
 
 Nothing to sign up for. Without Home Assistant, the launcher's **Weather** tile uses Open-Meteo, a free forecast that needs no account or key: tap the tile (or Settings > Launcher > WEATHER > **Place**), type your town or city and pick it from the matches. In the US, weather alerts come from the National Weather Service, also free. Both need Wi-Fi to update; the last forecast stays for when it's off. With Home Assistant, its weather is used instead (Settings > Launcher > WEATHER > **Weather from** to choose).
 
+## Updates
+
+Nothing to sign up for. Set up your Kindle has an **Updates** step right after Wi-Fi: it says where updates are (Settings > **Updates**, at the top of Settings), looks for a new version (tap it to see what's new and update) and lists the optional apps, extra apps you can add such as FlashForge, each with **Install**. **Check automatically** is there too.
+
 ## Library
 
 Nothing to sign up for. Set up your Kindle asks once how to browse your books: **The Library** (covers, what you're reading, authors, collections and folders, in the apps' design) or **KOReader's file browser** as KOReader has it. Change it later in Library settings > **Browse books with**. Covers and titles come from KOReader's Cover browser plugin and reading time from its Reading statistics plugin, so leave those two on.
@@ -89,6 +93,7 @@ Nothing to set up: Wikipedia and the crossword sources are free and need no acco
 
 Every service is optional, and each app only needs its own, so any mix works. Without one:
 
+- **Updates**: nothing changes; Settings > Updates checks any time, and with **Check automatically** on a notification says when there's a new version.
 - **Wi-Fi**: reading, Notes, the crosswords you already have, reading statistics and lists on this Kindle all work. Syncing, downloads, Home Assistant and the AI wait until Wi-Fi is on.
 - **Home Assistant**: its tile opens the sign-in. The **Dashboard** tile stays hidden until it's set up, and the launcher's weather can come from Open-Meteo instead. Nothing else needs it.
 - **Microsoft (To Do)**: To Do works on its own with lists kept on this Kindle: due dates, reminders, repeats, steps, the sleep screen, the launcher's tile and At a glance. Only syncing with Microsoft To Do needs the App ID and sign-in; sign in later and you can move those lists to To Do.

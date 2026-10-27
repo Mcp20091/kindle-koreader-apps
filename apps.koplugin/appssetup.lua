@@ -327,6 +327,11 @@ function Screen_:render()
             local ok, list = pcall(e.rows)
             y = y + 4
             for __, r in ipairs(ok and list or {}) do
+              -- ({ heading = "…" }: a grey header over the rows after it, as Settings pages have.)
+              if r.heading then
+                c:text(60, y + 30, r.heading, 9.5, { bold = true, color = C.GREY })
+                y = y + 38
+              else
                 local top = y
                 -- (sub: a grey line under the name, what the setting is.)
                 local h = r.sub and 62 or 44
@@ -346,6 +351,7 @@ function Screen_:render()
                     if not okR then require("logger").warn("Setup:", e.key, err) end
                 end)
                 y = y + h
+              end
             end
             y = y + 10
         end
@@ -364,7 +370,9 @@ function Screen_:render()
         y = y + 10
         -- (A page to read, info = true: no Done or Not set up.)
         if not e.info then
-            c:text(60, y, ok and (e.doneText or _("Done")) or (e.notDoneText or _("Not set up yet")), 12, { bold = true, color = ok and C.BLACK or C.GREY })
+            -- (notDoneText: a word of the step's own, or a function for one that changes.)
+            local notDone = type(e.notDoneText) == "function" and e.notDoneText() or e.notDoneText
+            c:text(60, y, ok and (e.doneText or _("Done")) or (notDone or _("Not set up yet")), 12, { bold = true, color = ok and C.BLACK or C.GREY })
             y = y + 32
         end
         if not ok and e.skipped then
@@ -590,6 +598,14 @@ function Screen_:onCloseWidget()
     if self.canvas then self.canvas:release() end
     if shown == self then shown = nil end
     UIManager:setDirty(nil, "full")
+end
+
+--- Draws the step on screen again (a step whose rows came in later, such as Updates').
+function Setup.redraw()
+    if shown and shown.canvas then
+        shown:render()
+        UIManager:setDirty(shown, "ui")
+    end
 end
 
 function Setup.show()

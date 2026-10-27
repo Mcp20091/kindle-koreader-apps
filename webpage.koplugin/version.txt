@@ -1,6 +1,6 @@
-2026-10-25 23:01
-Oct 25  Diagnostics keep a longer log history (no noise, across restarts); updater: What's new after an update, Update available on the Settings tile, Install a version; SSH: Lock now, the output pop-up where it was dragged
-Oct 25  Launcher: updates from GitHub (Check for updates, Update from owner/repo, Check automatically once a day on Wi-Fi), installed with the old version kept; the release zip says its version (apps.koplugin/release.txt); zip installs keep Syncthing's run bit
-Oct 25  Notes and crosswords: KOReader's light swipes along the edge ignored unless Swipes change the light is on (Notes settings, Crossword settings, web page)
-Oct 25  Crosswords: Undo after a tick, how long (Off, 2, 3, 5 or 8 seconds; 3 to start with), on the Kindle and the web page
-Oct 25  Crosswords: ticking a clue on its card closes the card (Undo unticks it and brings it back); Clue card shows every clue to start with
+2026-10-27 19:37
+Oct 27  Web server: a Pangolin tab when the optional Pangolin app is installed (sites, resources and clients with their switches, reset bandwidth, settings)
+Oct 27  Launcher: Settings in groups (Getting started, Settings, Accounts, Reading, Home, Writing, Tools, as the suggested groups; One list as an option): hold a row to move, group or hide it, a group's name to rename, move or delete it; hidden rows found by search (hold to show them again); Updates on its own page at the top; To Do in the suggested Tools group
+Oct 27  Updates: optional apps (FlashForge…) from the updater: listed from the release or branch updates come from, installed on request, updated with the rest once installed, removed (kept for Undo); Settings > Launcher > Optional apps on the Kindle, Optional apps under Update from GitHub on the web page; each release gets its kindle-<app>.zip
+Oct 27  Updates: progress while installing, on the Kindle and the web page (upload or download, then checking and installing a plugin at a time, KOReader answering between; the page comes back by itself after the restart); branches to install beside releases (Install a version on the Kindle, Update from GitHub on the web page), checked for newer commits after
+Oct 27  Web server: HTTPS's certificates and keys (the Kindle's own and yours) in a backup with Include keys and sign-ins, and put back by a restore

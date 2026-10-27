@@ -60,10 +60,12 @@ function Server.parseQuery(q)
 end
 
 --- options: port, json (encode, decode), onStart(method, target) (a request begins),
--- onRequest() (each request answered: keeps the reader awake).
+-- onRequest() (each request answered: keeps the reader awake), tls (a LuaSec server
+-- context: HTTPS, webtls.lua).
 function Server.new(options)
     local self = setmetatable({}, Server)
     self.port = options.port or 8080
+    self.tls = options.tls
     self.json = options.json
     self.onRequest = options.onRequest
     self.onStart = options.onStart
@@ -191,6 +193,70 @@ function Response:file(path, name, inline)
     f:close()
 end
 
+-- ------------------------------------------------------------------ HTTPS
+
+-- The first byte a connection sent, left for whoever reads next (recv with
+-- MSG_PEEK): 22 starts a TLS hello; a letter, a plain HTTP request.
+local peekBuf
+local function firstByte(client)
+    local ffi = require("ffi")
+    if not peekBuf then
+        pcall(ffi.cdef, "long recv(int sockfd, void *buf, unsigned long len, int flags);")
+        peekBuf = ffi.new("unsigned char[1]")
+    end
+    local MSG_PEEK = 2
+    local n = ffi.C.recv(client:getfd(), peekBuf, 1, MSG_PEEK)
+    if n == 1 then return peekBuf[0] end
+end
+
+-- A plain HTTP request to the HTTPS server (an old bookmark, http:// typed): sent
+-- on to the same address over https. 302, not 301: browsers keep a 301, and the
+-- page must work over http again once HTTPS is turned off.
+local function toHttps(client)
+    client:settimeout(5)
+    local line = client:receive("*l")
+    local target = line and line:match("^%u+%s+(/%S*)") or "/"
+    local host
+    for __ = 1, 100 do
+        local h = client:receive("*l")
+        if not h or h == "" then break end
+        host = host or h:match("^[Hh][Oo][Ss][Tt]:%s*(%S+)")
+    end
+    if not host then return end
+    sendAll(client, "HTTP/1.1 302 Found\r\nLocation: https://" .. host .. target ..
+        "\r\nContent-Length: 0\r\nCache-Control: no-store\r\nConnection: close\r\n\r\n")
+end
+
+-- With HTTPS, each new connection: its first bytes looked at once they come (plain
+-- HTTP is sent on to https), then the TLS handshake, a step each pass of the loop
+-- (it never waits for the browser). Returns whether `w` is ready for its request.
+function Server:tlsStep(w, readable)
+    if w.fresh then
+        if not readable then return false end
+        w.fresh = nil
+        local b = firstByte(w.client)
+        if b ~= 22 then
+            if b then pcall(toHttps, w.client) end
+            w.done = true
+            return false
+        end
+        w.client = require("ssl").wrap(w.client, self.tls)
+        w.client:settimeout(0)
+        w.hs = true
+    end
+    if w.hs then
+        local ok, err = w.client:dohandshake()
+        if ok then
+            w.hs = nil
+        elseif err ~= "wantread" and err ~= "wantwrite" then
+            -- (A browser that hasn't accepted the certificate yet closes here.)
+            w.done = true
+        end
+        return false
+    end
+    return readable or w.client:dirty()
+end
+
 -- ------------------------------------------------------------------ requests
 
 -- Each loop of KOReader's event loop: new connections kept, and the ones
@@ -204,7 +270,25 @@ function Server:waitEvent()
         local client = self.server:accept()
         if not client then break end
         client:settimeout(0)
-        table.insert(self.waiting, { client = client, since = os.time() })
+        table.insert(self.waiting, { client = client, since = os.time(), address = (client:getpeername()), fresh = self.tls ~= nil })
+    end
+    -- (TLS handshakes move on every pass, even one that answers no request.)
+    if self.tls then
+        local sockets = {}
+        for __, w in ipairs(self.waiting) do
+            if w.fresh or w.hs then table.insert(sockets, w.client) end
+        end
+        local readable = #sockets > 0 and socket.select(sockets, nil, 0) or {}
+        for i = #self.waiting, 1, -1 do
+            local w = self.waiting[i]
+            if w.fresh or w.hs then
+                self:tlsStep(w, readable[w.client] ~= nil)
+                if w.done then
+                    table.remove(self.waiting, i)
+                    w.client:close()
+                end
+            end
+        end
     end
     -- One request per pass of KOReader's loop (it asks again until nil): taps
     -- and the screen get their turn between requests, even in a burst (the
@@ -215,15 +299,18 @@ function Server:waitEvent()
     end
     if #self.waiting == 0 then return nil end
     local sockets = {}
-    for __, w in ipairs(self.waiting) do table.insert(sockets, w.client) end
-    local ready = socket.select(sockets, nil, 0)
+    for __, w in ipairs(self.waiting) do
+        if not (w.fresh or w.hs) then table.insert(sockets, w.client) end
+    end
+    local ready = #sockets > 0 and socket.select(sockets, nil, 0) or {}
     local now = os.time()
     for i = #self.waiting, 1, -1 do
         local w = self.waiting[i]
-        if ready[w.client] then
+        -- (Over TLS, a request can be read already and waiting in LuaSec: dirty.)
+        if not (w.fresh or w.hs) and (ready[w.client] or (self.tls and w.client:dirty())) then
             table.remove(self.waiting, i)
             w.client:settimeout(10)
-            local ok, err = pcall(self.handle, self, w.client)
+            local ok, err = pcall(self.handle, self, w.client, w.address)
             if not ok then logger.warn("Web server:", err) end
             w.client:close()
             if self.onRequest then self.onRequest() end
@@ -238,7 +325,8 @@ function Server:waitEvent()
     return nil
 end
 
-function Server:handle(client)
+--- `address`: the browser's (a TLS connection can't tell it).
+function Server:handle(client, address)
     local line = client:receive("*l")
     if not line then return end
     local method, target = line:match("^(%u+)%s+(%S+)")
@@ -258,7 +346,8 @@ function Server:handle(client)
     end
     local path, query = target:match("^([^?]*)%??(.*)$")
     local req = { method = method, path = unescape(path), query = Server.parseQuery(query), headers = headers,
-        length = tonumber(headers["content-length"]) or 0, address = (client:getpeername()) }
+        length = tonumber(headers["content-length"]) or 0, secure = self.tls ~= nil,
+        address = address or (client.getpeername and client:getpeername()) }
     local res = setmetatable({ client = client, code = 200, server = self }, Response)
     -- A change sent by another website (a browser names it in Origin) is refused.
     if method ~= "GET" and method ~= "HEAD" and headers.origin and headers.host then

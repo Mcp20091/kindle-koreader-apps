@@ -334,6 +334,8 @@ Popup.LABEL_APPS = {
     { key = "wikipedia", plugin = "wikipedia", name = "Wikipedia" },
     { key = "syncthing", plugin = "syncthing", name = "Syncthing" },
     { key = "ssh", plugin = "sshclient", name = "SSH" },
+    { key = "flashforge", plugin = "flashforge", name = "FlashForge" },
+    { key = "pangolin", plugin = "pangolin", name = "Pangolin" },
 }
 
 --- The app whose screen is under the pop-ups now (a key of LABEL_APPS), or nil over

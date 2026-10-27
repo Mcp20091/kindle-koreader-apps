@@ -12,7 +12,10 @@ its run bit.
 With Check automatically on (it is to start with), once a day while the Kindle is
 already on Wi-Fi: a notification when there's a newer release, and a line on the
 launcher's Settings tile until it's installed. After an update, its notes show once
-(What's new). Install a version picks any of the repo's releases, an older one too.
+(What's new). Install a version picks any of the repo's releases, an older one too, or
+one of its branches (GitHub's zip of its newest commit; update_source then says which, and
+the checks look for newer commits on it). The install goes a plugin at a time, KOReader's
+loop running between, with its progress for the pop-up (and the web page, webplugins.lua).
 ]]
 
 local DataStorage = require("datastorage")
@@ -27,6 +30,8 @@ local KO = require("appsko")
 local U = {}
 
 U.DEFAULT_REPO = "Mcp20091/kindle-koreader-apps"
+-- What these apps are called together: the header over the version (Settings > Updates, Set up).
+U.NAME = "Clod UI"
 local ASSET = "kindle-plugins.zip"
 -- Files in a plugin's folder that are the user's, not the plugin's.
 local KEEP = { "client_id.txt", "notes_defaults.lua" }
@@ -96,8 +101,9 @@ local function decode(text)
 end
 
 --- Fetches url into path in a child process (redirects followed, as GitHub's are), so
--- KOReader keeps answering; `isOk(path)` checks what came, done(ok, why) after.
-local function fetch(url, path, isOk, done)
+-- KOReader keeps answering; `isOk(path)` checks what came, done(ok, why) after;
+-- `onBytes(n)` each second with how much has come so far.
+local function fetch(url, path, isOk, done, onBytes)
     local ffiutil = require("ffi/util")
     local part = path .. ".part"
     local pid, fd = ffiutil.runInSubProcess(function(__, write_fd)
@@ -135,6 +141,7 @@ local function fetch(url, path, isOk, done)
         local size = ffiutil.getNonBlockingReadSize(fd)
         local exited = ffiutil.isSubProcessDone(pid)
         if not (size and size > 0) and not exited then
+            if onBytes then pcall(onBytes, lfs.attributes(part, "size") or 0) end
             if os.time() < deadline then return UIManager:scheduleIn(1, check) end
             ffiutil.terminateSubProcess(pid)
             return done(false, _("It took too long. Try again when Wi-Fi is better."))
@@ -157,7 +164,21 @@ local function cacheDir()
     return d
 end
 
---- The latest release of the repo: done({ tag, notes, url, zip }) or done(nil, why).
+--- A release's files: its kindle-plugins.zip (url, size) and the optional apps' zips
+-- (kindle-<app>.zip): { { folder = "flashforge.koplugin", zip, size } }.
+local function assetsOf(r)
+    local zip, size, optional = nil, nil, {}
+    for __, a in ipairs(r.assets or {}) do
+        local app = type(a.name) == "string" and a.name:match("^kindle%-([%w_%-]+)%.zip$")
+        if a.name == ASSET then zip, size = a.browser_download_url, a.size
+        elseif app and app ~= "plugins" then
+            optional[#optional + 1] = { folder = app .. ".koplugin", zip = a.browser_download_url, size = a.size }
+        end
+    end
+    return zip, size, optional
+end
+
+--- The latest release of the repo: done({ tag, notes, url, zip, size, optional }) or done(nil, why).
 function U.latest(done)
     if NetworkMgr:isConnected() == false then return done(nil, _("The Kindle isn't on Wi-Fi.")) end
     local path = cacheDir() .. "/latest.json"
@@ -171,15 +192,12 @@ function U.latest(done)
         if f then f:close() end
         local okJ, r = pcall(decode, text or "")
         if not (okJ and type(r) == "table" and r.tag_name) then return done(nil, _("GitHub's answer couldn't be read.")) end
-        local zip
-        for __, a in ipairs(r.assets or {}) do
-            if a.name == ASSET then zip = a.browser_download_url end
-        end
+        local zip, size, optional = assetsOf(r)
         if not zip then return done(nil, T(_("The latest release (%1) has no %2."), r.tag_name, ASSET)) end
         local s = settings()
         s.update_latest = r.tag_name
         G_reader_settings:saveSetting("apps", s)
-        done({ tag = r.tag_name, notes = r.body or "", url = r.html_url, zip = zip })
+        done({ tag = r.tag_name, notes = r.body or "", url = r.html_url, zip = zip, size = size, optional = optional })
     end)
 end
 
@@ -190,10 +208,10 @@ function U.available(plugin)
 end
 
 --- The repo's releases, newest first (at most 20): done({ { tag, notes, zip, pre } }) or done(nil, why).
-function U.releases(done)
+function U.releases(done, repo)
     if NetworkMgr:isConnected() == false then return done(nil, _("The Kindle isn't on Wi-Fi.")) end
     local path = cacheDir() .. "/releases.json"
-    fetch("https://api.github.com/repos/" .. U.repo() .. "/releases?per_page=20", path, nil, function(ok, why)
+    fetch("https://api.github.com/repos/" .. (repo or U.repo()) .. "/releases?per_page=20", path, nil, function(ok, why)
         if not ok then return done(nil, why) end
         local f = io.open(path, "r")
         local text = f and f:read("*a")
@@ -202,21 +220,59 @@ function U.releases(done)
         if not (okJ and type(list) == "table") then return done(nil, _("GitHub's answer couldn't be read.")) end
         local out = {}
         for __, r in ipairs(list) do
-            local zip
-            for __, a in ipairs(r.assets or {}) do
-                if a.name == ASSET then zip = a.browser_download_url end
-            end
+            local zip, size, optional = assetsOf(r)
             if zip and not r.draft then
-                out[#out + 1] = { tag = r.tag_name, notes = r.body or "", zip = zip, pre = r.prerelease == true }
+                out[#out + 1] = { tag = r.tag_name, notes = r.body or "", zip = zip, size = size, pre = r.prerelease == true, optional = optional }
             end
         end
         done(out)
     end)
 end
 
+--- The repo's branches (at most 100): done({ { name, sha } }) or done(nil, why). A branch
+-- installs as the repo's code at that commit (GitHub's zip of it), like a release.
+function U.branches(done, repo)
+    if NetworkMgr:isConnected() == false then return done(nil, _("The Kindle isn't on Wi-Fi.")) end
+    repo = repo or U.repo()
+    local path = cacheDir() .. "/branches.json"
+    fetch("https://api.github.com/repos/" .. repo .. "/branches?per_page=100", path, nil, function(ok, why)
+        if not ok then
+            if why == "not found" then why = T(_("%1 isn't on GitHub (or isn't public)."), repo) end
+            return done(nil, why)
+        end
+        local f = io.open(path, "r")
+        local text = f and f:read("*a")
+        if f then f:close() end
+        local okJ, list = pcall(decode, text or "")
+        if not (okJ and type(list) == "table") then return done(nil, _("GitHub's answer couldn't be read.")) end
+        local out = {}
+        for __, b in ipairs(list) do
+            if type(b) == "table" and type(b.name) == "string" then
+                out[#out + 1] = { name = b.name, sha = type(b.commit) == "table" and b.commit.sha or nil }
+            end
+        end
+        done(out)
+    end)
+end
+
+--- A branch as something to install: { branch, sha, tag (for the messages: "main @ 1a2b3c4"), zip }.
+function U.branchRelease(b, repo)
+    local short = (b.sha or ""):sub(1, 7)
+    return { branch = b.name, sha = b.sha, tag = b.name .. (short ~= "" and (" @ " .. short) or ""), notes = "",
+        zip = "https://api.github.com/repos/" .. (repo or U.repo()) .. "/zipball/" .. (b.sha or b.name) }
+end
+
+--- What's installed, for showing: the release ("v1.0.12"), the branch and commit ("main @ 1a2b3c4"), or nil.
+function U.installedText(plugin)
+    local src = settings().update_source
+    if type(src) == "table" and src.branch then return src.branch .. " @ " .. tostring(src.sha or ""):sub(1, 7) end
+    return U.installed(plugin)
+end
+
 -- ------------------------------------------------------------------ installing
 
---- The plugins in a zip: { name = { files = { rel = entry path } } }, or nil, why.
+--- The plugins in a zip: { name = { files = { rel = entry path }, optional } }, or nil, why.
+-- The optional apps are the ones in an optional/ folder (a branch's zip has it).
 local function scan(r)
     local found = {}
     for entry in r:iterate() do
@@ -224,8 +280,14 @@ local function scan(r)
         if entry.mode == "file" and not p:find("%.%.") and not p:find("^/") and not p:find("\\", 1, true) then
             local prefix, name, rel = p:match("^(([^/]*%.koplugin)/)(.+)$")
             if not prefix then prefix, name, rel = p:match("^([^/]+/([^/]*%.koplugin)/)(.+)$") end
+            local optional = false
+            if not prefix then
+                prefix, name, rel = p:match("^([^/]+/optional/([^/]*%.koplugin)/)(.+)$")
+                optional = prefix ~= nil
+            end
+            if prefix and prefix:match("^optional/") then optional = true end
             if name and name:match("^[%w_%-%.]+%.koplugin$") and not rel:match("^%.git/") then
-                found[name] = found[name] or { files = {} }
+                found[name] = found[name] or { files = {}, optional = optional }
                 found[name].files[rel] = p
             end
         end
@@ -309,9 +371,18 @@ local function install(dir, plugins)
     return names
 end
 
---- Downloads the release's zip and installs it: done(names) or done(nil, why).
-function U.install(plugin, rel, done)
+local function short(name) return (name:gsub("%.koplugin$", "")) end
+
+--- Downloads the release's (or branch's) zip and installs it: done(names) or done(nil, why).
+-- progress(stage, done, total, text) as it goes: "downloading" (bytes, the size when
+-- GitHub gives it), then "checking" and "installing" a plugin at a time, KOReader's loop
+-- running between (the screen and the web page keep answering). Nothing is put in place
+-- until every plugin has passed its check.
+function U.install(plugin, rel, done, progress)
+    progress = progress or function() end
     local zip = cacheDir() .. "/" .. ASSET
+    local function mb(n) return string.format("%.1f", (n or 0) / 1048576) end
+    progress("downloading", 0, rel.size, T(_("Downloading %1…"), rel.tag))
     fetch(rel.zip, zip, function(p)
         local f = io.open(p, "rb")
         local head = f and f:read(2)
@@ -319,22 +390,201 @@ function U.install(plugin, rel, done)
         return head == "PK"
     end, function(ok, why)
         if not ok then return done(nil, why) end
-        local Archiver = require("ffi/archiver")
-        local r = Archiver.Reader:new()
-        if not r:open(zip) then
+        local dir = U.dir(plugin)
+        local names
+        local co = coroutine.create(function()
+            local Archiver = require("ffi/archiver")
+            local r = Archiver.Reader:new()
+            if not r:open(zip) then error(_("The release's file isn't a zip."), 0) end
+            local found, err = scan(r)
+            if not found then
+                r:close()
+                error(err, 0)
+            end
+            -- Which of them: `only` the ones asked for (an optional app), or every plugin but
+            -- the optional apps that aren't installed here.
+            local only = {}
+            for __, n in ipairs(rel.only or {}) do only[n] = true end
+            for name, plug in pairs(found) do
+                local keep
+                if rel.only then keep = only[name]
+                else keep = not plug.optional or lfs.attributes(dir .. "/" .. name, "mode") == "directory" end
+                if not keep then found[name] = nil end
+            end
+            if not next(found) then
+                r:close()
+                error(_("The zip doesn't have what was asked for."), 0)
+            end
+            local list = {}
+            for name in pairs(found) do table.insert(list, name) end
+            table.sort(list)
+            local plugins = {}
+            for i, name in ipairs(list) do
+                progress("checking", i - 1, #list, T(_("Checking the update: %1 (%2 of %3)"), short(name), i, #list))
+                coroutine.yield()
+                local one
+                one, err = check(r, { [name] = found[name] })
+                if not one then
+                    r:close()
+                    error(err, 0)
+                end
+                plugins[name] = one[name]
+            end
+            r:close()
             os.remove(zip)
-            return done(nil, _("The release's file isn't a zip."))
+            for i, name in ipairs(list) do
+                progress("installing", i - 1, #list, T(_("Installing %1 (%2 of %3)"), short(name), i, #list))
+                coroutine.yield()
+                -- (one plugin a pass: its files written, then it's put in place)
+                local one = install(dir, { [name] = plugins[name] })
+                plugins[name] = nil
+                names = names or {}
+                names[#names + 1] = one[1]
+            end
+        end)
+        local function resume()
+            local okC, err = coroutine.resume(co)
+            if okC and coroutine.status(co) ~= "dead" then return UIManager:scheduleIn(0.05, resume) end
+            os.remove(zip)
+            if not okC then return done(nil, tostring(err)) end
+            -- Where it came from: a branch's commit, or a release (its release.txt says which).
+            -- (An optional app on its own leaves that as it is.)
+            if not rel.optional then
+                local s = settings()
+                s.update_source = rel.branch and { branch = rel.branch, sha = rel.sha } or nil
+                G_reader_settings:saveSetting("apps", s)
+            end
+            done(names or {})
         end
-        local found, err = scan(r)
-        local plugins
-        if found then plugins, err = check(r, found) end
-        r:close()
-        os.remove(zip)
-        if not plugins then return done(nil, err) end
-        local okI, names = pcall(install, U.dir(plugin), plugins)
-        if not okI then return done(nil, tostring(names)) end
-        done(names)
+        UIManager:scheduleIn(0.05, resume)
+    end, function(n)
+        progress("downloading", n, rel.size, rel.size and rel.size > 0
+            and T(_("Downloading %1… %2%"), rel.tag, math.min(99, math.floor(n * 100 / rel.size)))
+            or T(_("Downloading %1… %2 MB"), rel.tag, mb(n)))
     end)
+end
+
+local function isDir(path) return lfs.attributes(path, "mode") == "directory" end
+
+--- U.install, and with a release the optional apps installed here too, each from its own
+-- zip on the release (a branch's zip has them already): done(names) or done(nil, why).
+-- An optional app that can't be updated is left as it was (the rest is in).
+function U.installAll(plugin, rel, done, progress)
+    U.install(plugin, rel, function(names, why)
+        if not names or rel.branch or rel.optional then return done(names, why) end
+        local dir, todo = U.dir(plugin), {}
+        for __, o in ipairs(rel.optional or {}) do
+            if isDir(dir .. "/" .. o.folder) then todo[#todo + 1] = o end
+        end
+        local i = 0
+        local function nextOne()
+            i = i + 1
+            local o = todo[i]
+            if not o then return done(names) end
+            U.install(plugin, { tag = short(o.folder) .. " " .. rel.tag, zip = o.zip, size = o.size, optional = true, only = { o.folder } },
+                function(more, why2)
+                    if more then
+                        for __, n in ipairs(more) do names[#names + 1] = n end
+                    else
+                        require("logger").warn("Update:", o.folder, "not updated:", why2)
+                    end
+                    nextOne()
+                end, progress)
+        end
+        nextOne()
+    end, progress)
+end
+
+-- ------------------------------------------------------------------ optional apps
+
+-- An optional app's name and what it does, from its _meta.lua (fullname, description).
+local function readMeta(text)
+    local function field(k)
+        local v = text:match(k .. '%s*=%s*_%(%[%[(.-)%]%]%)') or text:match(k .. '%s*=%s*_%("(.-)"%)')
+            or text:match(k .. '%s*=%s*%[%[(.-)%]%]') or text:match(k .. '%s*=%s*"(.-)"')
+        return v
+    end
+    return field("fullname"), field("description")
+end
+
+--- What a release or branch offers as optional apps (optional/ in the repo, each a zip of
+-- its own on a release): done({ { folder, title, description, installed, zip, size } }) or
+-- done(nil, why). Looked up on GitHub, a request at a time in the child process.
+function U.optionalApps(plugin, rel, done, repo)
+    repo = repo or U.repo()
+    local dir = U.dir(plugin)
+    local ref = rel.sha or rel.tag
+    local function described(list)
+        local i = 0
+        local function nextOne()
+            i = i + 1
+            local o = list[i]
+            if not o then return done(list) end
+            o.installed = isDir(dir .. "/" .. o.folder)
+            o.title = short(o.folder):gsub("^%l", string.upper)
+            local path = cacheDir() .. "/meta.lua"
+            fetch("https://raw.githubusercontent.com/" .. repo .. "/" .. ref .. "/optional/" .. o.folder .. "/_meta.lua", path, nil, function(ok)
+                if ok then
+                    local f = io.open(path, "r")
+                    local text = f and f:read("*a") or ""
+                    if f then f:close() end
+                    local title, description = readMeta(text)
+                    o.title, o.description = title or o.title, description
+                end
+                nextOne()
+            end)
+        end
+        nextOne()
+    end
+    if not rel.branch then
+        local list = {}
+        for __, o in ipairs(rel.optional or {}) do list[#list + 1] = { folder = o.folder, zip = o.zip, size = o.size } end
+        return described(list)
+    end
+    local path = cacheDir() .. "/optional.json"
+    fetch("https://api.github.com/repos/" .. repo .. "/contents/optional?ref=" .. ref, path, nil, function(ok, why)
+        if not ok then
+            if why == "not found" then return done({}) end
+            return done(nil, why)
+        end
+        local f = io.open(path, "r")
+        local text = f and f:read("*a")
+        if f then f:close() end
+        local okJ, entries = pcall(decode, text or "")
+        if not (okJ and type(entries) == "table") then return done(nil, _("GitHub's answer couldn't be read.")) end
+        local list = {}
+        for __, e in ipairs(entries) do
+            if type(e) == "table" and e.type == "dir" and type(e.name) == "string" and e.name:match("^[%w_%-]+%.koplugin$") then
+                list[#list + 1] = { folder = e.name }
+            end
+        end
+        table.sort(list, function(a, b) return a.folder < b.folder end)
+        described(list)
+    end)
+end
+
+--- One optional app (from U.optionalApps) to install from `rel`: its own zip on a release,
+-- or the branch's zip with only that app taken from it.
+function U.optionalRelease(rel, o)
+    if rel.branch then
+        return { tag = T(_("%1 from %2"), o.title, rel.tag), zip = rel.zip, optional = true, only = { o.folder } }
+    end
+    return { tag = o.title .. " " .. rel.tag, zip = o.zip, size = o.size, optional = true, only = { o.folder } }
+end
+
+--- Takes an optional app off: its folder set aside (plugins/.backup, so Undo a plugin
+-- update can bring it back). KOReader restarts after. Returns true, or nil and why.
+function U.removeOptional(plugin, folder)
+    if not (type(folder) == "string" and folder:match("^[%w_%-]+%.koplugin$")) then return nil, _("No such app") end
+    local dir = U.dir(plugin)
+    local dest, backup = dir .. "/" .. folder, dir .. "/.backup/" .. folder
+    if not isDir(dest) then return nil, _("It isn't installed.") end
+    require("util").makePath(dir .. "/.backup")
+    purge(backup)
+    local ok, err = os.rename(dest, backup)
+    if not ok then return nil, tostring(err) end
+    writeFile(backup .. "/.replaced", os.date("%Y-%m-%d %H:%M"))
+    return true
 end
 
 -- ------------------------------------------------------------------ on the Kindle
@@ -358,15 +608,24 @@ end
 -- once the new version runs (What's new).
 local function run(plugin, rel)
     local wait = KO.wait and KO.wait(T(_("Downloading %1…"), rel.tag))
-    U.install(plugin, rel, function(names, why)
+    local said
+    U.installAll(plugin, rel, function(names, why)
         if wait then wait:close() end
         if not names then return KO.message(T(_("The update didn't go through, so nothing changed.\n\n%1"), tostring(why))) end
         local s = settings()
-        s.update_whatsnew = { tag = rel.tag, notes = rel.notes or "" }
+        if not (rel.branch or rel.optional) then s.update_whatsnew = { tag = rel.tag, notes = rel.notes or "" } end
         G_reader_settings:saveSetting("apps", s)
         restart(plugin)
+    end, function(__, ___, ____, text)
+        -- The pop-up says how far it is (the launcher's: its text redrawn in place).
+        if wait and wait.redraw and text ~= said then
+            said = text
+            wait.text = text
+            wait:redraw()
+        end
     end)
 end
+U.run = run
 
 --- After an update: its notes, once, when that version is the one running.
 function U.whatsNew(plugin)
@@ -388,12 +647,14 @@ end
 --- Install a version: the repo's releases to pick from (the one installed and the latest
 -- marked), then the one picked installed (an older one too: going back).
 function U.pickVersion(plugin)
-    local wait = KO.wait and KO.wait(T(_("Getting %1's releases…"), U.repo()))
+    local wait = KO.wait and KO.wait(T(_("Getting %1's releases and branches…"), U.repo()))
     U.releases(function(list, why)
+      U.branches(function(branches)
         if wait then wait:close() end
         if not list then return KO.message(T(_("Couldn't get the releases.\n\n%1"), tostring(why))) end
-        if #list == 0 then return KO.message(T(_("%1 has no releases with %2."), U.repo(), ASSET)) end
-        local have = U.installed(plugin)
+        if #list == 0 and not (branches and #branches > 0) then return KO.message(T(_("%1 has no releases with %2."), U.repo(), ASSET)) end
+        local src = settings().update_source
+        local have = not (type(src) == "table" and src.branch) and U.installed(plugin) or nil
         local latest
         for __, r in ipairs(list) do if not r.pre then latest = latest or r.tag end end
         local items = {}
@@ -412,7 +673,20 @@ function U.pickVersion(plugin)
                         ok = _("Install"), onOk = function() run(plugin, r) end }
                 end }
         end
+        -- The branches: the repo's code as it is on each (its newest commit).
+        for i, b in ipairs(branches or {}) do
+            local on = type(src) == "table" and src.branch == b.name
+            local rel = U.branchRelease(b)
+            items[#items + 1] = { text = T(_("Branch: %1"), b.name) .. (on and (" · " .. (src.sha == b.sha and _("installed") or _("newer commits"))) or ""),
+                checked = on and src.sha == b.sha, separator_before = i == 1 or nil,
+                fn = function()
+                    KO.confirm{ title = T(_("Install the %1 branch"), b.name),
+                        text = T(_("The code on %1 as it is now (%2), not a release: it may not be finished."), b.name, rel.tag),
+                        ok = _("Install"), onOk = function() run(plugin, rel) end }
+                end }
+        end
         KO.list(_("Install a version"), items)
+      end)
     end)
 end
 
@@ -425,9 +699,39 @@ function U.offer(plugin, rel)
     KO.confirm{ title = _("Update available"), text = text, ok = _("Update"), onOk = function() run(plugin, rel) end }
 end
 
+--- Installed from a branch: its newest commit, to compare: done(branchRelease, newer) or done(nil, why).
+local function branchNow(done)
+    local src = settings().update_source
+    U.branches(function(list, why)
+        if not list then return done(nil, why) end
+        for __, b in ipairs(list) do
+            if b.name == src.branch then return done(U.branchRelease(b), b.sha ~= src.sha) end
+        end
+        done(nil, T(_("%1 has no %2 branch any more."), U.repo(), src.branch))
+    end)
+end
+
+local function fromBranch()
+    local src = settings().update_source
+    return type(src) == "table" and src.branch ~= nil
+end
+
 --- Check for updates (from Launcher settings): up to date, or the release with Update.
 function U.check(plugin)
     local wait = KO.wait and KO.wait(T(_("Checking %1…"), U.repo()))
+    if fromBranch() then
+        -- Installed from a branch: its newer commits, not the releases.
+        return branchNow(function(rel, newer)
+            if wait then wait:close() end
+            if not rel then return KO.message(T(_("Couldn't check for updates.\n\n%1"), tostring(newer))) end
+            if not newer then
+                return KO.confirm{ title = _("Up to date"), text = T(_("%1 is the newest on %2. Install it again?"), rel.tag, U.repo()),
+                    ok = _("Reinstall"), onOk = function() run(plugin, rel) end }
+            end
+            KO.confirm{ title = _("Update available"), text = T(_("The %1 branch has newer commits (installed: %2, now: %3)."),
+                rel.branch, U.installedText(plugin), rel.tag), ok = _("Update"), onOk = function() run(plugin, rel) end }
+        end)
+    end
     U.latest(function(rel, why)
         if wait then wait:close() end
         if not rel then return KO.message(T(_("Couldn't check for updates.\n\n%1"), tostring(why))) end
@@ -450,6 +754,17 @@ function U.daily(plugin)
     if not NetworkMgr:isConnected() then return end
     s.update_checked = os.time()
     G_reader_settings:saveSetting("apps", s)
+    if fromBranch() then
+        return branchNow(function(rel, newer)
+            if not (rel and newer == true) then return end
+            local PS = require("pluginshare")
+            if PS.notify then
+                pcall(PS.notify, { app = "apps", name = _("Launcher"), icon = "download", key = "apps:update",
+                    text = T(_("The %1 branch has newer commits. Tap to update."), rel.branch),
+                    open = function() run(plugin, rel) end })
+            end
+        end)
+    end
     U.latest(function(rel)
         if not (rel and U.newer(rel.tag, U.installed(plugin))) then return end
         local PS = require("pluginshare")
@@ -459,6 +774,73 @@ function U.daily(plugin)
                 open = function() U.offer(plugin, rel) end })
         end
     end)
+end
+
+--- Optional apps (Settings > Updates): what the repo offers, from where updates come now
+-- (the branch installed from, or the latest release), each with Install, or Update and Remove.
+function U.optionalMenu(plugin)
+    local wait = KO.wait and KO.wait(T(_("Looking up %1's optional apps…"), U.repo()))
+    local function with(rel, why)
+        if not rel then
+            if wait then wait:close() end
+            return KO.message(T(_("Couldn't look up the optional apps.\n\n%1"), tostring(why)))
+        end
+        U.optionalApps(plugin, rel, function(list, why2)
+            if wait then wait:close() end
+            if not list then return KO.message(T(_("Couldn't look up the optional apps.\n\n%1"), tostring(why2))) end
+            if #list == 0 then return KO.message(T(_("%1 has no optional apps in %2."), U.repo(), rel.tag)) end
+            local items
+            local function show() KO.list(T(_("Optional apps (from %1)"), rel.tag), items) end
+            items = {}
+            for __, o in ipairs(list) do
+                local one = U.optionalRelease(rel, o)
+                items[#items + 1] = { text = o.title .. " · " .. (o.installed and _("installed") or _("not installed")), checked = o.installed,
+                    fn = function()
+                        if not o.installed then
+                            return KO.confirm{ title = T(_("Install %1"), o.title), text = (o.description or "") .. "\n\n" .. T(_("From %1. KOReader restarts after."), rel.tag),
+                                ok = _("Install"), onOk = function() run(plugin, one) end }
+                        end
+                        KO.list(o.title, {
+                            { text = T(_("Update from %1"), rel.tag), fn = function() run(plugin, one) end },
+                            { text = _("Remove"), fn = function()
+                                KO.confirm{ title = T(_("Remove %1"), o.title),
+                                    text = _("It's taken off; Undo a plugin update can bring it back. KOReader restarts after."), ok = _("Remove"),
+                                    onOk = function()
+                                        local ok, err = U.removeOptional(plugin, o.folder)
+                                        if not ok then return KO.message(tostring(err)) end
+                                        restart(plugin)
+                                    end }
+                            end },
+                        }, show)
+                    end }
+            end
+            show()
+        end)
+    end
+    if fromBranch() then return branchNow(function(rel, newer) with(rel, not rel and newer or nil) end) end
+    U.latest(with)
+end
+
+--- Settings > Updates: the release installed and a check, where updates come from, a
+-- version or branch to install, the optional apps, the daily check, and Undo.
+-- `refresh()` draws the page again after a change made in a box.
+function U.settingsRows(plugin, refresh)
+    return {
+        { heading = U.NAME:upper() },
+        { _("Check for updates"), U.installedText(plugin) or _("Version not known"), function() U.check(plugin) end },
+        { _("Update from"), U.repo(), function()
+            KO.askText{ title = _("Update from"), text = U.repo(), hint = "owner/repo", pen = false, ok = _("Save"),
+                done = function(t)
+                    if not U.setRepo(t) then return KO.message(_("Type it as owner/repo, as on GitHub (empty: the usual one).")) end
+                    if refresh then refresh() end
+                end }
+        end },
+        { _("Install a version"), _("Any release or branch, an older one too"), function() U.pickVersion(plugin) end },
+        { _("Check automatically"), U.auto(), function() U.setAuto(not U.auto()) end },
+        { _("Undo a plugin update"), "", function() require("appsundo").undoMenu(plugin) end },
+        { heading = _("OPTIONAL APPS") },
+        { _("Optional apps"), _("Extra apps you can add"), function() U.optionalMenu(plugin) end },
+    }
 end
 
 return U

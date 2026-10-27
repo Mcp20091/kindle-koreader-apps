@@ -45,7 +45,9 @@ local BUILT_IN = {
         secret_keys = { ["homeassistant.lua"] = { "token", "refresh_token", "access_token", "expires_at" } } },
     { key = "apps", name = "Launcher", reader_keys = { "^apps", "^sleep_screen_app$" } },
     { key = "gestures", name = "Gestures", files = { "^gestures%.lua$" } },
-    { key = "webpage", name = "Web server", reader_keys = { "^webpage" } },
+    -- (HTTPS's certificates, the Kindle's own and yours, with their keys: only with keys and sign-ins.)
+    { key = "webpage", name = "Web server", reader_keys = { "^webpage" },
+        secret_files = { "webpage-https-key.pem", "webpage-https-cert.pem", "webpage-https-own-key.pem", "webpage-https-own-cert.pem" } },
 }
 
 --- Every app's part: the built-in ones, then what apps registered (theirs win).

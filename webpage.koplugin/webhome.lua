@@ -33,6 +33,10 @@ function Home.routes(server, plugin)
                 wikipedia = Common.plugin("wikipedia") ~= nil,
                 syncthing = Common.plugin("syncthing") ~= nil,
                 sshclient = Common.plugin("sshclient") ~= nil,
+                -- FlashForge: an optional app (optional/ in the repo).
+                flashforge = Common.plugin("flashforge") ~= nil,
+                -- Pangolin: an optional app too.
+                pangolin = Common.plugin("pangolin") ~= nil,
             },
             -- Notes can take typed text (a newer Notes).
             sendNotes = (Common.plugin("notes") or {}).addTextPage ~= nil,

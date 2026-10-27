@@ -1,6 +1,6 @@
-2026-10-25 23:01
-Oct 25  Diagnostics keep a longer log history (no noise, across restarts); updater: What's new after an update, Update available on the Settings tile, Install a version; SSH: Lock now, the output pop-up where it was dragged
-Oct 25  Export check: the public repo as owner/repo alone is allowed too (the updater's default)
-Oct 25  Guide: the update source as the repo's full address
-Oct 25  Updater: Reinstall when already up to date
-Oct 25  Launcher: updates from GitHub (Check for updates, Update from owner/repo, Check automatically once a day on Wi-Fi), installed with the old version kept; the release zip says its version (apps.koplugin/release.txt); zip installs keep Syncthing's run bit
+2026-10-27 19:50
+Oct 27  Export check: made-up addresses in the FlashForge and Pangolin tests from the allowed examples; Pangolin's README names its Home Assistant integration without a link to an account; the HTTPS code's OID and PEM name and FlashForge's discovery address allowed
+Oct 27  Launcher: the apps are called Clod UI (U.NAME): its header over the version on Set up your Kindle's Updates step and Settings > Updates, and an Optional apps header over the optional apps; setup steps' rows can have headers
+Oct 27  Launcher: a Pangolin tile when the optional Pangolin app is installed (its line, settings, notifications, gestures), in the public export and the guide's optional apps; the tile tests' expected lists brought up to date
+Oct 27  Launcher: an Updates step in Set up your Kindle, after Wi-Fi (where updates are, a new version looked up and offered, the optional apps with Install, Check automatically); optional apps called extra apps you can add; a step's not-done line can change (notDoneText as a function)
+Oct 27  Launcher: Settings in groups (Getting started, Settings, Accounts, Reading, Home, Writing, Tools, as the suggested groups; One list as an option): hold a row to move, group or hide it, a group's name to rename, move or delete it; hidden rows found by search (hold to show them again); Updates on its own page at the top; To Do in the suggested Tools group

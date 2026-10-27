@@ -33,6 +33,9 @@ def main():
                     if f in ('AGENTS.md', 'CLAUDE.md'):
                         continue
                     full = os.path.join(root, f)
+                    # (The repo's own copy of the program and its notice: the checked one goes in below.)
+                    if os.path.relpath(full, ROOT).replace('\\', '/') in ('syncthing.koplugin/syncthing', 'syncthing.koplugin/SYNCTHING-NOTICE.txt'):
+                        continue
                     z.write(full, os.path.relpath(full, ROOT).replace('\\', '/'))
                     n += 1
         info = zipfile.ZipInfo('syncthing.koplugin/syncthing')

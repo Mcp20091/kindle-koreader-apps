@@ -816,8 +816,7 @@ function Editor:fingerOnCrossword(x, y)
     end
     if self.on_clue_tap and self.on_clue_tap(self, x, y) then return true end
     if self.outline then
-        self.outline = nil
-        self:repaint()
+        self:clearOutline()
         return true
     end
     return false
@@ -1579,6 +1578,10 @@ end
 function Editor:closePanel()
     if not self.panel then return end
     self.panel = nil
+    -- Only where the panel was, cleaned (the whole page flashed before).
+    local area = self.panelArea
+    self.panelArea = nil
+    if area then return self:repaint(self:padded(area, self.ui:u(4)), "full") end
     self:repaint(nil, "full")
 end
 
@@ -1620,6 +1623,7 @@ function Editor:paintPanel(bb)
     ui:box(bb, x, y, pw, ph, { fill = UI.WHITE, border = UI.BLACK, r = u(8), bw = math.max(2, u(1.2)) })
     self:hit(x, y, pw, ph, function() end)   -- taps inside a panel never close it
     local panelArea = { x - 2, y - 2, pw + 4, ph + 4 }
+    self.panelArea = panelArea
     local function changed() self:repaint(panelArea) end
     if kind == "hint" then
         self:paintHintPanel(bb, x, y, pw)
@@ -3067,8 +3071,25 @@ end
 --- A clue found by tapping its number: its squares and its clue outlined
 -- ({ x, y, w, h } on the screen) until the next stroke or page.
 function Editor:showOutline(boxes)
+    local old = self.outline
     self.outline = { page = self.page, boxes = boxes }
-    self:repaint()
+    -- Only the outlines drawn again (the last ones and these), not the whole page.
+    if old and old.page == self.page then self:repaintOutline(old) end
+    self:repaintOutline(self.outline)
+end
+
+--- The outlines gone (from the screen too: only where they were).
+function Editor:clearOutline()
+    local old = self.outline
+    if not old then return end
+    self.outline = nil
+    if old.page == self.page then self:repaintOutline(old) end
+end
+
+-- Where an outline's boxes are on the screen, drawn again.
+function Editor:repaintOutline(o)
+    local t = math.max(4, self.ui:u(2)) + 2
+    for __, b in ipairs(o.boxes) do self:repaint({ b[1] - t, b[2] - t, b[3] + 2 * t, b[4] + 2 * t }) end
 end
 
 function Editor:paintOutline(bb)
@@ -3088,15 +3109,17 @@ end
 -- `copy`: text its Copy button puts on the clipboard (an AI hint's).
 function Editor:pinClue(rows, near, copy)
     local old = self.clueCard
-    local area = old and old.boxes and self:padded(self:clueCardRect(), self.ui:u(6))
+    local area = old and old.boxes and old.page == self.page and self:padded(self:clueCardRect(), self.ui:u(6))
     self:freeClueCard()
     local list = {}
     for __, r in ipairs(rows) do table.insert(list, type(r) == "table" and r or { text = r }) end
     self.clueCard = { page = self.page, rows = list, near = near, copy = copy,
         x = not near and old and old.x or nil, y = not near and old and old.y or nil }
-    -- The one it takes the place of cleaned off the screen.
+    -- Only where the cards are: the one it takes the place of cleaned off the
+    -- screen (as after a drag), the new one drawn. (Not the whole page: KOReader
+    -- merges overlapping refreshes into the stronger one, which flashed it all.)
     if area then self:repaint(area, "full") end
-    self:repaint()
+    self:repaint(self:padded(self:clueCardRect(), self.ui:u(4)))
 end
 
 function Editor:freeClueCard()
@@ -3190,8 +3213,10 @@ function Editor:paintClueCard(bb)
     -- and its tick boxes.
     self:hit(x, y, w, h, nil)
     self:hit(close[1], close[2], close[3], close[4], function()
+        -- (only where it was, cleaned as after a drag: not the whole page)
+        local area = self:padded(rect, self.ui:u(6))
         self:freeClueCard()
-        self:repaint()
+        self:repaint(area, "full")
     end)
     if copyAt then self:hit(copyAt[1], copyAt[2], copyAt[3], copyAt[4], function() self:copyClueCard() end) end
     for __, t in ipairs(boxes) do
@@ -4992,10 +5017,7 @@ function Editor:endStroke()
     if not stroke then return end
     self.stroke = nil
     -- A clue outlined by a tap: gone at the next stroke.
-    if self.outline then
-        self.outline = nil
-        self:repaint()
-    end
+    if self.outline then self:clearOutline() end
     -- A hint waiting for where: a tap says (the dot it made goes).
     if self.hintMode then
         local tx, ty, tw, th = Ink.box(stroke)

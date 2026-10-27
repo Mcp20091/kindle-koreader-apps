@@ -70,6 +70,8 @@ local APPS = {
     syncthing = { _("Syncthing"), "folder-sync" },
     sshclient = { _("SSH"), "terminal" },
     ssh = { _("SSH"), "terminal" },
+    flashforge = { _("FlashForge"), "printer" },
+    pangolin = { _("Pangolin"), "shield-check" },
     webpage = { _("Web server"), "globe" },
     apps = { _("Launcher"), "app-window" },
 }

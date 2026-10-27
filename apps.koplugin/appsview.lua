@@ -381,6 +381,14 @@ function View:status(tile)
         -- "On · Up to date", "On · Syncing · 3 files left", "Off".
         local s = self:plugin("syncthing")
         return s and s.appsLine and try(function() return s:appsLine() end) or ""
+    elseif key == "flashforge" then
+        -- "Printing 42% · 1 h 5 min left", "Ready".
+        local s = self:plugin("flashforge")
+        return s and s.appsLine and try(function() return s:appsLine() end) or ""
+    elseif key == "pangolin" then
+        -- "All online · 4 sites", "1 site offline".
+        local s = self:plugin("pangolin")
+        return s and s.appsLine and try(function() return s:appsLine() end) or ""
     elseif key == "ssh" then
         -- "3 hosts".
         local s = self:plugin("sshclient")
@@ -2392,24 +2400,7 @@ function View:settingsRows()
         end },
         -- Every app that's set up, tested the way its own Test connection does (appstest.lua).
         { _("Connection check"), _("Every app that's set up"), function() require("appstest").open(self) end },
-        { heading = _("PLUGINS") },
-        -- Updates from GitHub (appsupdate.lua): the release installed, a check, and the repo.
-        { _("Check for updates"), require("appsupdate").installed(self.apps) or _("Version not known"),
-            function() require("appsupdate").check(self.apps) end },
-        { _("Update from"), require("appsupdate").repo(), function()
-            local U = require("appsupdate")
-            KO.askText{ title = _("Update from"), text = U.repo(), hint = "owner/repo", pen = false, ok = _("Save"),
-                done = function(t)
-                    if not U.setRepo(t) then return KO.message(_("Type it as owner/repo, as on GitHub (empty: the usual one).")) end
-                    self:refresh()
-                end }
-        end },
-        { _("Install a version"), _("Any release, an older one too"), function() require("appsupdate").pickVersion(self.apps) end },
-        { _("Check automatically"), require("appsupdate").auto(), function()
-            local U = require("appsupdate")
-            U.setAuto(not U.auto())
-        end },
-        { _("Undo a plugin update"), "", function() require("appsundo").undoMenu(self.apps) end },
+        -- (Updates and Undo a plugin update: Settings > Updates, appsupdate.lua.)
     }
     local list = {}
     for __, r in ipairs(rows) do

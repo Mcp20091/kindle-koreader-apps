@@ -245,6 +245,17 @@ do
     PS.registerSettings{ key = "koreader", name = "KOReader", icon = "settings", open = function(jump)
         PS.settingsPage{ title = _("KOReader settings"), jump = jump, rows = function() return require("appskosettings").rows(koreaderMenu) end }
     end, rows = function() return require("appskosettings").rows(koreaderMenu) end }
+    -- Updates (appsupdate.lua) on their own page, at the top of Settings: the version installed,
+    -- or Update available once the daily check has seen one.
+    local function updateRows()
+        return require("appsupdate").settingsRows(Apps.instance, function() if current then current:render() UIManager:setDirty(current, "ui") end end)
+    end
+    PS.registerSettings{ key = "updates", name = _("Updates"), icon = "download", value = function()
+        local U = require("appsupdate")
+        return U.available(Apps.instance) and _("Update available") or U.installedText(Apps.instance) or ""
+    end, open = function(jump) PS.settingsPage{ title = _("Updates"), jump = jump, rows = updateRows } end, rows = updateRows }
+    -- Set up your Kindle, a row of Settings like the others (Getting started, to start with).
+    PS.registerSettings{ key = "setup", name = _("Set up your Kindle"), icon = "sparkles", open = function() PS.showSetup(true) end }
     -- Set up your Kindle: Wi-Fi first.
     PS.registerSetup{ key = "wifi", order = 10, icon = "wifi", title = _("Wi-Fi"),
         text = _("Most of the apps need Wi-Fi now and then: Home Assistant, To Do's sync, Notes' AI and the web page. Turn it on and pick your network."),
@@ -253,6 +264,70 @@ do
         action = _("Turn on Wi-Fi"),
         skipped = _("Reading, Notes, Crosswords you already have and lists on this Kindle all work. What syncs or downloads waits for Wi-Fi."),
         run = function() NetworkMgr:toggleWifiOn(nil, true, true) end }
+    -- Updates, right after Wi-Fi: where they are (Settings > Updates), whether a newer version is
+    -- out (looked up when the step shows, on Wi-Fi), and the optional apps with Install.
+    local upd = {}   -- what the step has looked up: { busy, rel, why, optional }
+    local function lookUp()
+        if upd.busy or upd.rel or upd.why or NetworkMgr:isConnected() == false then return end
+        upd.busy = true
+        local U = require("appsupdate")
+        U.latest(function(rel, why)
+            upd.rel, upd.why = rel, why
+            if not rel then
+                upd.busy = nil
+                return require("appssetup").redraw()
+            end
+            U.optionalApps(Apps.instance, rel, function(list)
+                upd.optional, upd.busy = list or {}, nil
+                require("appssetup").redraw()
+            end)
+        end)
+    end
+    local function newer()
+        local U = require("appsupdate")
+        return upd.rel ~= nil and U.newer(upd.rel.tag, U.installed(Apps.instance))
+    end
+    PS.registerSetup{ key = "updates", order = 12, icon = "download", title = _("Updates"),
+        text = _("New versions of these apps come from GitHub. They're in Settings > Updates, at the top of Settings: Check for updates, Install a version, and Optional apps (extra apps you can add, such as FlashForge). With Check automatically on, a notification tells you when there's a new one."),
+        done = function() return upd.rel ~= nil and not newer() end,
+        doneText = _("Up to date"),
+        notDoneText = function() return newer() and _("A new version is out") or _("Not checked yet") end,
+        action = _("Check for updates"), run = function() require("appsupdate").check(Apps.instance) end,
+        skipped = _("Nothing changes. Settings > Updates has it any time."),
+        rows = function()
+            lookUp()
+            local U = require("appsupdate")
+            local plugin = Apps.instance
+            local rows = {}
+            local have = U.installedText(plugin) or _("not known")
+            rows[#rows + 1] = { heading = U.NAME:upper() }
+            if upd.busy and not upd.rel then
+                rows[#rows + 1] = { title = _("Looking for a new version…"), value = have, fn = function() end }
+            elseif upd.rel and newer() then
+                rows[#rows + 1] = { title = T(_("%1 is out"), upd.rel.tag), sub = T(_("Installed: %1. Tap to see what's new and update."), have),
+                    fn = function() U.offer(plugin, upd.rel) end }
+            elseif upd.rel then
+                rows[#rows + 1] = { title = _("Up to date"), value = have, fn = function() U.check(plugin) end }
+            else
+                rows[#rows + 1] = { title = _("Check for updates"), sub = upd.why or _("Once the Kindle is on Wi-Fi."), value = have,
+                    fn = function(refresh) upd.why = nil lookUp() refresh() end }
+            end
+            rows[#rows + 1] = { title = _("Check automatically"), value = U.auto() and _("On") or _("Off"),
+                fn = function(refresh) U.setAuto(not U.auto()) refresh() end }
+            -- The optional apps of the latest release, under their own header: each with Install
+            -- (KOReader asks to restart after).
+            if upd.optional and #upd.optional > 0 then rows[#rows + 1] = { heading = _("OPTIONAL APPS") } end
+            for __, o in ipairs(upd.optional or {}) do
+                rows[#rows + 1] = { title = o.title, sub = o.description and (#o.description > 70 and (o.description:sub(1, 67) .. "…") or o.description) or _("An optional app"),
+                    value = o.installed and _("Installed") or _("Install"),
+                    fn = function()
+                        if o.installed then return U.optionalMenu(plugin) end
+                        require("appsko").confirm{ title = T(_("Install %1"), o.title), text = (o.description or "") .. "\n\n" .. T(_("From %1. KOReader asks to restart after."), upd.rel.tag),
+                            ok = _("Install"), onOk = function() U.run(plugin, U.optionalRelease(upd.rel, o)) end }
+                    end }
+            end
+            return rows
+        end }
     -- The weather for At a glance, the widgets sleep screen and the Weather tile.
     -- Which tiles show, the layout, and the quick buttons.
     PS.registerSetup{ key = "launcher", order = 65, icon = "grid-3x3", title = _("Your home screen"),

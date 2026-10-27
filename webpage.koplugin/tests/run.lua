@@ -44,5 +44,11 @@ check("published", opf.published, "1897")
 check("subjects", opf.subjects, "Fiction, Sea stories")
 check("isbn", opf.isbn, "9780000000002")
 
+-- HTTPS: the name the address is shown at for a certificate of yours.
+local Tls = require("webtls")
+check("host from names", Tls.hostOf({ "localhost", "192.168.1.50", "kindle.home.arpa" }), "kindle.home.arpa")
+check("wildcard skipped", Tls.hostOf({ "*.example.lan", "reader.example.lan" }), "reader.example.lan")
+check("addresses only", Tls.hostOf({ "localhost", "127.0.0.1", "192.168.1.50", "fe80::1" }), nil)
+
 print(string.format("%d passed, %d failed", passed, failed))
 os.exit(failed == 0 and 0 or 1)
