@@ -42,7 +42,7 @@ Tap an app to see what it does. Each one links to its chapter of the guide.
 - At a glance under the clock: the weather, what's next and the tasks due. Quick buttons for Wi-Fi, the light, night mode and a refresh.
 - **Reading statistics**: today, the last 7 and 30 days, streaks, when you read by hour and weekday, and every book with its percent, time left at your pace and its sessions (fix or delete one).
 - **Weather**: Home Assistant's, or a free forecast with no account: now, US alerts, the next 24 hours and 7 days.
-- **Fonts**: your fonts drawn in their own typefaces, good reading fonts from Google Fonts with one tap, and the font settings.
+- **Fonts**: in three tabs: your fonts drawn in their own typefaces, all of Google Fonts to browse (search, kinds, popular or newest, good reading fonts to start with), and the font settings.
 - **Quick buttons** under the clock and in the control center (every app): Wi-Fi, the light, New task, New note, Continue reading, the weather, Home Assistant devices with − and + or a speaker's controls, sensor readings, To Do lists, KOReader actions and more, in groups. Tap does it; hold opens what's behind it. A visual editor in the web server.
 - One title bar, notifications, Recent apps, a drop-down control panel, search across every app (settings too), Undo, and one Settings list for everything, with its own tile.
 - Make the home screen yours: suggested groups (Reading, Home, Writing, Tools…), groups sorted A–Z or by hand, and a saved copy of the home screen to go back to.
@@ -255,7 +255,7 @@ Everything is kept on the Kindle. Below is everything that reaches outside it, a
 | The Guardian, USA Today, Universal, Washington Post and New Yorker | Downloading crosswords | Crosswords fetches puzzles |
 | Open-Meteo and the US National Weather Service | The weather, as an alternative if you'd rather not use Home Assistant's or don't have it set up (no account; pick a place in Settings > Launcher > Weather) | The weather is on |
 | Open Library and Google Books | The Library's **Find details online** | You tap it |
-| Google | Google Fonts, and the internet connection test | You get a font, or run a connection check |
+| Google | Google Fonts (its list of families, and the fonts), and the internet connection test | You open Fonts > Get more (the list, once a month), get a font, or run a connection check |
 
 ## Building the guide PDF
 

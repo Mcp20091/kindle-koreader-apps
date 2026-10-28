@@ -1,4 +1,5 @@
-2026-10-28 00:05
+2026-10-28 00:45
+Oct 28  Fonts: three tabs along the top (Your fonts, Get more, Settings); the font new books open in at the top of Your fonts, a new default with Undo; Get more browses all of Google Fonts (search, kinds, popular, A–Z or newest, pages), its list fetched in the background and kept a month; the page bar is one bar when there are too many pages for a part each
 Oct 28  Launcher: Help (in the three dots) in the apps' read pop-up, in pages, rewritten for today's apps, with User guide (the guide's QR code and PDF)
 Oct 27  Launcher: App lock, a passcode (keypad) or password before the apps you tick (Settings > Launcher > App lock and the web page); unlocked until the Kindle sleeps, a locked app covered when it wakes
 Oct 27  Updates: an optional app that can't be updated with the rest gets a notification (tap: Settings > Updates); one older than the launcher (no tile) shows Update instead of Remove

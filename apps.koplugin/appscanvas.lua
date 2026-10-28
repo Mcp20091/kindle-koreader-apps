@@ -325,6 +325,18 @@ function Flow:pages()
     end
     local gap = n > 12 and 3 or 6
     local w = (x1 - x0 - (n - 1) * gap) / n
+    if w < 6 then
+        -- Too many pages for a part each (a long list): one bar filled up to this page, and a
+        -- tap along it goes that far through.
+        local span = x1 - x0
+        c:box(x0, py, span, ph, { r = math.min(6, ph / 2), fill = Canvas.WHITE, border = Canvas.BLACK, bw = 1.3 })
+        c:box(x0, py, math.max(ph, span * at / n), ph, { r = math.min(6, ph / 2), fill = Canvas.FILL })
+        local parts = 24
+        for s = 1, parts do
+            c:hit(x0 + (s - 1) * span / parts, y, span / parts, h + 4, go(math.max(1, math.min(n, math.ceil(s / parts * n)))))
+        end
+        return n
+    end
     for k = 1, n do
         local x = x0 + (k - 1) * (w + gap)
         local on = k == at

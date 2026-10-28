@@ -457,6 +457,7 @@ function View:open(tile)
     elseif key == "fonts" then
         self.away = false
         self.mode, self.fontsPage, self.fontsData = "fonts", 1, nil
+        self.fontsTab, self.fontsPages = nil, nil
         self:refresh()
         return
     elseif key == "readingtime" then
@@ -953,12 +954,6 @@ function View:onClose()
         self:refresh()
         return true
     end
-    if self.mode == "fontsget" then
-        -- Get fonts: back to Fonts.
-        self.mode = "fonts"
-        self:refresh()
-        return true
-    end
     if self.backTo and self.mode ~= "tiles" then
         -- Opened from Settings: back there.
         self.mode, self.backTo = self.backTo, nil
@@ -1080,7 +1075,7 @@ function View:bar(c, title, buttons)
     end
     -- Apps' settings, opened from the list of every app's: back to the list.
     local back = self.mode == "arrange" and function() self.mode, self.orderUndo = "hub", nil self:refresh() end
-        or (self.mode == "statsbook" or self.mode == "fontsget" or self.backTo) and function() self:onClose() end or home
+        or (self.mode == "statsbook" or self.backTo) and function() self:onClose() end or home
     Bar.draw(c, {
         title = title,
         back = back, home = home,
@@ -1129,11 +1124,13 @@ function View:paintTo(bb, x, y)
 end
 
 -- The launcher's Settings screens: with Settings locked in App lock, only once the passcode is right.
-local SETTINGS_MODES = { hub = true, arrange = true, page = true, quick = true, conntest = true, fontsget = true }
+local SETTINGS_MODES = { hub = true, arrange = true, page = true, quick = true, conntest = true }
 
 --- Settings locked: back to the tiles and the passcode asked (then the screen it was going to).
 function View:lockSettings()
-    if not SETTINGS_MODES[self.mode] or self.lockAsking then return end
+    -- (Fonts' Get more tab too.)
+    local settings = SETTINGS_MODES[self.mode] or (self.mode == "fonts" and self.fontsTab == "get")
+    if not settings or self.lockAsking then return end
     local Lock = require("appslock")
     if not Lock.get():needs("settings") then return end
     local mode = self.mode
@@ -1161,7 +1158,6 @@ function View:render()
     elseif self.mode == "icons" then require("appsicons").draw(self, c)
     elseif self.mode == "weather" then require("appsweather").draw(self, c)
     elseif self.mode == "fonts" then require("appsfontsview").draw(self, c)
-    elseif self.mode == "fontsget" then require("appsfontsview").drawGet(self, c)
     elseif self.mode == "quick" then require("appsquick").drawEditor(self, c)
     elseif self.mode == "conntest" then require("appstest").draw(self, c)
     elseif self.mode == "switcher" then require("appsswitcher").draw(self, c)

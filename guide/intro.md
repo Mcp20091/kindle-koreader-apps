@@ -16,7 +16,7 @@ Smaller things the plugins add, and where to find them:
 
 - **Reading time and statistics**: the launcher's **Reading statistics** tile (every book's statistics and the calendar), and the web page's **Reading** tab (today, days in a row, each book; fix or delete a reading session; progress sync).
 - **Battery**: the launcher's **Battery** screen (**Settings > Battery**, search, or a tile you can show), the control center (see below), and the **Battery** card on the web page's **System** tab: how fast it goes awake and asleep, and what is on that uses power.
-- **Fonts**: the launcher's **Fonts** tile: your fonts drawn in their own typefaces, **Get more fonts** (any Google Fonts family, or a suggested reading font with one tap), and the font settings. The web page's **Fonts** tab has the same.
+- **Fonts**: the launcher's **Fonts** tile: your fonts drawn in their own typefaces, **Get more** (all of Google Fonts to browse and search, with suggested reading fonts to start with), and the font settings. The web page's **Fonts** tab has the same.
 - **Quick buttons**: buttons under the launcher's clock and in the control center in every app (Wi-Fi, a new task, a Home Assistant light with − and +, your book and many more). See the launcher chapter.
 - **KOReader's own settings**: **Settings > KOReader**, the launcher's **KOReader settings** tile (one you can show), and the web page's **KOReader** tab (folders, the common settings and KOReader's whole menu).
 - **Restart KOReader**: the launcher's **⋮** menu (or a tile you can show).

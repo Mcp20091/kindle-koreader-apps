@@ -203,22 +203,22 @@ The top says when it last synced and how many changes are waiting; **Sync now** 
 
 ## Fonts
 
-The same as the Kindle's Fonts screen, which uses the same code (it needs the launcher). **Font settings** first, the same as in KOReader's menus:
+The same as the Kindle's Fonts screen, which uses the same code (it needs the launcher), in the same three tabs.
 
-- **Font for new books** and **Font size for new books** (also on the Kindle's **Settings > KOReader**).
-- **Fallback font**: for characters the book's font doesn't have (Chinese, Japanese, symbols…), and **Use more fallback fonts** for KOReader's own list after it. These apply to every book, the open one too.
-- **Use the book's own fonts** (fonts that come inside a book) and **Font weight** (thinner or bolder text).
-- **Advanced**: **Hinting** and **Kerning**.
-- Except the fallback fonts, these are the defaults for books you haven't opened yet: a book you've already opened keeps its own.
-
-Then **Your fonts**: every font KOReader can use for books, each name and a sample line drawn in its own typeface, marked **Built-in** or **Added by you**.
+**Your fonts**: which font new books open in, then every font KOReader can use for books, each name and a sample line drawn in its own typeface, marked **Built-in** or **Added by you**.
 - **Add fonts**: drop TTF or OTF files, or a zip of a family, on the box (or pick them). Anything that isn't a font is turned away. They're kept in the folder KOReader reads your own fonts from (the tab names it).
-- **Get from Google Fonts**: type a family's name (such as Lora) and the Kindle downloads its regular, bold and italic styles, as many as the family has, then adds them. It needs Wi-Fi on the Kindle; the tab shows how it's going.
-- **Set as default**: the font new books start with (the same setting as **Font for new books** on the Kindle).
+- **Set as default**: the font new books start with (the same setting as **Font for new books**), with **Undo** for a few seconds.
 - **Remove**: takes out a font you added, with **Undo** for a few seconds. Built-in fonts stay.
 - KOReader reads its fonts when it starts, so after a change the tab offers **Restart KOReader**; new or removed fonts show in books after that.
 
-![The Fonts tab: font settings, adding fonts, and each font drawn in its own typeface](img/apps/web-fonts.png)
+**Get more**: every family on [Google Fonts](https://fonts.google.com), as on the Kindle: a search box (it searches as you type), the chips **Suggested**, **All**, **Serif**, **Sans**, **Mono**, **Handwriting** and **Display**, the order (**Popular first**, **A–Z**, **Newest first**) and pages. Here each name is drawn in its own typeface, straight from Google Fonts. **Get** has the Kindle download the family's regular, bold and italic styles (as many as it has) over its Wi-Fi; the row then says **Installed**. A name that isn't in the list can still be got by name. **List from…** says when the Kindle got the list; **Update** gets it again.
+
+**Settings**: the same as in KOReader's menus, in groups:
+- **New books**: **Font for new books**, **Font size for new books**, **Font weight** (thinner or bolder text) and **Use the book's own fonts** (fonts that come inside a book). A book you've already opened keeps its own.
+- **Fallback fonts**: **Fallback font**, for characters the book's font doesn't have (Chinese, Japanese, symbols…), and **Use more fallback fonts** for KOReader's own list after it. These apply to every book, the open one too.
+- **Advanced**: **Hinting** and **Kerning**.
+
+![The Fonts tab's Get more: Google Fonts' serif families, popular first, each drawn in its own typeface](img/apps/web-fonts.png)
 
 ## KOReader
 

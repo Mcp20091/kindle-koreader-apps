@@ -415,5 +415,67 @@ do
     package.loaded["pluginshare"] = hadPS
 end
 
+-- Every Google Fonts family to browse (appsgooglefonts.lua): Google's catalogue kept short, then searched.
+do
+    local tmp = os.tmpname()
+    package.loaded["datastorage"] = package.loaded["datastorage"] or { getDataDir = function() return "." end }
+    package.loaded["ui/uimanager"] = package.loaded["ui/uimanager"] or {}
+    local G = require("appsgooglefonts")
+    G.cachePath = function() return tmp end
+    local function fam(name, cat, fonts, pop, date)
+        local f = {}
+        for __, k in ipairs(fonts) do table.insert(f, '"' .. k .. '": { "thickness": 4 }') end
+        return '{ "family": "' .. name .. '", "displayName": null, "category": "' .. cat .. '", "fonts": { '
+            .. table.concat(f, ", ") .. ' }, "axes": [], "dateAdded": "' .. date .. '", "popularity": ' .. pop .. ' }'
+    end
+    local json = '{ "axisRegistry": [ { "tag": "wght", "family": "not one" } ], "familyMetadataList": [ '
+        .. table.concat({
+            fam("Sample Serif", "Serif", { "400", "400i", "700", "700i" }, 12, "2020-03-01"),
+            fam("Lora", "Serif", { "400", "700" }, 3, "2011-05-01"),
+            fam("Mono Example", "Monospace", { "400" }, 40, "2024-01-15"),
+            fam("Quick Hand", "Handwriting", { "400", "400i" }, 7, "2026-09-30"),
+            fam("Loraine Sans", "Sans Serif", { "300", "500" }, 9, "2018-07-07"),
+            fam("Odd One", "Symbols", { "400" }, 1, "2019-01-01"),
+        }, ", ") .. ' ] }'
+    local parsed = G.parse(json)
+    check("google list: families with a known category, popular first", (function()
+        local n = {}
+        for i, f in ipairs(parsed) do n[i] = f.name end
+        return table.concat(n, ",")
+    end)(), "Lora,Quick Hand,Loraine Sans,Sample Serif,Mono Example")
+    check("google list: styles kept as flags", parsed[4].styles .. "," .. parsed[1].styles .. "," .. parsed[3].styles, "15,3,0")
+    check("google list: date as a number", parsed[2].date, 20260930)
+    local f = io.open(tmp, "wb")
+    f:write(G.serialize(parsed, 1000))
+    f:close()
+    G.drop()
+    local st = G.state()
+    check("google list: read back from the cache", st.count .. "," .. st.at .. "," .. st.status, "5,1000,done")
+    local function names(r)
+        local n = {}
+        for i, e in ipairs(r.items) do n[i] = e.name end
+        return table.concat(n, ",")
+    end
+    check("google list: all, popular first", names(G.query{ cat = "all" }), "Lora,Quick Hand,Loraine Sans,Sample Serif,Mono Example")
+    check("google list: a category", names(G.query{ cat = "serif" }), "Lora,Sample Serif")
+    check("google list: A–Z", names(G.query{ cat = "all", sort = "az" }), "Lora,Loraine Sans,Mono Example,Quick Hand,Sample Serif")
+    check("google list: newest first", names(G.query{ cat = "all", sort = "new" }), "Quick Hand,Mono Example,Sample Serif,Loraine Sans,Lora")
+    check("google list: search, names that start with it first", names(G.query{ q = "LORA", cat = "suggested" }), "Lora,Loraine Sans")
+    check("google list: search finds within names", names(G.query{ q = "hand", cat = "all" }), "Quick Hand")
+    check("google list: an exact name", tostring(G.query{ q = "lora" }.exact) .. "," .. tostring(G.query{ q = "lor" }.exact), "true,false")
+    local page = G.query{ cat = "all", from = 2, count = 2 }
+    check("google list: a page of it", page.total .. ":" .. names(page), "5:Quick Hand,Loraine Sans")
+    local one = G.query{ cat = "all", count = 1 }.items[1]
+    check("google list: a row's words", one.category .. " · " .. one.styles, "Serif · Regular and Bold")
+    check("google list: styles in words", G.stylesLabel(15) .. "|" .. G.stylesLabel(5) .. "|" .. G.stylesLabel(0) .. "|" .. G.stylesLabel(6),
+        "4 styles|Regular and Italic|1 style|2 styles")
+    local sug = G.query{}
+    check("google list: suggestions, with their notes and what the list knows", sug.total .. "," .. sug.items[3].name .. "," .. tostring(sug.items[3].category) .. "," .. tostring(sug.items[1].category),
+        #G.SUGGESTED .. ",Lora,Serif,nil")
+    G.drop()
+    os.remove(tmp)
+    check("google list: none yet", G.state().status .. "," .. G.query{ cat = "all" }.total, "none,0")
+end
+
 print(string.format("%d passed, %d failed", passed, failed))
 os.exit(failed == 0 and 0 or 1)

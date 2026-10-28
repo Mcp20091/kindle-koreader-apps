@@ -182,7 +182,7 @@ do
         end
     end
     PS.registerSettings{ key = "fonts", name = _("Fonts"), icon = "type",
-        open = screen("fonts", function(v) v.fontsData = nil end) }
+        open = screen("fonts", function(v) v.fontsData, v.fontsTab, v.fontsPages = nil, nil, nil end) }
     -- AI for every app (appsai.lua): the services, which does each job, and
     -- each feature's instructions. The apps register their jobs and features
     -- here (only kept in lists: appsai loads when first used).
