@@ -96,7 +96,8 @@ def own_values():
                 w = w.split('#')[0].strip()
                 if w:
                     words.add(w)
-    for get in (socket.gethostname, getpass.getuser):
+    # This PC's name and user name (not on GitHub, where they're the build machine's: "runner").
+    for get in (socket.gethostname, getpass.getuser) if not os.environ.get('GITHUB_ACTIONS') else ():
         try:
             words.add(get())
         except Exception:
