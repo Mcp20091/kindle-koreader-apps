@@ -1,3 +1,4 @@
-2026-10-27 19:50
+2026-10-27 20:18
+Oct 27  FlashForge: says what it is to the launcher and the web page (its tile, its web tab, now in this folder)
 Oct 27  Export check: made-up addresses in the FlashForge and Pangolin tests from the allowed examples; Pangolin's README names its Home Assistant integration without a link to an account; the HTTPS code's OID and PEM name and FlashForge's discovery address allowed
 Oct 27  FlashForge: a new optional app for FlashForge 3D printers over the Wi-Fi (the print, temperatures, pause, resume, cancel, clear, light, air filter, a camera picture, the Material Station, and starting a recent file with material matching on the AD5X), in optional/ with its own zip
