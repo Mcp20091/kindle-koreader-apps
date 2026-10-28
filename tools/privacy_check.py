@@ -238,6 +238,14 @@ def check_push():
             hits.append((remote_ref, 0, kind, 'in the branch or tag name'))
         if git('cat-file', '-t', local_sha).strip() == 'tag':
             for i, l in enumerate(git('cat-file', 'tag', local_sha).split('\n'), 1):
+                m = re.match(r'tagger (.*) <(.*)> ', l) if i <= 4 else None
+                if m:  # who made the tag: its name and email each on their own, as a commit's author
+                    for who in m.groups():
+                        for kind, text in scan_line(who):
+                            hits.append((remote_ref + ' (tagger)', 0, kind, text))
+                    if not OK_EMAILS.match(m.group(2)):
+                        hits.append((remote_ref + ' (tagger)', 0, 'email', m.group(2) + ' (use the GitHub noreply address)'))
+                    continue
                 for kind, text in scan_line(l):
                     hits.append((remote_ref + ' (tag message)', i, kind, text))
         # Only the commits GitHub doesn't have yet.
