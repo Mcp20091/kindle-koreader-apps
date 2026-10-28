@@ -167,7 +167,7 @@ function HomeAssistant:init()
     -- What it is for the launcher and the web page: its tiles, Settings group, web tab
     -- (apps.koplugin/appsinfo.lua).
     PS.appInfo = PS.appInfo or {}
-    PS.appInfo.homeassistant = { name = _("Home Assistant"), icon = "house", order = 10, group = "home",
+    PS.appInfo.homeassistant = { name = _("Home Assistant"), icon = "house", dir = self.path, order = 10, group = "home",
         tiles = {
             { key = "ha", event = "ShowHomeAssistant", line = function(ha) return ha:appsLine() end },
             -- (Nothing without Home Assistant set up; a tap opens it anew, not Home Assistant's screen.)
@@ -178,7 +178,7 @@ function HomeAssistant:init()
                     return ha ~= nil and ha.api:signedIn() == true
                 end },
         },
-        web = { page = "ha", routes = "webha", script = "web/ha.js", dir = self.path,
+        web = { page = "ha", routes = "webha", script = "web/ha.js",
             card = "Connection, devices, Quick tiles, layout, settings and backup." } }
     -- A tap on one of its notifications in the shared list (Apps).
     PS.notifyOpeners = PS.notifyOpeners or {}

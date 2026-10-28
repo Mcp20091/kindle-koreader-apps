@@ -1,6 +1,6 @@
 #!/bin/bash
 # A test release from the branch you're on: a pre-release that only shows up in Settings > Updates >
-# Install a version (marked "test"), never as the latest, and main isn't touched.
+# Select version (marked "test"), never as the latest, and main isn't touched.
 #
 #   bash tools/test-release.sh [notes.md]      from a checkout of the branch (not main)
 #

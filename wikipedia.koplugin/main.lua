@@ -64,13 +64,13 @@ function Wikipedia:init()
     -- What it is for the launcher and the web page: its tile, Settings group, web tab
     -- (apps.koplugin/appsinfo.lua).
     PS.appInfo = PS.appInfo or {}
-    PS.appInfo.wikipedia = { name = _("Wikipedia"), icon = "wikipedia", order = 50, group = "reading",
+    PS.appInfo.wikipedia = { name = _("Wikipedia"), icon = "wikipedia", dir = self.path, order = 50, group = "reading",
         explore = _("Read articles and save them for offline"),
         tiles = { { key = "wikipedia", event = "ShowWikipedia", line = function(w)
             local line = w:appsLine() or ""
             return line ~= "" and line or _("Search and save articles")
         end } },
-        web = { page = "wikipedia", routes = "webwikipedia", script = "web/wikipedia.js", dir = self.path,
+        web = { page = "wikipedia", routes = "webwikipedia", script = "web/wikipedia.js",
             card = "Saved articles, and saving new ones to the Kindle." } }
     -- The launcher's Settings list, and its search (saved articles, by title).
     if PS.registerSettings then

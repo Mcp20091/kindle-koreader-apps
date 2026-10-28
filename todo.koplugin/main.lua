@@ -121,9 +121,9 @@ function Todo:init()
     -- What it is for the launcher and the web page: its tiles, Settings group, web tab
     -- (apps.koplugin/appsinfo.lua).
     PS.appInfo = PS.appInfo or {}
-    PS.appInfo.todo = { name = _("To Do"), icon = "list-checks", order = 20, group = "tools",
+    PS.appInfo.todo = { name = _("To Do"), icon = "list-checks", dir = self.path, order = 20, group = "tools",
         tiles = { { key = "todo", event = "ShowTodo", line = function(todo) return todo:appsLine() end } },
-        web = { page = "todo", routes = "webtodo", script = "web/todo.js", dir = self.path,
+        web = { page = "todo", routes = "webtodo", script = "web/todo.js",
             card = "Lists and tasks, import and export, account and options." } }
     -- A tap on one of its notifications in the shared list (Apps): the task, or Sync.
     PS.notifyOpeners = PS.notifyOpeners or {}

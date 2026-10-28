@@ -22,7 +22,7 @@ package.loaded["pluginshare"] = { appInfo = {
     sshclient = { name = "SSH", icon = "terminal", order = 70, group = "tools", tiles = { tile("ssh") } },
     flashforge = { name = "FlashForge", order = 80, group = "optional", tiles = { tile("flashforge", { group = "tools" }) } },
     pangolin = { name = "Pangolin", order = 85, group = "optional", tiles = { tile("pangolin", { group = "tools" }) } },
-    nextdns = { name = "NextDNS", icon = "ban", order = 87, group = "optional", tiles = { tile("nextdns", { group = "tools" }) } },
+    nextdns = { name = "NextDNS", icon = "ban", dir = "/plugins/nextdns.koplugin", order = 87, group = "optional", tiles = { tile("nextdns", { group = "tools" }) } },
     webpage = { name = "Web server", order = 90, group = "tools", tiles = { tile("web", { switches = true }) } },
 } }
 
@@ -133,6 +133,7 @@ do
     check("gestures: an app's own", pats:find("toggle_syncthing_server", 1, true) ~= nil, true)
     check("gestures: none when it says so", pats:find("library", 1, true), nil)
     check("notification name", (Info.nameOf("sshclient")), "SSH")
+    check("the apps' folders, for their icons", table.concat(Info.dirs(), ","), "/plugins/nextdns.koplugin")
     local labels = {}
     for __, a in ipairs(Info.labelApps()) do labels[#labels + 1] = a.key end
     check("Button labels: each app's first tile, not a switch", table.concat(labels, ","), "ha,todo,notes,crosswords,wikipedia,syncthing,ssh,flashforge,pangolin,nextdns")

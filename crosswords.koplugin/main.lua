@@ -49,11 +49,11 @@ function Crosswords:init()
     -- What it is for the launcher and the web page: its tiles, Settings group, web tab
     -- (apps.koplugin/appsinfo.lua).
     PS.appInfo = PS.appInfo or {}
-    PS.appInfo.crosswords = { name = _("Crosswords"), icon = "newspaper", order = 40, group = "writing",
+    PS.appInfo.crosswords = { name = _("Crosswords"), icon = "newspaper", dir = self.path, order = 40, group = "writing",
         explore = _("Daily crosswords to solve with the pen"),
         tiles = { { key = "crosswords", icon = "grid-3x3", event = "ShowCrosswords",
             line = function(c) return c:appsLine() end } },
-        web = { page = "crosswords", routes = "webcrosswords", script = "web/crosswords.js", dir = self.path,
+        web = { page = "crosswords", routes = "webcrosswords", script = "web/crosswords.js",
             card = "Puzzle books, and getting new crosswords." } }
     if PS.registerSettings then
         PS.registerSettings{ key = "crosswords", name = _("Crosswords"), icon = "newspaper", open = function()

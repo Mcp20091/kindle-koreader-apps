@@ -40,6 +40,8 @@ When it's done, build the zip the way the README says and keep the changes on a 
 
 ## Layout
 
+(A new app: [MAKING-AN-APP.md](MAKING-AN-APP.md).)
+
 ```
 apps.koplugin/          the launcher, and the shared pieces every app uses (through PluginShare)
 homeassistant.koplugin  todo.koplugin  notes.koplugin  crosswords.koplugin (needs Notes)
@@ -89,8 +91,7 @@ A plugin folder is what gets copied to `koreader/plugins/` on the Kindle. An opt
 - **Each app works without the others**, except Crosswords, which needs Notes. Every shared call is guarded: `if PS.notify then … end`.
 - **Secrets stay put.** Keys, passwords and sign-ins go in a backup only with **Include keys and sign-ins**, never into logs or the diagnostics file, and are blanked (along with key blocks and tokens in text) before anything is sent to an AI.
 - **AI only suggests.** Whatever the AI proposes (a command, a task, a name) is shown first, with Edit, and runs only when the user taps it, with a warning where it matters. Every AI feature registers with `PS.ai.registerFeature` so its wording and what it sends show in AI settings > Advanced (Preview what's sent).
-- **A new app says what it is; the launcher and the web server don't change.** Its entry in `PS.appInfo` (a plain table set at start, `apps.koplugin/appsinfo.lua` has every field): its tiles (each tile's line and tap), its place among the apps, its group in Settings and the suggested groups, its gesture actions that work over the apps, its name and icon in the notifications, its Button labels, a line in Set up's More to explore, and its web page tab (its routes module, its script in its own `web/` folder, its card on the page's Home). The tab's files live in the app's folder (`webssh.lua`, `web/ssh.js` in `sshclient.koplugin`), not the web server's. What's left in the launcher by name is what only it does with an app's data: pins (Pin to home screen) and the web page's Dashboard parts.
-- **A new app or integration has the full set:** a launcher tile and a Settings entry (`PS.registerSettings`), search (`PS.registerSearch`), a setup step with what skipping it means (`PS.registerSetup`), its part of the backup (`PS.backupApps`), a connection test where it connects to something (`PS.registerTest`, each address on its own), quick buttons where it has quick things (`PS.registerQuick`), the clock corner (`PS.statusIcons`), the shared menus (`PS.ko`), a web page tab or card, and its guide chapter.
+- **A new app follows [MAKING-AN-APP.md](MAKING-AN-APP.md).** It says what it is in `PS.appInfo` (its tiles, Settings group, gestures, notifications, web tab: `apps.koplugin/appsinfo.lua` has every field), so the launcher and the web server don't change for it, and it has the full set: Settings, search, a setup step, its part of the backup, a connection test where it connects to something, quick buttons where it has quick things, its own icons, a web page tab and its guide. What's left in the launcher by name is what only it does with an app's data: pins (Pin to home screen) and the web page's Dashboard parts.
 
 ## The shared UI
 

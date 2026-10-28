@@ -90,7 +90,7 @@ function WebPage:shareWithApps()
     -- What it is for the launcher (apps.koplugin/appsinfo.lua): its tile, which switches it on
     -- or shows the address, and its Settings group.
     PS.appInfo = PS.appInfo or {}
-    PS.appInfo.webpage = { name = _("Web server"), icon = "globe", order = 90, group = "tools",
+    PS.appInfo.webpage = { name = _("Web server"), icon = "globe", dir = self.path, order = 90, group = "tools",
         tiles = { { key = "web", switches = true,
             line = function(web)
                 local address = web:address() or ""

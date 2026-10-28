@@ -272,7 +272,7 @@ Open an [issue](../../issues) here. If something went wrong on the Kindle, start
 
 ## For developers
 
-See [AGENTS.md](AGENTS.md) for how the plugins fit together, the shared UI rules and how to test. Each plugin folder has its own `AGENTS.md` too.
+See [AGENTS.md](AGENTS.md) for how the plugins fit together, the shared UI rules and how to test. Each plugin folder has its own `AGENTS.md` too. To make a new app, follow [MAKING-AN-APP.md](MAKING-AN-APP.md): what it needs so it shows in the launcher, Settings and the web page, its icons, and quick buttons.
 
 ## Licence
 

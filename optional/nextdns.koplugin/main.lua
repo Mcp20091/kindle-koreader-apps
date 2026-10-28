@@ -367,10 +367,10 @@ function NextDNS:shareWithApps()
     -- an optional app), Settings group (Optional apps; its tile in the suggested Tools group), web tab
     -- (apps.koplugin/appsinfo.lua).
     PS.appInfo = PS.appInfo or {}
-    PS.appInfo.nextdns = { name = _("NextDNS"), icon = "ban", order = 87, group = "optional",
+    PS.appInfo.nextdns = { name = _("NextDNS"), icon = "ban", dir = self.path, order = 87, group = "optional",
         -- "1,872 blocked today · 15%".
         tiles = { { key = "nextdns", group = "tools", event = "ShowNextDNS", line = function(p) return p:appsLine() end } },
-        web = { page = "nextdns", routes = "webnextdns", script = "web/nextdns.js", dir = self.path,
+        web = { page = "nextdns", routes = "webnextdns", script = "web/nextdns.js",
             card = "Your NextDNS profile: blocked queries, the query log, the lists and the protection switches." } }
     PS.notifyOpeners = PS.notifyOpeners or {}
     PS.notifyOpeners.nextdns = function()

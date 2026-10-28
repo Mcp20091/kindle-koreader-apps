@@ -15,4 +15,5 @@ otherwise. The launcher's updater (appsupdate.lua) lists them, installs
 one on request (a release's kindle-<app>.zip, which the release workflow makes, or the optional/ folder of
 a branch's zip) and updates the installed ones with the rest.
 
-After changing an app here, build its zip again: `python optional/build-zip.py`.
+After changing an app here, build its zip again: `python optional/build-zip.py`. A new one: see
+[MAKING-AN-APP.md](../MAKING-AN-APP.md).

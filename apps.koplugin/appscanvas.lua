@@ -192,7 +192,16 @@ function Canvas:icon(name, x, y, size, white)
     local key = name .. (white and "-w" or "") .. "@" .. px
     local widget = icons[key]
     if not widget then
-        local file = iconDir .. name .. (white and "-w" or "") .. ".svg"
+        local base = name .. (white and "-w" or "") .. ".svg"
+        local file = iconDir .. base
+        -- (The launcher's: one an app names for its tile or quick buttons, from the app's own
+        -- icons/, as the apps say where they are.)
+        if lfs.attributes(file, "mode") ~= "file" then
+            local ok, dirs = pcall(function() return require("appsinfo").dirs() end)
+            for __, d in ipairs(ok and dirs or {}) do
+                if lfs.attributes(d .. "/icons/" .. base, "mode") == "file" then file = d .. "/icons/" .. base break end
+            end
+        end
         -- An icon this plugin does not have (named by another plugin): a plain one instead.
         if lfs.attributes(file, "mode") ~= "file" then file = iconDir .. FALLBACK .. (white and "-w" or "") .. ".svg" end
         widget = IconWidget:new{ file = file, width = px, height = px, alpha = true }

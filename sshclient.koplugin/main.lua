@@ -53,10 +53,10 @@ function SSH:init()
     -- (apps.koplugin/appsinfo.lua).
     -- (The tile's key is ssh; the folder is sshclient.koplugin: KOReader's own SSH server is SSH.koplugin.)
     PS.appInfo = PS.appInfo or {}
-    PS.appInfo.sshclient = { name = _("SSH"), icon = "terminal", order = 70, group = "tools",
+    PS.appInfo.sshclient = { name = _("SSH"), icon = "terminal", dir = self.path, order = 70, group = "tools",
         -- "3 hosts".
         tiles = { { key = "ssh", event = "ShowSSH", line = function(s) return s:appsLine() end } },
-        web = { page = "ssh", routes = "webssh", script = "web/ssh.js", dir = self.path,
+        web = { page = "ssh", routes = "webssh", script = "web/ssh.js",
             card = "Hosts, the command list and keys." } }
     -- SSH's settings in the launcher's Settings
     if PS.registerSettings then

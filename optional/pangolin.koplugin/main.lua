@@ -388,10 +388,10 @@ function Pangolin:shareWithApps()
     -- an optional app), Settings group (Optional apps; its tile in the suggested Tools group), web tab
     -- (apps.koplugin/appsinfo.lua).
     PS.appInfo = PS.appInfo or {}
-    PS.appInfo.pangolin = { name = _("Pangolin"), icon = "shield-check", order = 85, group = "optional",
+    PS.appInfo.pangolin = { name = _("Pangolin"), icon = "shield-check", dir = self.path, order = 85, group = "optional",
         -- "All online · 4 sites", "1 site offline".
         tiles = { { key = "pangolin", group = "tools", event = "ShowPangolin", line = function(p) return p:appsLine() end } },
-        web = { page = "pangolin", routes = "webpangolin", script = "web/pangolin.js", dir = self.path,
+        web = { page = "pangolin", routes = "webpangolin", script = "web/pangolin.js",
             card = "Your Pangolin server: sites, resources and clients, and turning them on or off." } }
     PS.notifyOpeners.pangolin = function(route)
         local p = current()

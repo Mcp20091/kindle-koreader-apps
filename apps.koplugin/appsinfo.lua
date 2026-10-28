@@ -10,6 +10,9 @@ new app:
     PS.appInfo = PS.appInfo or {}
     PS.appInfo.sshclient = {            -- the plugin's name (its folder without .koplugin)
         name = _("SSH"), icon = "terminal",
+        dir = self.path,                -- the app's folder: its icons/ (the launcher draws its tile's
+                                        -- and quick buttons' icons from there when it hasn't them)
+                                        -- and its web tab's files
         order = 70,                     -- its place among the apps (tiles, Settings, web tabs)
         group = "tools",                -- its group: in Settings (appshub's DEFAULT_GROUPS, by
                                         -- id) and the home screen's suggested groups (appsmodel's
@@ -39,8 +42,6 @@ new app:
             routes = "webssh",          -- a module in the app's folder with routes(server)
             script = "web/ssh.js",      -- the tab's script, in the app's web/ folder (served
                                         -- from there with anything else in that folder)
-            dir = here,                 -- the app's folder: (debug.getinfo(1, "S").source or
-                                        -- ""):match("^@(.*)/[^/]+$"), as the setup images do
         },
     }
 
@@ -118,6 +119,16 @@ function Info.gestures(info)
     return out
 end
 
+--- The apps' folders (each one's `dir`), for the icons the launcher hasn't got itself.
+function Info.dirs(info)
+    local out = {}
+    for __, a in ipairs(Info.list(info)) do
+        local d = a.entry.dir or (type(a.entry.web) == "table" and a.entry.web.dir)
+        if type(d) == "string" then out[#out + 1] = d end
+    end
+    return out
+end
+
 --- An app's name and icon (for the notifications list), or nil.
 function Info.nameOf(plugin, info)
     local e = plugin and Info.all(info)[plugin]
@@ -144,7 +155,7 @@ function Info.webTabs(info)
         local w = a.entry.web
         if type(w) == "table" and (w.page or w.routes) then
             table.insert(out, { page = w.page, name = w.name or a.entry.name or a.plugin, plugin = a.plugin,
-                routes = w.routes, script = w.script, dir = w.dir })
+                routes = w.routes, script = w.script, dir = w.dir or a.entry.dir })
         end
     end
     return out

@@ -165,7 +165,7 @@ function Common.webApps()
         local w = type(e) == "table" and e.web
         if type(w) == "table" and Common.plugin(plugin) then
             table.insert(out, { plugin = plugin, page = w.page, name = w.name or e.name or plugin, card = w.card,
-                routes = w.routes, script = w.script, dir = w.dir, order = tonumber(e.order) or 999 })
+                routes = w.routes, script = w.script, dir = w.dir or e.dir, order = tonumber(e.order) or 999 })
         end
     end
     table.sort(out, function(a, b)

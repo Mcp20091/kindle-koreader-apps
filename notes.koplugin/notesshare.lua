@@ -22,10 +22,10 @@ function Share.install(notes)
     -- What it is for the launcher and the web page: its tile, Settings group, web tab
     -- (apps.koplugin/appsinfo.lua).
     ps.appInfo = ps.appInfo or {}
-    ps.appInfo.notes = { name = _("Notes"), icon = "notebook-pen", order = 30, group = "writing",
+    ps.appInfo.notes = { name = _("Notes"), icon = "notebook-pen", dir = notes.path, order = 30, group = "writing",
         explore = _("Handwritten notebooks"),
         tiles = { { key = "notes", event = "ShowNotes", line = function(n) return Share.appsLine(n) end } },
-        web = { page = "notes", routes = "webnotes", script = "web/notes.js", dir = notes.path,
+        web = { page = "notes", routes = "webnotes", script = "web/notes.js",
             card = "Notebooks in their folders, settings, OneNote and AI." } }
     if ps.registerSettings then
         -- (settings: each of them by name, for the launcher's search.)
