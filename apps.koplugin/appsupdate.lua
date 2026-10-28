@@ -34,6 +34,9 @@ local U = {}
 U.DEFAULT_REPO = "Mcp20091/kindle-koreader-apps"
 -- What these apps are called together: the header over the version (Settings > Updates, Set up).
 U.NAME = "Clod UI"
+
+-- The note over the optional apps (Settings > Updates; the web page's System > Updates says the same).
+U.OPTIONAL_NOTE = _("Install optional apps here. Once installed, they update automatically with each new version of the primary apps.")
 local ASSET = "kindle-plugins.zip"
 -- Files in a plugin's folder that are the user's, not the plugin's.
 local KEEP = { "client_id.txt", "notes_defaults.lua" }
@@ -529,6 +532,82 @@ end
 
 -- ------------------------------------------------------------------ optional apps
 
+local function encode(t)
+    local ok, rj = pcall(require, "rapidjson")
+    if ok and rj and rj.encode then return rj.encode(t) end
+    return require("json").encode(t)
+end
+
+local function savedFile() return cacheDir() .. "/optional-apps.json" end
+
+--- The optional apps just looked up, kept on the Kindle so the next time shows them at once.
+local function saveOptional(rel, list)
+    local apps = {}
+    for k, o in ipairs(list) do
+        apps[k] = { folder = o.folder, title = o.title, description = o.description, zip = o.zip, size = o.size }
+    end
+    local ok, text = pcall(encode, { tag = rel.tag, sha = rel.sha, branch = rel.branch, zip = rel.zip, apps = apps })
+    if not ok then return end
+    local f = io.open(savedFile(), "w")
+    if f then f:write(text) f:close() end
+end
+
+--- The optional apps to show at once, before they're looked up (or off Wi-Fi): the list last looked
+-- up, kept on the Kindle, and the ones installed here (each says what it is: PS.appInfo, group
+-- "optional"), each marked installed or not. Returns the list and the version the kept list is
+-- from (nil without one: then only the installed ones, which can be removed).
+function U.optionalNow(plugin)
+    local dir = U.dir(plugin)
+    local PS = package.loaded["pluginshare"]
+    local info = type(PS) == "table" and type(PS.appInfo) == "table" and PS.appInfo or {}
+    local list, seen, rel = {}, {}, nil
+    local f = io.open(savedFile(), "r")
+    if f then
+        local text = f:read("*a")
+        f:close()
+        local ok, saved = pcall(decode, text or "")
+        if ok and type(saved) == "table" and type(saved.apps) == "table" then
+            rel = { tag = saved.tag, sha = saved.sha, branch = saved.branch, zip = saved.zip }
+            for __, o in ipairs(saved.apps) do
+                if type(o) == "table" and type(o.folder) == "string" then
+                    list[#list + 1] = { folder = o.folder, title = o.title or short(o.folder), description = o.description,
+                        zip = o.zip, size = o.size }
+                    seen[o.folder] = true
+                end
+            end
+        end
+    end
+    for name, e in pairs(info) do
+        if type(e) == "table" and e.group == "optional" and not seen[name .. ".koplugin"] then
+            list[#list + 1] = { folder = name .. ".koplugin", title = e.name or name }
+        end
+    end
+    for __, o in ipairs(list) do
+        o.installed = isDir(dir .. "/" .. o.folder)
+        o.old = o.installed and info[short(o.folder)] == nil or nil
+    end
+    table.sort(list, function(a, b) return tostring(a.title):lower() < tostring(b.title):lower() end)
+    return list, rel
+end
+
+--- The optional apps' list to pick from, each with Install, Update or Remove (Settings > Updates
+-- and Set up your Kindle open it from their Optional apps row).
+function U.optionalList(plugin, list, rel)
+    local items = {}
+    for __, o in ipairs(list or {}) do
+        items[#items + 1] = { text = o.title .. "  \u{00B7}  " .. U.optionalLabel(o), fn = function() U.optionalAction(plugin, o, rel) end }
+    end
+    KO.list(_("Optional apps"), items)
+end
+
+--- The Optional apps row's value and the line under it: "2 of 4 installed", "Installed: NextDNS, pfSense".
+function U.optionalSummary(list)
+    local names = {}
+    for __, o in ipairs(list or {}) do if o.installed then names[#names + 1] = o.title end end
+    return T(_("%1 of %2 installed"), #names, #(list or {})),
+        #names > 0 and T(_("Installed: %1"), table.concat(names, ", ")) or _("None installed yet. Tap to see what there is.")
+end
+
 --- What a release or branch offers as optional apps (optional/ in the repo, each a zip of
 -- its own on a release): done({ { folder, title, description, installed, zip, size } }) or
 -- done(nil, why). Looked up on GitHub, a request at a time in the child process.
@@ -837,13 +916,22 @@ U.look = {}
 -- `redraw()` when done. Nothing while off Wi-Fi.
 function U.lookUp(plugin, redraw)
     local look = U.look
+    -- (at once: the list kept from last time and the ones installed, until the lookup is in)
+    if not look.optional then
+        look.optional, look.optionalRel = U.optionalNow(plugin)
+        look.early = true
+    end
     if look.busy or look.rel or look.why or not NetworkMgr:isConnected() then return end
     look.busy = true
     local function optional(rel)
-        look.optionalRel = rel
         U.optionalApps(plugin, rel, function(list, why2)
-            look.optional, look.busy = list, nil
-            if not list then look.why = why2 end
+            look.busy = nil
+            if list then
+                look.optional, look.optionalRel, look.early = list, rel, nil
+                saveOptional(rel, list)
+            else
+                look.why = why2
+            end
             if redraw then redraw() end
         end)
     end
@@ -878,6 +966,9 @@ end
 
 --- One optional app's Install (from where updates come from now), Update or Remove.
 function U.optionalAction(plugin, o, rel)
+    if (o.old or not o.installed) and not (rel and rel.tag and (o.zip or rel.branch)) then
+        return KO.message(_("Connect to Wi-Fi first: the Kindle looks up where to get it."))
+    end
     if o.old then
         return KO.confirm{ title = T(_("Update %1"), o.title),
             text = T(_("This copy of %1 is older than the launcher, so it has no tile. Install it again from %2? KOReader restarts after."), o.title, rel.tag),
@@ -921,7 +1012,7 @@ function U.settingsRows(plugin, refresh)
         { _("Check automatically"), U.auto(), function() U.setAuto(not U.auto()) end },
         { _("Undo a plugin update"), "", function() require("appsundo").undoMenu(plugin) end },
         { heading = _("OPTIONAL APPS") },
-        { note = _("Not in the main install. Installed ones update with the rest.") },
+        { note = U.OPTIONAL_NOTE },
     }
     -- (Installed from a branch, as could be done before: the way back to the releases.)
     if branch then
@@ -929,10 +1020,10 @@ function U.settingsRows(plugin, refresh)
     end
     local look = U.look
     if look.optional and #look.optional > 0 then
-        for __, o in ipairs(look.optional) do
-            rows[#rows + 1] = { o.title, U.optionalLabel(o), function() U.optionalAction(plugin, o, look.optionalRel or look.rel) end }
-        end
-    elseif look.optional then
+        local value, line = U.optionalSummary(look.optional)
+        rows[#rows + 1] = { _("Optional apps"), value, function() U.optionalList(plugin, look.optional, look.optionalRel or look.rel) end }
+        rows[#rows + 1] = { note = line }
+    elseif look.optional and not look.early then
         rows[#rows + 1] = { note = T(_("None in %1."), (look.optionalRel or look.rel or {}).tag or U.repo()) }
     elseif look.busy then
         rows[#rows + 1] = { note = _("Looking them up…") }

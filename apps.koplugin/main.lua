@@ -287,7 +287,7 @@ do
         return upd.rel ~= nil and U.newer(upd.rel.tag, U.installed(Apps.instance))
     end
     PS.registerSetup{ key = "updates", order = 12, icon = "download", title = _("Updates"),
-        text = _("New versions of these apps come from GitHub, in Settings > Updates at the top of Settings: Check for updates, Select version, and the optional apps (such as FlashForge), which aren't in the main install. With Check automatically on, a notification tells you when there's a new one."),
+        text = _("New versions of these apps come from GitHub, in Settings > Updates at the top of Settings: Check for updates, Select version, and the optional apps (such as FlashForge), which aren't in the main install and, once installed, update automatically with each new version of the primary apps. With Check automatically on, a notification tells you when there's a new one."),
         done = function() return require("appsupdate").look.rel ~= nil and not newer() end,
         doneText = _("Up to date"),
         notDoneText = function() return newer() and _("A new version is out") or _("Not checked yet") end,
@@ -318,19 +318,9 @@ do
             -- are installed, and which), opening the list of them, each with Install or Remove (KOReader
             -- restarts after), as on the Updates page. One row however many there are, so the step fits.
             if upd.optional and #upd.optional > 0 then
-                local names = {}
-                for __, o in ipairs(upd.optional) do if o.installed then names[#names + 1] = o.title end end
-                rows[#rows + 1] = { title = _("Optional apps"),
-                    sub = #names > 0 and T(_("Installed: %1"), table.concat(names, ", ")) or _("None installed. Tap to see what there is."),
-                    value = T(_("%1 of %2 installed"), #names, #upd.optional),
-                    fn = function()
-                        local items = {}
-                        for __, o in ipairs(upd.optional) do
-                            items[#items + 1] = { text = o.title .. "  \u{00B7}  " .. U.optionalLabel(o),
-                                fn = function() U.optionalAction(plugin, o, upd.optionalRel or upd.rel) end }
-                        end
-                        require("appsko").list(_("Optional apps"), items)
-                    end }
+                local value, line = U.optionalSummary(upd.optional)
+                rows[#rows + 1] = { title = _("Optional apps"), sub = line, value = value,
+                    fn = function() U.optionalList(plugin, upd.optional, upd.optionalRel or upd.rel) end }
             end
             return rows
         end }

@@ -1,7 +1,6 @@
-2026-10-28 00:45
+2026-10-28 19:30
+Oct 28  Web server: System > Updates says installed optional apps update automatically with each new version
 Oct 28  Web server: the Fonts tab in the Kindle's three tabs (Your fonts, Get more, Settings); Get more browses all of Google Fonts, each name drawn in its own typeface; Set as default with Undo
 Oct 27  Web server: App lock on the Launcher tab, each change asking for the passcode first
 Oct 27  Updates tab: Branch is gone; Show test versions (with a warning) puts test versions in Select version; a Kindle on a branch gets Back to the releases
 Oct 27  Web server: System > Updates as on the Kindle: Repository, Branch and Select version, each with Install, and the optional apps with Install or Remove
-Oct 27  Web server: each app's tab comes from the app (its routes and script in its own folder, served as /static/app/<app>/), with its tab link and Home card; a new app needs no change here
-Oct 27  Web server: a Pangolin tab when the optional Pangolin app is installed (sites, resources and clients with their switches, reset bandwidth, settings)
