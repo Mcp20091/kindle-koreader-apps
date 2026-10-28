@@ -476,9 +476,20 @@ end
 
 local function isDir(path) return lfs.attributes(path, "mode") == "directory" end
 
+-- An optional app's name and what it does, from its _meta.lua (fullname, description).
+local function readMeta(text)
+    local function field(k)
+        local v = text:match(k .. '%s*=%s*_%(%[%[(.-)%]%]%)') or text:match(k .. '%s*=%s*_%("(.-)"%)')
+            or text:match(k .. '%s*=%s*%[%[(.-)%]%]') or text:match(k .. '%s*=%s*"(.-)"')
+        return v
+    end
+    return field("fullname"), field("description")
+end
+
 --- U.install, and with a release the optional apps installed here too, each from its own
 -- zip on the release (a branch's zip has them already): done(names) or done(nil, why).
--- An optional app that can't be updated is left as it was (the rest is in).
+-- An optional app that can't be updated is left as it was (the rest is in), and a notification
+-- says so: an older copy can lack what the launcher now needs (its tile, say).
 function U.installAll(plugin, rel, done, progress)
     U.install(plugin, rel, function(names, why)
         if not names or rel.branch or rel.optional then return done(names, why) end
@@ -497,6 +508,17 @@ function U.installAll(plugin, rel, done, progress)
                         for __, n in ipairs(more) do names[#names + 1] = n end
                     else
                         require("logger").warn("Update:", o.folder, "not updated:", why2)
+                        local f = io.open(dir .. "/" .. o.folder .. "/_meta.lua", "r")
+                        local name = f and readMeta(f:read("*a") or "")
+                        if f then f:close() end
+                        name = name or short(o.folder)
+                        local PS = require("pluginshare")
+                        if PS.notify then
+                            pcall(PS.notify, { app = "apps", name = _("Launcher"), icon = "download", key = "apps:optional:" .. o.folder,
+                                text = T(_("%1 wasn't updated with the rest (%2). In Settings > Updates, Remove it, then Install it again."), name, tostring(why2)),
+                                route = { settings = "updates" },
+                                open = function() if PS.showSettings then PS.showSettings("updates") end end })
+                        end
                     end
                     nextOne()
                 end, progress)
@@ -506,16 +528,6 @@ function U.installAll(plugin, rel, done, progress)
 end
 
 -- ------------------------------------------------------------------ optional apps
-
--- An optional app's name and what it does, from its _meta.lua (fullname, description).
-local function readMeta(text)
-    local function field(k)
-        local v = text:match(k .. '%s*=%s*_%(%[%[(.-)%]%]%)') or text:match(k .. '%s*=%s*_%("(.-)"%)')
-            or text:match(k .. '%s*=%s*%[%[(.-)%]%]') or text:match(k .. '%s*=%s*"(.-)"')
-        return v
-    end
-    return field("fullname"), field("description")
-end
 
 --- What a release or branch offers as optional apps (optional/ in the repo, each a zip of
 -- its own on a release): done({ { folder, title, description, installed, zip, size } }) or
@@ -531,6 +543,10 @@ function U.optionalApps(plugin, rel, done, repo)
             local o = list[i]
             if not o then return done(list) end
             o.installed = isDir(dir .. "/" .. o.folder)
+            -- (Installed, but it hasn't told the launcher what it is: a copy from before apps
+            -- registered themselves, older than the launcher, so it has no tile. Update, not Remove.)
+            local PS = package.loaded["pluginshare"]
+            o.old = o.installed and type(PS) == "table" and type(PS.appInfo) == "table" and PS.appInfo[short(o.folder)] == nil or nil
             o.title = short(o.folder):gsub("^%l", string.upper)
             local path = cacheDir() .. "/meta.lua"
             fetch("https://raw.githubusercontent.com/" .. repo .. "/" .. ref .. "/optional/" .. o.folder .. "/_meta.lua", path, nil, function(ok)
@@ -855,8 +871,18 @@ end
 --- Looked up again next time (the repository or branch changed, or something was installed).
 function U.forget() U.look = {} end
 
---- One optional app's Install (from where updates come from now) or Remove.
+--- What one optional app's row offers: Install, Update (a copy older than the launcher) or Remove.
+function U.optionalLabel(o)
+    return not o.installed and _("Install") or o.old and _("Update") or _("Remove")
+end
+
+--- One optional app's Install (from where updates come from now), Update or Remove.
 function U.optionalAction(plugin, o, rel)
+    if o.old then
+        return KO.confirm{ title = T(_("Update %1"), o.title),
+            text = T(_("This copy of %1 is older than the launcher, so it has no tile. Install it again from %2? KOReader restarts after."), o.title, rel.tag),
+            ok = _("Update"), onOk = function() U.forget() run(plugin, U.optionalRelease(rel, o)) end }
+    end
     if not o.installed then
         return KO.confirm{ title = T(_("Install %1"), o.title), text = (o.description and (o.description .. "\n\n") or "") .. T(_("From %1. KOReader restarts after."), rel.tag),
             ok = _("Install"), onOk = function() U.forget() run(plugin, U.optionalRelease(rel, o)) end }
@@ -904,7 +930,7 @@ function U.settingsRows(plugin, refresh)
     local look = U.look
     if look.optional and #look.optional > 0 then
         for __, o in ipairs(look.optional) do
-            rows[#rows + 1] = { o.title, o.installed and _("Remove") or _("Install"), function() U.optionalAction(plugin, o, look.optionalRel or look.rel) end }
+            rows[#rows + 1] = { o.title, U.optionalLabel(o), function() U.optionalAction(plugin, o, look.optionalRel or look.rel) end }
         end
     elseif look.optional then
         rows[#rows + 1] = { note = T(_("None in %1."), (look.optionalRel or look.rel or {}).tag or U.repo()) }

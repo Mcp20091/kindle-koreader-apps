@@ -53,6 +53,11 @@ do
     -- The shared helpers (menus, pop-ups, the light…): the other apps' copies hand over to these.
     PS.ko = setmetatable({}, { __index = function(__, k) return require("appsko")[k] end })
     PS.showControlCenter = function(koMenu) require("appscontrol").show(koMenu) end
+    -- The launcher's own notifications after a restart: { settings = key } opens that Settings page.
+    PS.notifyOpeners = PS.notifyOpeners or {}
+    PS.notifyOpeners.apps = function(route)
+        if type(route) == "table" and route.settings and PS.showSettings then PS.showSettings(route.settings) end
+    end
     -- What the other apps register (read by appshub, appssearch, appssetup).
     PS.settingsApps, PS.searchApps, PS.setupSteps = PS.settingsApps or {}, PS.searchApps or {}, PS.setupSteps or {}
     PS.registerSettings = function(e) if type(e) == "table" and e.key and e.open then PS.settingsApps[e.key] = e end end
@@ -313,7 +318,7 @@ do
                     fn = function()
                         local items = {}
                         for __, o in ipairs(upd.optional) do
-                            items[#items + 1] = { text = o.title .. "  \u{00B7}  " .. (o.installed and _("Remove") or _("Install")),
+                            items[#items + 1] = { text = o.title .. "  \u{00B7}  " .. U.optionalLabel(o),
                                 fn = function() U.optionalAction(plugin, o, upd.optionalRel or upd.rel) end }
                         end
                         require("appsko").list(_("Optional apps"), items)

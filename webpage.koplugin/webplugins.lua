@@ -382,7 +382,7 @@ function Web.routes(server, plugin)
         local state = Web.optional or {}
         local apps = {}
         for __, o in ipairs(state.apps or {}) do
-            apps[#apps + 1] = { folder = o.folder, title = o.title, description = o.description, installed = o.installed }
+            apps[#apps + 1] = { folder = o.folder, title = o.title, description = o.description, installed = o.installed, old = o.old }
         end
         res:json({ pending = state.pending or false, tag = state.tag, error = state.error, apps = apps })
     end)
