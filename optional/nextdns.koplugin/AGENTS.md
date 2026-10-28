@@ -6,7 +6,7 @@ notifications, launcher, guide) are in the top-level AGENTS.md; this file covers
 ## What it is
 
 A NextDNS profile on the Kindle, over NextDNS's API with the account's API key: today's queries and blocked
-count, the domains blocked most, the query log (All, Blocked, Allowed, and a search), the denylist and
+count, the domains blocked most, the query log (All, Blocked, Allowed, a device, and a search), the denylist and
 allowlist (add, on or off, delete with Undo, move), the security, privacy and parental control switches, the
 profile in use, and whether this Kindle goes through NextDNS. An **optional** app: it lives in `optional/`,
 isn't in the main install zip, and has its own (`optional/build-zip.py`; the release makes
@@ -26,7 +26,9 @@ the stand-in in the tests and the emulator. Check these on a real account before
 - `GET /profiles` (the picker), `GET /profiles/{id}` (name, denylist, allowlist, security, privacy,
   parentalControl in one answer), `GET /profiles/{id}/analytics/status?from=<local midnight, Unix>`
   (`{ status, queries }`), `GET …/analytics/domains?status=blocked&limit=5&from=…`.
-- `GET …/logs?limit=40[&status=blocked|allowed][&search=…][&cursor=…]`; the next page's cursor is
+- `GET …/analytics/devices?from=…&limit=500` (`{ id, name, model, queries }`, every page by its cursor, at
+  most 10); the queries NextDNS couldn't put on a device are under the id `__UNIDENTIFIED__`.
+- `GET …/logs?limit=40[&status=blocked|allowed][&search=…][&device=<id>][&cursor=…]`; the next page's cursor is
   `meta.pagination.cursor`.
 - `PATCH …/security|privacy|parentalControl { field = bool }`; `POST …/denylist|allowlist { id = domain, active }`,
   `PATCH …/denylist/{domain} { active }`, `DELETE …/denylist/{domain}` (an entry's id is its domain).
@@ -38,11 +40,12 @@ the stand-in in the tests and the emulator. Check these on a real account before
 ## Files
 
 - `main.lua`: the plugin. Settings (`settings/nextdns.lua`: key, profile, profile_name; reader setting
-  `nextdns_interval`), reading in the background (`fetch`, `status`), the query log (`readLogs`, `logState`),
+  `nextdns_interval`), reading in the background (`fetch`, `status`), the query log (`readLogs`, `logState`) and today's devices for its filter (`devices`, kept 5 minutes),
   actions (`act`: switch, list_add, list_active, list_delete; applied to what was read at once and read
   again after), profiles, the launcher's line, every registration with the launcher (`shareWithApps`), quick
   buttons, search, and the web page's `webState()` / `webAct(name, args)`.
-- `ndui.lua`: the screens (main page, Recent queries, Denylist/Allowlist, Protection, Settings, setup), and
+- `ndui.lua`: the screens (main page, Recent queries and its Devices page, Denylist/Allowlist, Protection,
+  Settings, setup), and
   reading every so often while a live page is on top (`UI.poll`).
 - `ndmodel.lua`: plain Lua, tested: the switches (`M.SWITCHES`, their wording), what was read as tables,
   numbers, times, the log, the Kindle's check, domains as typed (`cleanDomain`), lines, search.

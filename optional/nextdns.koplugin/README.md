@@ -4,7 +4,7 @@ Your [NextDNS](https://nextdns.io) profile on a Kindle, over NextDNS's API and y
 
 - **Today**: how many queries there were and how many were blocked (with the share), and the domains blocked most. Tap a domain to block or allow it.
 - **This Kindle**: whether the Kindle's own DNS goes through NextDNS, and with which profile (test.nextdns.io).
-- **Recent queries**: the query log, all of it or only the blocked or allowed queries, and a search. Tap a query to block or allow its domain.
+- **Recent queries**: the query log, all of it or only the blocked or allowed queries, one device's or every device's, and a search. Devices picks the device from a page of today's devices, busiest first, with its own search for when there are many. Tap a query to block or allow its domain.
 - **Denylist and allowlist**: each domain with a switch to turn it off without deleting it; **+** adds one; hold one to delete it (with Undo) or move it to the other list.
 - **Protection**: the security switches (threat intelligence feeds, AI threat detection, newly registered domains, parked domains…), the privacy ones (disguised trackers, affiliate links) and parental control's (safe search, restricted video mode, block bypass methods).
 - **Profile**: pick another of the account's profiles (⋮ > Profile).

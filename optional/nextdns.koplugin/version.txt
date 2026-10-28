@@ -1,4 +1,5 @@
-2026-10-27 23:58
+2026-10-28 00:08
+Oct 28  NextDNS: Recent queries can show one device’s queries (a page of today’s devices, busiest first, with a search for when there are many), on the web page too
 Oct 27  NextDNS: App lock (Settings > Launcher > App lock) asks before it opens, from the Tools menu and gestures too
 Oct 27  NextDNS: in Settings' Optional apps group
 Oct 27  NextDNS: says what it is to the launcher and the web page (its tile, its web tab, in this folder)

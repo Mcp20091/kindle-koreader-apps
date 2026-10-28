@@ -316,6 +316,49 @@ function M.logs(raw)
     return out
 end
 
+-- (the id NextDNS gives the queries of devices it couldn't tell apart)
+M.UNIDENTIFIED = "__UNIDENTIFIED__"
+
+--- Today's devices from analytics/devices: { { id, name, model, queries } }, busiest first.
+function M.devices(raw)
+    local out = {}
+    for __, x in ipairs(list(raw)) do
+        local id = str(x.id)
+        if id ~= "" then
+            local name = str(x.name)
+            if id == M.UNIDENTIFIED then name = _("Not identified")
+            elseif name == "" then name = str(x.model) ~= "" and str(x.model) or id end
+            out[#out + 1] = { id = id, name = name, model = str(x.model), queries = num(x.queries) }
+        end
+    end
+    table.sort(out, function(a, b)
+        if a.queries ~= b.queries then return a.queries > b.queries end
+        return a.name:lower() < b.name:lower()
+    end)
+    return out
+end
+
+--- The devices whose name or model has q in it (any case); all of them for an empty q.
+function M.findDevices(devices, q)
+    q = str(q):lower()
+    if q == "" then return devices end
+    local out = {}
+    for __, d in ipairs(devices) do
+        if d.name:lower():find(q, 1, true) or d.model:lower():find(q, 1, true) then out[#out + 1] = d end
+    end
+    return out
+end
+
+--- A device's name for the filter chip, cut short: "Living room TV", "Pat's very long lap…".
+function M.short(s, n)
+    s, n = str(s), n or 18
+    if #s <= n then return s end
+    -- (cut at a character's start, not inside a UTF-8 sequence)
+    local cut = n
+    while cut > 1 and s:byte(cut + 1) and s:byte(cut + 1) >= 0x80 and s:byte(cut + 1) < 0xC0 do cut = cut - 1 end
+    return s:sub(1, cut) .. "…"
+end
+
 local STATUS_TEXT = { blocked = _("Blocked"), allowed = _("Allowed"), error = _("Error") }
 function M.statusText(s) return STATUS_TEXT[s] or "" end
 

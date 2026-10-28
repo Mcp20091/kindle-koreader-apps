@@ -27,7 +27,7 @@ function Web.routes(server)
     end)
 
     -- { name, args }: switch { key, on }, list_add { list, domain }, list_active { list, domain, on },
-    -- list_delete { list, domain }, logs { filter, search, more }, profiles, profile { id }, refresh,
+    -- list_delete { list, domain }, logs { filter, search, device, more }, devices, profiles, profile { id }, refresh,
     -- settings { key, interval }.
     server:route("POST", "^/api/nextdns/act$", function(req, res)
         local p = nextdns()

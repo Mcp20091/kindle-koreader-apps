@@ -38,8 +38,12 @@ local state = {
     waiting = {},
     line = nil,        -- the launcher's line as last shown
     profiles = nil,    -- the account's profiles, once listed ({ { id, name } })
-    -- the query log as last read: its filter and search, the entries, the next page's cursor
-    logs = { filter = "all", search = "", items = nil, cursor = "", time = 0, why = nil, reading = false },
+    -- the query log as last read: its filter, search and device (its id and name), the entries,
+    -- the next page's cursor
+    logs = { filter = "all", search = "", device = "", deviceName = "", items = nil, cursor = "", time = 0,
+        why = nil, reading = false },
+    -- today's devices, for the log's device filter (ndmodel.devices), and when they were read
+    devices = nil, devicesTime = 0,
 }
 
 local NextDNS = WidgetContainer:extend{
@@ -112,6 +116,7 @@ function NextDNS:setCfg(t)
     if t.key ~= nil then state.profiles = nil end
     state.data, state.why, state.time, state.tried = nil, nil, 0, 0
     state.logs.items, state.logs.cursor, state.logs.why, state.logs.time = nil, "", nil, 0
+    state.logs.device, state.logs.deviceName, state.devices, state.devicesTime = "", "", nil, 0
     self:changed()
 end
 
@@ -229,16 +234,18 @@ end
 
 -- ------------------------------------------------------------------ the query log
 
---- The query log as last read: { filter, search, items, cursor, time, why, reading }.
+--- The query log as last read: { filter, search, device, deviceName, items, cursor, time, why, reading }.
 function NextDNS:logState() return state.logs end
 
---- Read the query log in the background. opts: { filter, search } (each kept for next
--- time when given), more = true for the next page after what's shown. done() after.
+--- Read the query log in the background. opts: { filter, search, device, deviceName } (each kept
+-- for next time when given; device "" is every device), more = true for the next page after
+-- what's shown. done() after.
 function NextDNS:readLogs(opts, done)
     opts = opts or {}
     local L = state.logs
     if opts.filter then L.filter = opts.filter end
     if opts.search then L.search = opts.search end
+    if opts.device then L.device, L.deviceName = opts.device, opts.deviceName or opts.device end
     local function finish() self:changed() if done then done() end end
     if not self:configured() then L.why = "notset" return finish() end
     if not NetworkMgr:isConnected() then L.why = "offline" return finish() end
@@ -251,8 +258,8 @@ function NextDNS:readLogs(opts, done)
     if not more then L.items, L.cursor = nil, "" end
     L.reading = true
     local api = self:api()
-    local args = { status = L.filter, search = L.search, cursor = more and L.cursor or nil }
-    local asked = L.filter .. "\n" .. L.search
+    local args = { status = L.filter, search = L.search, device = L.device, cursor = more and L.cursor or nil }
+    local asked = L.filter .. "\n" .. L.search .. "\n" .. L.device
     require("ndbg").run(function()
         local r, why = api:logs(args)
         if not r then return { why = why } end
@@ -260,7 +267,7 @@ function NextDNS:readLogs(opts, done)
     end, function(r, why)
         L.reading = false
         -- (the filter changed while it was read: read it again with the new one)
-        if asked ~= L.filter .. "\n" .. L.search then return self:readLogs({}, done) end
+        if asked ~= L.filter .. "\n" .. L.search .. "\n" .. L.device then return self:readLogs({}, done) end
         if r and r.items then
             local items = M.logs(r.items)
             if more then
@@ -276,6 +283,29 @@ function NextDNS:readLogs(opts, done)
         finish()
     end, { limit = 30 })
 end
+
+--- Today's devices, busiest first (ndmodel.devices): done(list) or done(nil, why). Read in the
+-- background, and kept for 5 minutes (again sooner with force); quiet: no waiting message (the web page).
+function NextDNS:devices(done, force, quiet)
+    if state.devices and not force and os.time() - state.devicesTime < 300 then return done(state.devices) end
+    if not self:configured() then return done(nil, "notset") end
+    if not NetworkMgr:isConnected() then return done(nil, "offline") end
+    local api = self:api()
+    local from = M.todayStart()
+    require("ndbg").run(function()
+        local list, why = api:devices(from)
+        if not list then return { why = why } end
+        return { list = list }
+    end, function(r, why)
+        if r and r.list then
+            state.devices, state.devicesTime = M.devices(r.list), os.time()
+            return done(state.devices)
+        end
+        done(nil, (r and r.why) or why or "no answer")
+    end, { limit = 30, text = not quiet and _("Reading the devices…") or nil })
+end
+
+function NextDNS:knownDevices() return state.devices end
 
 -- ------------------------------------------------------------------ actions
 
@@ -542,7 +572,9 @@ function NextDNS:webState()
         out.kindle = { using = d.kindle and d.kindle.using or false, text = M.kindleText(d.kindle, c.profile),
             sub = M.kindleSub(d.kindle) }
     end
-    out.logs = { filter = L.filter, search = L.search, reading = L.reading, more = L.cursor ~= "",
+    out.devices = state.devices
+    out.logs = { filter = L.filter, search = L.search, device = L.device, deviceName = L.deviceName,
+        reading = L.reading, more = L.cursor ~= "",
         why = L.why and self:whyText(L.why) or nil, read = L.time > 0 and L.time or nil }
     if L.items then
         local twentyFour = not G_reader_settings:isTrue("twelve_hour_clock")
@@ -557,7 +589,7 @@ function NextDNS:webState()
 end
 
 --- The web page's actions: switch { key, on }; list_add { list, domain }; list_active
--- { list, domain, on }; list_delete { list, domain }; logs { filter, search, more };
+-- { list, domain, on }; list_delete { list, domain }; logs { filter, search, device, more }; devices;
 -- profiles (lists them); profile { id }; refresh (each started in the background: the page
 -- reads the state again after); settings { key, interval }. Returns true, or false and why.
 function NextDNS:webAct(name, args)
@@ -592,7 +624,18 @@ function NextDNS:webAct(name, args)
     if name == "logs" then
         local filter = args.filter
         if filter ~= "all" and filter ~= "blocked" and filter ~= "allowed" then filter = nil end
-        self:readLogs({ filter = filter, search = args.search ~= nil and tostring(args.search) or nil, more = args.more == true })
+        local device, deviceName
+        if args.device ~= nil then
+            device = tostring(args.device)
+            deviceName = device
+            for __, d in ipairs(state.devices or {}) do if d.id == device then deviceName = d.name end end
+        end
+        self:readLogs({ filter = filter, search = args.search ~= nil and tostring(args.search) or nil,
+            device = device, deviceName = deviceName, more = args.more == true })
+        return true
+    end
+    if name == "devices" then
+        self:devices(function() end, true, true)
         return true
     end
     if not ACTIONS[name] then return false, "Unknown action" end
