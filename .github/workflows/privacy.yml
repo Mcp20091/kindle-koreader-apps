@@ -1,0 +1,41 @@
+# The personal-data check (tools/privacy_check.py) on what's pushed and on pull requests: their commits
+# (changes, messages, authors), the files as they are, and a pull request's title and description. Here
+# only the kinds of personal data are checked; the user's own values are checked on their PC by the
+# hooks in .githooks/.
+name: Privacy
+
+on:
+  push:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+jobs:
+  check:
+    if: github.repository == 'Mcp20091/kindle-koreader-apps'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: The files
+        run: python3 tools/privacy_check.py --all
+
+      - name: The new commits
+        env:
+          BEFORE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          AFTER: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: |
+          if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            python3 tools/privacy_check.py --range "$AFTER" --not origin/main
+          else
+            python3 tools/privacy_check.py --range "$BEFORE..$AFTER"
+          fi
+
+      - name: The pull request's title and description
+        if: github.event_name == 'pull_request'
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+          BODY: ${{ github.event.pull_request.body }}
+          BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: printf '%s\n%s\n%s\n' "$BRANCH" "$TITLE" "$BODY" | python3 tools/privacy_check.py --text -

@@ -1,5 +1,9 @@
-# (Nothing to ignore: each plugin's version.txt, written by the export, is in the repo,
-# where GitHub's release workflow zips it.)
+# Files that stay on this PC (the privacy check blocks them too; AGENTS.md, "Branches, commits and pull
+# requests"). Each plugin's version.txt is in the repo, where GitHub's release workflow zips it.
+*.local.*
+todo.koplugin/client_id.txt
+notes.koplugin/notes_defaults.lua
+.env
 
 # The emulator scripts' screenshots and logs (dev/, which stays in the private repo).
 dev/emu/out/
