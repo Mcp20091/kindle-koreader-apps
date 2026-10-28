@@ -99,4 +99,4 @@ want="kindle-plugins.zip"
 for d in optional/*.koplugin; do [ -d "$d" ] && want="$want kindle-$(basename "$d" .koplugin).zip"; done
 for a in $want; do echo "$assets" | grep -qx "$a" || die "the release is missing $a"; done
 echo "released: $tag (pre-release): $(echo $assets | tr '\n' ' ')"
-echo "On the Kindle: Settings > Updates > Install a version > $tag (test)"
+echo "On the Kindle: Settings > Updates > Select version > $tag (test)"
