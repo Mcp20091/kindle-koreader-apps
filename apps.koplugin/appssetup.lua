@@ -489,6 +489,8 @@ end
 function Screen_:renderGuide(c)
     local y = Bar.H + 50
     local function back()
+        -- (Opened on its own, from Help: Back closes it.)
+        if self.guideOnly then return self:finish(false) end
         self.guideOpen = false
         self:render()
         UIManager:setDirty(self, "full")
@@ -542,7 +544,8 @@ function Screen_:renderGuide(c)
         c:text(60, y, _("About 10 MB, over Wi-Fi. It goes with your books."), 11.5, { color = C.GREY, maxw = c.W - 120 })
     end
     button(c, 60, bottom, c.W - 120, _("Back"), false, back)
-    Bar.draw(c, { title = _("Set up your Kindle"), subtitle = _("User guide"), back = back, clock = true })
+    Bar.draw(c, { title = self.guideOnly and _("User guide") or _("Set up your Kindle"),
+        subtitle = not self.guideOnly and _("User guide") or nil, back = back, clock = true })
 end
 
 function Screen_:go(step)
@@ -624,6 +627,14 @@ function Setup.show()
     if shown then return end
     KO.flashOnUncover()
     shown = Screen_:new{}
+    KO.showFull(shown)
+end
+
+--- The user guide's page on its own (the launcher's Help): its QR code and PDF.
+function Setup.showGuide()
+    if shown then return end
+    KO.flashOnUncover()
+    shown = Screen_:new{ guideOpen = true, guideOnly = true }
     KO.showFull(shown)
 end
 
