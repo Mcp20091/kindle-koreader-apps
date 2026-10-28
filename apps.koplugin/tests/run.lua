@@ -20,9 +20,9 @@ package.loaded["pluginshare"] = { appInfo = {
     syncthing = { name = "Syncthing", order = 60, group = "tools", tiles = { tile("syncthing") },
         gestures = { "^syncthing_", "^toggle_syncthing_server$" } },
     sshclient = { name = "SSH", icon = "terminal", order = 70, group = "tools", tiles = { tile("ssh") } },
-    flashforge = { name = "FlashForge", order = 80, group = "tools", tiles = { tile("flashforge") } },
-    pangolin = { name = "Pangolin", order = 85, group = "tools", tiles = { tile("pangolin") } },
-    nextdns = { name = "NextDNS", icon = "ban", order = 87, group = "tools", tiles = { tile("nextdns") } },
+    flashforge = { name = "FlashForge", order = 80, group = "optional", tiles = { tile("flashforge", { group = "tools" }) } },
+    pangolin = { name = "Pangolin", order = 85, group = "optional", tiles = { tile("pangolin", { group = "tools" }) } },
+    nextdns = { name = "NextDNS", icon = "ban", order = 87, group = "optional", tiles = { tile("nextdns", { group = "tools" }) } },
     webpage = { name = "Web server", order = 90, group = "tools", tiles = { tile("web", { switches = true }) } },
 } }
 
@@ -127,6 +127,7 @@ do
     check("a tile gets its app's plugin", Info.tile("ssh").plugin, "sshclient")
     check("a tile keeps its own icon", Info.tile("crosswords").icon .. "," .. Info.tile("ha").icon, "grid-3x3,house")
     check("a tile goes in its app's group", Info.tile("dashboard").group, "home")
+    check("an optional app's tile in the suggested Tools group", Info.tile("pangolin").group, "tools")
     local pats = table.concat(Info.gestures(), " ")
     check("gestures: the app's name to start with", pats:find("^%^homeassistant_", 1) ~= nil and pats:find("%^crosswords_", 1, false) ~= nil, true)
     check("gestures: an app's own", pats:find("toggle_syncthing_server", 1, true) ~= nil, true)

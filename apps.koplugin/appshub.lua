@@ -72,6 +72,8 @@ Hub.DEFAULT_GROUPS = {
     { id = "home", name = "Home", keys = {} },
     { id = "writing", name = "Writing", keys = {} },
     { id = "tools", name = "Tools", keys = {} },
+    -- (The optional apps, those not in the main install: FlashForge, Pangolin, NextDNS.)
+    { id = "optional", name = "Optional apps", keys = {} },
 }
 
 --- The apps' rows that go in group `id` to start with (their entries' `group`), in order.
@@ -185,6 +187,25 @@ function Hub.sections(view)
                 if not inGroup[k] then for __, e in ipairs(take({ k })) do list[#list + 1] = e end end
             end
             if #list > 0 then out[#out + 1] = { group = g, entries = list } end
+        end
+        -- A suggested group the changed groups don't have (one added since, as Optional apps)
+        -- joins them once an app's row would go in it, rather than its rows going to Other.
+        if h.groups then
+            local have = {}
+            for __, g in ipairs(h.groups) do have[g.id] = true end
+            for __, d in ipairs(Hub.DEFAULT_GROUPS) do
+                if not have[d.id] then
+                    local keys = {}
+                    for __, k in ipairs(appKeys(d.id)) do
+                        if byKey[k] and not placed[k] and not inGroup[k] then keys[#keys + 1] = k end
+                    end
+                    if #keys > 0 then
+                        local g = { id = d.id, name = d.name, keys = keys }
+                        h.groups[#h.groups + 1] = g
+                        out[#out + 1] = { group = g, entries = take(keys) }
+                    end
+                end
+            end
         end
         local other = rest()
         if #other > 0 then out[#out + 1] = { group = { id = "other", name = "Other" }, entries = other } end

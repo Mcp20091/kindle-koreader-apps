@@ -790,7 +790,7 @@ function Apps:setupRows()
             end }
         end },
         -- Ready-made groups (Settings, Reading, Home...), from those that can be made (the launcher's own).
-        { title = _("Suggested groups"), sub = _("Ready-made folders of apps: Settings, Reading, Home, Writing, Tools"),
+        { title = _("Suggested groups"), sub = _("Ready-made folders of apps: Settings, Reading, Home, Writing, Tools. Settings is grouped the same way."),
             value = current == nil and _("Open the launcher first") or nil, fn = function(r)
             refresh = r
             if current then current:suggestGroups() else KO.toast(_("Open the launcher first, then come back here.")) end

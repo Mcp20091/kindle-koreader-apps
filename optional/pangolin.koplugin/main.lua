@@ -385,11 +385,12 @@ function Pangolin:shareWithApps()
     local PS = require("pluginshare")
     PS.notifyOpeners = PS.notifyOpeners or {}
     -- What it is for the launcher and the web page: its tile (only there while it's installed:
-    -- an optional app), Settings group, web tab (apps.koplugin/appsinfo.lua).
+    -- an optional app), Settings group (Optional apps; its tile in the suggested Tools group), web tab
+    -- (apps.koplugin/appsinfo.lua).
     PS.appInfo = PS.appInfo or {}
-    PS.appInfo.pangolin = { name = _("Pangolin"), icon = "shield-check", order = 85, group = "tools",
+    PS.appInfo.pangolin = { name = _("Pangolin"), icon = "shield-check", order = 85, group = "optional",
         -- "All online · 4 sites", "1 site offline".
-        tiles = { { key = "pangolin", event = "ShowPangolin", line = function(p) return p:appsLine() end } },
+        tiles = { { key = "pangolin", group = "tools", event = "ShowPangolin", line = function(p) return p:appsLine() end } },
         web = { page = "pangolin", routes = "webpangolin", script = "web/pangolin.js", dir = self.path,
             card = "Your Pangolin server: sites, resources and clients, and turning them on or off." } }
     PS.notifyOpeners.pangolin = function(route)
