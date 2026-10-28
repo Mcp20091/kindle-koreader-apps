@@ -314,6 +314,7 @@ The web page's Launcher tab has the same, drawn as the home screen: drag tiles i
 - **Columns**: 1, 2 or 3 tiles across (two more when turned on its side).
 - **24-hour clock**: KOReader's own setting (the same as in its **Time and date** menu), so every clock follows it: the launcher, every app's bar, a book's status bar and the sleep screens.
 - **Button labels**: the buttons in every app's pop-ups and text boxes (Cancel, Save, Search…) show an icon over a word; off, just the icon, in smaller squares. Its page has the switch for every app, then each app on its own: **Default** (as for every app), **On** or **Off**.
+- **Page bar**: what's at the foot of a page in every app when it has more than one page (the title bar's ‹ 1/4 › is there as well). **Numbered parts**: one part for each page with its number, the page you're on in black; tap a part to go to that page. **Parts and Next**: "Page 1 of 4" over thinner parts you can tap, and a **Next** button. **Words**: one button, "Page 1 of 4 · Next page", on every page but the last.
 
 For a dark screen, use **Night mode** (the quick button, the control center or **⋮**): KOReader's own, for every app.
 

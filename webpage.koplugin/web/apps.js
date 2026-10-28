@@ -332,6 +332,8 @@ App.pages.apps = {
         App.setting('Button labels', App.toggle(st.button_labels !== false, set('button_labels')), 'The pop-ups’ buttons in every app: an icon over a label, or just the icon.'),
         ...App.arr(s.buttonLabelApps).map((ap) => App.setting('Button labels: ' + ap.name,
           App.select([['default', 'Default'], ['on', 'On'], ['off', 'Off']], ap.value, (v) => post('/api/apps/settings', { button_labels_app: { key: ap.key, value: v } }).then(reload)))),
+        App.setting('Page bar', App.select([['parts', 'Numbered parts'], ['next', 'Parts and Next'], ['words', 'Words']], st.page_bar || 'parts', set('page_bar')),
+          'At the foot of every app’s pages when there are several: a part per page to tap, the parts and a Next button, or “Page 1 of 4 · Next page”.'),
         App.setting('At a glance', App.toggle(st.today !== false, set('today')), 'The weather, what’s next and the tasks due, under the clock.'),
         App.setting('Recent books', App.toggle(st.recent !== false, set('recent'))),
         App.plugins && !App.plugins.notes ? null : App.setting('Recent notebooks', App.toggle(st.recent_notes !== false, set('recent_notes'))),

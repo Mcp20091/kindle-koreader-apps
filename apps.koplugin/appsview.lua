@@ -2223,6 +2223,12 @@ function View:settingsRows()
             local text = on and _("On") or _("Off")
             return own > 0 and T(_("%1 · %2 apps differ"), text, own) or text
         end)(), function() View.buttonLabels(self) end },
+        -- The bar at the foot of every app's pages when there are several (appscanvas.lua's Flow:pages).
+        { _("Page bar"), View.pageBarName(require("appscanvas").pageBar()), pick = function()
+            local out = {}
+            for __, v in ipairs({ "parts", "next", "words" }) do table.insert(out, { View.pageBarName(v), v }) end
+            return out, require("appscanvas").pageBar(), function(v) G_reader_settings:saveSetting("apps_page_bar", v) end
+        end },
         { heading = _("HOME SCREEN") },
         { _("At a glance"), s.today ~= false, function() s.today = s.today == false and true or false end },
         { _("Quick buttons"), (function()
@@ -2510,6 +2516,13 @@ function View:sleepAfter() return require("appskosettings").sleepAfter() end
 function View.sleepAfterName(seconds) return require("appskosettings").sleepAfterName(seconds) end
 function View:setSleepAfter(seconds) require("appskosettings").setSleepAfter(seconds) end
 
+
+--- The page bar's looks, in words: "parts", "next" or "words".
+function View.pageBarName(v)
+    if v == "next" then return _("Parts and Next") end
+    if v == "words" then return _("Words") end
+    return _("Numbered parts")
+end
 
 --- Settings > Launcher > Button labels: for every app, then each app on its own (As in
 -- Default (as for every app), On, Off). The shared pop-ups read it (appspopup.lua's labels()).
