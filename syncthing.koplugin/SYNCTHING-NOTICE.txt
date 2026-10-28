@@ -1,9 +1,9 @@
-The file `syncthing` in this folder is the Syncthing program, version 2.1.2 for 32-bit ARM Linux,
+The file `syncthing` in this folder is the Syncthing program, version 2.1.7 for 32-bit ARM Linux,
 exactly as released by the Syncthing project (https://syncthing.net). It is not modified.
 
 Syncthing is free software under the Mozilla Public License 2.0 (https://www.mozilla.org/MPL/2.0/).
-Its source code is available at https://github.com/syncthing/syncthing/tree/v2.1.2 and the
-release is at https://github.com/syncthing/syncthing/releases/tag/v2.1.2.
+Its source code is available at https://github.com/syncthing/syncthing/tree/v2.1.7 and the
+release is at https://github.com/syncthing/syncthing/releases/tag/v2.1.7.
 
 The Syncthing app in this folder is a separate program that starts and controls it. The
 `tools/fetch-syncthing.sh` script downloads the same release from the Syncthing project and checks it.
