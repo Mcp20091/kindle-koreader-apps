@@ -20,7 +20,7 @@ Nothing syncs while the Kindle sleeps: Wi-Fi is off then.
 
 ## Install
 
-1. Put `syncthing` (the Syncthing program for 32-bit ARM Linux) in this folder: `tools/fetch-syncthing.sh` downloads Syncthing v2.1.2 from its GitHub releases and checks its SHA-256. It isn't in git (25 MB).
+1. Put `syncthing` (the Syncthing program for 32-bit ARM Linux) in this folder: `tools/fetch-syncthing.sh` downloads Syncthing v2.1.7 from its GitHub releases and checks its SHA-256 (the repo has it already, 25 MB; `tools/update-syncthing.sh` moves it to a newer release).
 2. Copy the folder to `koreader/plugins/syncthing.koplugin` (it replaces the upstream plugin of the same name) and restart KOReader.
 
 It keeps the upstream plugin's settings (`koreader/settings/syncthing`: the Kindle's device ID, folders and devices) and port.
