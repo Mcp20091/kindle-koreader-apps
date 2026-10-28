@@ -1,6 +1,6 @@
 2026-10-28 00:08
-Oct 27  NextDNS: App lock (Settings > Launcher > App lock) asks before it opens, from the Tools menu and gestures too
 Oct 28  NextDNS: Recent queries can show one device’s queries (a page of today’s devices, busiest first, with a search for when there are many), on the web page too
+Oct 27  NextDNS: App lock (Settings > Launcher > App lock) asks before it opens, from the Tools menu and gestures too
 Oct 27  NextDNS: in Settings' Optional apps group
 Oct 27  NextDNS: says what it is to the launcher and the web page (its tile, its web tab, in this folder)
 Oct 27  NextDNS: a new optional app for a NextDNS profile over NextDNS's API (today's queries and blocked share, the domains blocked most, the query log filtered and searched, the denylist and allowlist with switches, Undo and moving, the security, privacy and parental control switches, the profile, and whether this Kindle uses NextDNS), in optional/ with its own zip
