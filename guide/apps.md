@@ -345,6 +345,28 @@ For a dark screen, use **Night mode** (the quick button, the control center or *
 
 - **Open at startup**: the launcher opens when KOReader starts.
 
+### App lock
+
+A passcode (4 to 8 digits, on a keypad) or a password before the apps you choose, so someone who picks up your Kindle can't open them. **App lock** opens its own page (it asks first, once there's a passcode):
+
+![App lock](img/apps-lock.png)
+
+- **Passcode**: **Off** to start with. Tap it, choose **Passcode (digits)** or **Password**, then enter it twice. Once set, the same row (**On · Change**) changes it.
+- **Stay unlocked**: once the passcode is right, every locked app stays open until the Kindle sleeps (the default), or for 5 minutes, 15 minutes or 1 hour (sleep locks them again too).
+- **Turn off passcode**: every app opens without asking. The apps you ticked stay ticked, for when you set one again.
+- **LOCKED APPS**: a switch for each app (optional apps too, once installed), and **Settings**, which locks the Settings list and every app's settings (where your keys and sign-ins are).
+- **Web page password**: the web page reaches every app's data from your phone or computer, so give it its own password (see "The web page").
+
+A locked app asks however it's opened: its tile, Recent apps, KOReader's Tools menu, a gesture, a notification, search (a locked app's results show as **Locked** until you unlock it) and its quick buttons. Tap the digits with a finger or the pen (a firm press works too); it opens at the last digit. After 3 wrong tries, wait 30 seconds. **Cancel** or Back leaves it shut.
+
+If a locked app is on the screen when the Kindle sleeps, the keypad covers it when it wakes, so the app doesn't show until the passcode is right. **Cancel** there goes to the launcher.
+
+![The keypad after the Kindle wakes](img/apps-lock-keypad.png)
+
+The web page's Launcher tab has the same settings; there, each change asks for your passcode first. A backup has the passcode only with **Include keys and sign-ins**; restored without it, the apps stay ticked but nothing asks until you set a passcode again. Forgot it? Connect the Kindle to a computer and delete `koreader/settings/apps_lock.lua`; every app then opens without asking.
+
+> App lock keeps people out of the apps on the Kindle; it doesn't encrypt anything. What the apps save is still in the Kindle's files, and At a glance, the sleep screen and notifications can still show a line from a locked app.
+
 ### Wi-Fi
 
 - **Turn off when idle**: **Off**, or after 5, 15 or 30 minutes with no network use. Downloads, syncing and Home Assistant's updates count as use. It never turns Wi-Fi off while the web server is on, and time asleep doesn't count. A notice says when it happens.

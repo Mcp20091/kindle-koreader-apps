@@ -123,6 +123,9 @@ function SSH:addToMainMenu(menu_items)
 end
 
 function SSH:show()
+    -- App lock (the launcher's): its passcode first, when this app is locked.
+    local lock = require("pluginshare").lock
+    if lock and lock.ask("ssh", function() self:show() end) then return end
     return require("sshui").show(self)
 end
 
@@ -132,6 +135,9 @@ function SSH:onShowSSH()
 end
 
 function SSH:onRunSSHCommand(ref)
+    -- App lock (the launcher's): its passcode first, when this app is locked.
+    local lock = require("pluginshare").lock
+    if lock and lock.ask("ssh", function() self:onRunSSHCommand(ref) end) then return true end
     local h, c = M.hostCommand(self.store.data, ref)
     if not h then
         require("sshko").message(_("This SSH command was deleted. Choose another for the gesture."))

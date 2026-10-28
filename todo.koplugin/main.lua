@@ -481,6 +481,9 @@ local VIEW = {
 }
 
 function Todo:show(view)
+    -- App lock (the launcher's): its passcode first, when this app is locked.
+    local lock = require("pluginshare").lock
+    if lock and lock.ask("todo", function() self:show(view) end) then return end
     if self.page then UIManager:close(self.page) end
     self:ensureLocalList()
     local PS = require("pluginshare")
@@ -2281,6 +2284,9 @@ end
 
 --- Opens a view from Apps (Search asks what to look for).
 function Todo:showView(key)
+    -- App lock (the launcher's): its passcode first, when this app is locked.
+    local lock = require("pluginshare").lock
+    if lock and lock.ask("todo", function() self:showView(key) end) then return end
     if key == "search" then
         self:show()
         return self:askSearch()

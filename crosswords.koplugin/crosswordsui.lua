@@ -1421,6 +1421,9 @@ end
 -- set): opened when it is in the book; else fetched (Wi-Fi asked for as
 -- KOReader does) and added; when today's is not out yet, the one before.
 function Notes:todaysCrossword(which)
+    -- App lock (the launcher's): its passcode first, when this app is locked.
+    local lock = require("pluginshare").lock
+    if lock and lock.ask("crosswords", function() self:todaysCrossword(which) end) then return end
     local info = self:todaysCrosswordInfo(which)
     if info.have then return self:open(info.book, info.page) end
     local src, kind = sourceAndKind(which)
@@ -1453,6 +1456,9 @@ end
 --- The Crosswords app: Notes' notebook list showing only the puzzle books
 -- (crosswordsItems), wherever they are kept; ‹ goes back to the launcher.
 function Notes:showCrosswords()
+    -- App lock (the launcher's): its passcode first, when this app is locked.
+    local lock = require("pluginshare").lock
+    if lock and lock.ask("crosswords", function() self:showCrosswords() end) then return end
     local PS = require("pluginshare")
     if PS.noteRecent then pcall(PS.noteRecent, "crosswords") end
     self:closeEditor()

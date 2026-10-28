@@ -138,6 +138,8 @@ do
     end
     PS.showSwitcher = function() if Apps.instance then Apps.instance:showMode("switcher") end end
     PS.showSettings = function(key)
+        -- (Settings locked in App lock: the passcode first.)
+        if PS.lock.ask("settings", function() PS.showSettings(key) end) then return end
         local e = key and PS.settingsApps[key]
         if e then return e.open() end
         if Apps.instance then Apps.instance:showMode("hub") end
@@ -147,6 +149,12 @@ do
         Apps.instance:showMode("page", function(v) v.pageSpec, v.pagePage, v.pageJump = spec, 1, spec.jump end)
     end
     PS.showSetup = function() require("appssetup").show() end
+    -- App lock (appslock.lua): an app calls PS.lock.ask(key, fn) before it opens (true: the
+    -- passcode is up, fn runs once it's right); PS.lock.run(key, fn) for a quick button.
+    PS.lock = setmetatable({}, { __index = function(__, k) return require("appslock")[k] end })
+    PS.backupApps = PS.backupApps or {}
+    PS.backupApps.lock = { key = "lock", name = "App lock", files = { "^apps_lock%.lua$" },
+        secret_keys = { ["apps_lock.lua"] = { "hash", "salt", "kind", "digits" } } }
     --- The launcher's settings at Sleep (the sleep screen is chosen there, for every app).
     PS.showSleepSettings = function()
         if not Apps.instance then return end
@@ -559,8 +567,15 @@ function Apps.watchWifi()
     UIManager:scheduleIn(60, Apps.wifiTask)
 end
 
+-- Going to sleep: App lock locks again, and covers a locked app on the screen (appslock.lua).
+function Apps:onSuspend()
+    local ok, err = pcall(function() require("appslock").suspend() end)
+    if not ok then require("logger").warn("Apps: app lock at sleep:", err) end
+end
+
 -- Back from sleep: the time asleep doesn't count as idle.
 function Apps:onResume()
+    pcall(function() require("appslock").resume() end)
     idle.bytes, idle.at = Apps.networkBytes(), os.time()
 end
 

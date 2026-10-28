@@ -1128,7 +1128,25 @@ function View:paintTo(bb, x, y)
     if self.canvas then self.canvas:paint(bb, x, y) end
 end
 
+-- The launcher's Settings screens: with Settings locked in App lock, only once the passcode is right.
+local SETTINGS_MODES = { hub = true, arrange = true, page = true, quick = true, conntest = true, fontsget = true }
+
+--- Settings locked: back to the tiles and the passcode asked (then the screen it was going to).
+function View:lockSettings()
+    if not SETTINGS_MODES[self.mode] or self.lockAsking then return end
+    local Lock = require("appslock")
+    if not Lock.get():needs("settings") then return end
+    local mode = self.mode
+    self.mode, self.lockAsking = "tiles", true
+    UIManager:nextTick(function()
+        Lock.prompt{ title = T(_("%1 is locked"), _("Settings")),
+            onOk = function() self.lockAsking = nil self.mode = mode self:refresh() end,
+            onCancel = function() self.lockAsking = nil end }
+    end)
+end
+
 function View:render()
+    self:lockSettings()
     if self.canvas then self.canvas:release() end
     self.dithered = nil
     local c = Canvas.new(self.w, self.h, false)
@@ -2372,6 +2390,14 @@ function View:settingsRows()
         end },
         { heading = _("START") },
         { _("Open at startup"), s.at_start == true, function() s.at_start = not s.at_start end },
+        -- A passcode or password before the apps you tick (appslock.lua): its own page.
+        { heading = _("APP LOCK") },
+        { _("App lock"), (function()
+            local l = require("appslock").get()
+            if not l:isSet() then return _("Off") end
+            local n = l:countLocked()
+            return n == 1 and _("On · 1 app") or T(_("On · %1 apps"), n)
+        end)(), function() require("appslock").showSettings() end },
         { heading = _("WI-FI") },
         { _("Turn off when idle"), View.wifiIdleName(s.wifi_idle), pick = function()
             local options = {}

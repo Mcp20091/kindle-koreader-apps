@@ -137,6 +137,7 @@ function Box:render()
     end
     -- (A box asked to be narrower, such as a PIN's.)
     if self.narrow then bw = math.min(bw, self.narrow) end
+    if self.kind == "keypad" then bw = math.min(bw, 320) end
     -- (Menus, read boxes and questions only as wide as what's in them.)
     if self.kind == "menu" or self.kind == "read" or self.kind == "confirm" or self.kind == "message" then
         bw = self:fitWidth(c, bw)
@@ -158,6 +159,8 @@ function Box:render()
     end
     if self.kind == "request" then
         self:renderRequest(c, x, bw, add)
+    elseif self.kind == "keypad" then
+        self:renderKeypad(c, x, bw, add)
     elseif self.kind == "read" then
         self:renderRead(c, x, bw, add, blocks[1] and blocks[1].h or 0)
     elseif self.kind == "pictures" then
@@ -293,6 +296,9 @@ function Box:render()
     end
     self.titleRect = { x, y, bw, (self.title and self.title ~= "") and blocks[1].h or 30 }
     self.top = y
+    -- (Over the whole screen, such as a locked app's passcode after the Kindle wakes: what's
+    -- under it stays hidden.)
+    if self.cover then c:rect(0, 0, c.W, c.H, C.WHITE) end
     c:box(x + 5, y + 5, bw, total, { r = 12, fill = C.MID })
     c:box(x, y, bw, total, { r = 12, fill = C.WHITE, border = C.BLACK, bw = 2 })
     self.rect = { x - 2, y - 2, bw + 9, total + 9 }
@@ -543,6 +549,89 @@ local function pattern(c, x, y, w, h, kind)
 end
 
 --- A row of on/off switches, drawn as rounded labels (black when on).
+--- A keypad for a passcode: what's typed as dots, a line under them (Wrong passcode…), 1 to 9,
+-- then Cancel, 0 and Delete. With `digits` (the passcode's length) it's checked at the last
+-- digit; without (a new passcode), Done under the keys once there are 4.
+function Box:renderKeypad(c, x, bw, add)
+    local typed = #(self.entered or "")
+    local n = self.digits or math.max(4, typed)
+    add(40, function(y)
+        local gap = 24
+        local x0 = x + bw / 2 - (n - 1) * gap / 2
+        for i = 1, n do
+            if i <= typed then c:circle(x0 + (i - 1) * gap, y + 22, 7, C.BLACK)
+            else c:circle(x0 + (i - 1) * gap, y + 22, 7, C.BLACK, 1.5) end
+        end
+    end)
+    add(26, function(y)
+        if self.note and self.note ~= "" then
+            c:text(x + bw / 2, y + 17, self.note, 11, { align = "middle", color = C.GREY, maxw = bw - 36 })
+        end
+    end)
+    local gap, kh = 10, 54
+    local kw = (bw - 36 - 2 * gap) / 3
+    local keys = { "1", "2", "3", "4", "5", "6", "7", "8", "9", "cancel", "0", "delete" }
+    for r = 1, 4 do
+        add(kh + gap, function(y)
+            for k = 1, 3 do
+                local key = keys[(r - 1) * 3 + k]
+                local kx = x + 18 + (k - 1) * (kw + gap)
+                c:box(kx, y, kw, kh, { r = 8, border = C.BLACK, bw = 1.5 })
+                if key == "cancel" or key == "delete" then
+                    c:icon(key == "cancel" and "x" or "delete", kx + kw / 2 - 9, y + 9, 18)
+                    c:text(kx + kw / 2, y + 44, key == "cancel" and _("Cancel") or _("Delete"), 10, { align = "middle" })
+                else
+                    c:text(kx + kw / 2, y + 36, key, 20, { bold = true, align = "middle" })
+                end
+                c:hit(kx, y, kw, kh, function() self:keypadPress(key) end)
+            end
+        end)
+    end
+    if not self.digits then
+        add(60, function(y)
+            local ready = typed >= 4
+            local w = bw - 36
+            c:box(x + 18, y + 4, w, 44, { r = 22, fill = ready and C.FILL or nil, border = ready and C.BLACK or C.MID, bw = 1.5 })
+            c:text(x + 18 + w / 2, y + 32, self.doneText or _("Done"), 12, { bold = true, align = "middle",
+                color = ready and C.ON_FILL or C.GREY })
+            c:hit(x + 18, y, w, 52, function() self:keypadPress("done") end)
+        end)
+    end
+    add(8, function() end)
+end
+
+function Box:keypadPress(key)
+    local e = self.entered or ""
+    if key == "cancel" then
+        self:close()
+        if self.onCancel then self.onCancel() end
+        return
+    elseif key == "done" then
+        if #e >= 4 then self:keypadCheck(e) end
+        return
+    elseif key == "delete" then
+        e = e:sub(1, -2)
+    elseif #e < 8 then
+        e = e .. key
+    end
+    self.entered = e
+    if self.digits and #e == self.digits then return self:keypadCheck(e) end
+    self:redraw()
+end
+
+--- check(code, box): true (right: it closes, then onOk(code)) or the line to show (and it starts again).
+function Box:keypadCheck(code)
+    local answer = self.check and self.check(code, self)
+    self.entered = ""
+    if answer == true then
+        self:close()
+        if self.onOk then self.onOk(code) end
+        return
+    end
+    self.note = type(answer) == "string" and answer or nil
+    self:redraw()
+end
+
 function Box:renderChips(c, x, bw, add, s)
     local function val(v) if type(v) == "function" then return v() end return v end
     add(46, function(y)
@@ -753,8 +842,8 @@ function Box:onTap(_, ges)
     end
     if hit and hit.tap then hit.tap()
     elseif self.dismissable == false or self.kind == "wait" then return true
-    -- (A request or text closed by a tap outside: as its Cancel.)
-    elseif self.kind == "request" or self.kind == "read" then
+    -- (A request, text or keypad closed by a tap outside: as its Cancel.)
+    elseif self.kind == "request" or self.kind == "read" or self.kind == "keypad" then
         self:stopTyping()
         self:close()
         if self.onCancel then self.onCancel() end
@@ -871,6 +960,12 @@ function Box:onSwipe(_, ges)
 end
 
 function Box:onClose()
+    -- (Back on a keypad is its Cancel, even over the whole screen.)
+    if self.kind == "keypad" then
+        self:close()
+        if self.onCancel then self.onCancel() end
+        return true
+    end
     if self.dismissable == false then return true end
     -- (Back on a wait with Cancel is its Cancel; on a plain wait, nothing.)
     if self.kind == "wait" then
@@ -901,7 +996,7 @@ function Box:close()
     if self.closed then return end
     self.closed = true
     if self.timer then UIManager:unschedule(self.timer) end
-    UIManager:close(self, "full", self:region())
+    UIManager:close(self, "full", not self.cover and self:region() or nil)
 end
 
 function Box:onCloseWidget()
@@ -1055,7 +1150,7 @@ function Popup.request(o)
     -- goes on to such widgets (as KOReader's InputDialog has it); without it the buttons don't answer.
     local box = Box:new{ kind = "request", is_always_active = true, title = o.title, subtitle = o.subtitle, sections = o.sections,
         rows = o.rows, pen = o.pen, penTitle = o.penTitle, penKind = o.penKind, buttons = o.buttons, lines = o.lines,
-        onCancel = o.onCancel, moreText = o.more, narrow = o.width }
+        onCancel = o.onCancel, moreText = o.more, narrow = o.width, cover = o.cover, dismissable = not o.cover }
     local Font = require("ui/font")
     local c = box.canvas
     box.field = require("ui/widget/inputtext"):new{
@@ -1098,6 +1193,23 @@ function Popup.request(o)
     show(box)
     if o.typing then box:startTyping() end
     return box
+end
+
+--- A passcode's keypad (appslock.lua): { title, subtitle, digits (its length: checked at the last
+-- digit; nil for a new one, with Done, doneText), check = fn(code, box) -> true (right: the box
+-- closes and onOk(code) runs) or a line to show under the dots, onOk, onCancel, note (a line to
+-- start with), cover (over the whole screen, so a locked app under it stays hidden; a tap outside
+-- does nothing) }. Each key answers a tap or a hold (a firm press of the pen).
+function Popup.keypad(o)
+    local box = Box:new{ kind = "keypad", title = o.title, subtitle = o.subtitle, digits = o.digits, check = o.check,
+        onOk = o.onOk, onCancel = o.onCancel, note = o.note, doneText = o.doneText, cover = o.cover,
+        dismissable = not o.cover }
+    if o.cover then
+        keyboardAside(box)
+        UIManager:show(box, "full")
+        return box
+    end
+    return show(box)
 end
 
 --- Text to read, in pages: { title, subtitle, text, buttons = { { icon,

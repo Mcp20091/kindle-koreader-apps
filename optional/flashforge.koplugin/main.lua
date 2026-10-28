@@ -105,6 +105,9 @@ function FlashForge:onToggleFlashForgeLight()
 end
 
 function FlashForge:show(page)
+    -- App lock (the launcher's): its passcode first, when this app is locked.
+    local lock = require("pluginshare").lock
+    if lock and lock.ask("flashforge", function() self:show(page) end) then return end
     return require("ffui").show(self, page)
 end
 

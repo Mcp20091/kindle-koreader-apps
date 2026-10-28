@@ -209,8 +209,15 @@ function Notify.hasPopup(e) return popupOf(e) ~= nil end
 function Notify.popup(e)
     local p = popupOf(e)
     if not p then return false end
-    pcall(p.show, e.route, e)
+    Notify.unlocked(e, function() pcall(p.show, e.route, e) end)
     return true
+end
+
+--- fn now, or (the app locked in App lock) once the passcode is right.
+function Notify.unlocked(e, fn)
+    local lock = require("pluginshare").lock
+    if lock and e.app then return lock.run(e.app, fn) end
+    fn()
 end
 
 --- A tap: its own action, or the app's opener for its saved route; then gone from the list.
@@ -221,10 +228,10 @@ function Notify.open(e)
     end
     local fn = opens[e.id]
     Notify.unnotify(e.id)
-    if fn then return pcall(fn) end
+    if fn then return Notify.unlocked(e, function() pcall(fn) end) end
     local PS = require("pluginshare")
     local opener = PS.notifyOpeners and PS.notifyOpeners[e.app]
-    if opener then return pcall(opener, e.route, e) end
+    if opener then return Notify.unlocked(e, function() pcall(opener, e.route, e) end) end
 end
 
 --- "5 min ago", "2:15 PM", "Mon 9:00 AM", "Oct 12".

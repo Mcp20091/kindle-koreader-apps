@@ -267,6 +267,9 @@ end
 --- The front page (tab: "today", "saved", "recent" or "settings"); jump: a
 -- setting's name, to open the settings at its page.
 function Wikipedia:show(tab, jump, pick)
+    -- App lock (the launcher's): its passcode first, when this app is locked.
+    local lock = require("pluginshare").lock
+    if lock and lock.ask("wikipedia", function() self:show(tab, jump, pick) end) then return end
     -- The launcher's recent apps (the switcher brings this screen back: self.screen).
     local PS = require("pluginshare")
     if PS.noteRecent then PS.noteRecent("wikipedia") end

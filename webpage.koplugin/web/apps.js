@@ -316,6 +316,54 @@ App.pages.apps = {
         st.weather !== 'off' ? App.connectionTest('weather') : null);
     }
 
+    // App lock (appslock.lua), as Settings > Launcher > App lock on the Kindle. With a passcode
+    // set, each change asks for it first.
+    function lockCard() {
+      const lk = App.obj(s.lock);
+      if (!lk.available) return null;
+      const word = lk.kind === 'password' ? 'password' : 'passcode';
+      const secret = (placeholder) => h('input', { type: 'password', placeholder, autocomplete: 'off', style: 'width:100%;margin:6px 0' });
+      const current = async (title) => {
+        if (!lk.set) return '';
+        const input = secret('Your ' + word);
+        return App.modal(title, input, [{ text: 'Cancel', result: null }, { text: 'Save', primary: true, value: () => input.value }]);
+      };
+      const send = async (body, title) => {
+        const cur = await current(title || 'Enter your ' + word);
+        if (cur === null || cur === undefined) return reload();
+        try {
+          await App.api('/api/apps/lock', { json: Object.assign(body, { current: cur }) });
+          App.toast('Saved.');
+        } catch (e) { App.fail(e); }
+        reload();
+      };
+      const setNew = async () => {
+        const kind = App.select([['passcode', 'Passcode (4 to 8 digits)'], ['password', 'Password (4 characters or more)']], lk.kind || 'passcode', () => {});
+        const now = lk.set ? secret('Your ' + word + ' now') : null;
+        const a = secret('New passcode or password'), b = secret('Again');
+        if (!await App.modal(lk.set ? 'Change the ' + word : 'Set a passcode', h('div', {}, now, kind, a, b),
+          [{ text: 'Cancel', result: false }, { text: 'Save', primary: true, result: true }])) return;
+        if (a.value !== b.value) return App.toast('They don’t match. Try again.', true);
+        try {
+          await App.api('/api/apps/lock', { json: { kind: kind.value, secret: a.value, current: now ? now.value : '' } });
+          App.toast('Saved.');
+        } catch (e) { App.fail(e); }
+        reload();
+      };
+      const turnOff = () => send({ off: true }, 'Turn off: enter your ' + word);
+      const stays = [['sleep', 'Until the Kindle sleeps'], ['5', '5 minutes'], ['15', '15 minutes'], ['60', '1 hour']];
+      return h('div', { class: 'card' }, h('h2', {}, 'App lock'),
+        h('p', { class: 'muted small' }, 'A passcode or password before the apps you tick, asked on the Kindle however an app is opened (its tile, Recent apps, a notification, search, a quick button or a gesture). Once it’s right, they stay unlocked until the Kindle sleeps. This web page has its own password: System > Password.'),
+        App.setting(lk.set && lk.kind === 'password' ? 'Password' : 'Passcode', h('span', { class: 'row' },
+          h('span', { class: 'muted' }, lk.set ? 'On' : 'Off'),
+          h('button', { class: 'btn small', onclick: setNew }, lk.set ? 'Change' : 'Set'),
+          lk.set ? h('button', { class: 'btn small', onclick: turnOff }, 'Turn off') : null)),
+        lk.set ? App.setting('Stay unlocked', App.select(stays, String(lk.stay || 'sleep'),
+          (v) => send({ stay: v === 'sleep' ? 'sleep' : Number(v) }))) : null,
+        h('h3', {}, 'Locked apps'),
+        ...App.arr(lk.apps).map((ap) => App.setting(ap.name, App.toggle(ap.on, (v) => send({ apps: { [ap.key]: v } })))));
+    }
+
     main.append(
       h('h1', {}, 'Launcher'),
       h('p', { class: 'sub' }, 'The Kindle’s launcher: its tiles, shortcuts and settings.'),
@@ -345,6 +393,7 @@ App.pages.apps = {
       widgetsCard(),
       h('div', { class: 'card' }, h('h2', {}, 'Start'),
         App.setting('Open at startup', App.toggle(st.at_start === true, set('at_start')))),
+      lockCard(),
       h('div', { class: 'card' }, h('h2', {}, 'Wi-Fi'),
         App.setting('Turn off when idle', App.select([['0', 'Off'], ['5', 'After 5 min'], ['15', 'After 15 min'], ['30', 'After 30 min']], String(st.wifi_idle || 0), (v) => set('wifi_idle')(Number(v))),
           'With no network use for that long. Not while the web server is on.')));
