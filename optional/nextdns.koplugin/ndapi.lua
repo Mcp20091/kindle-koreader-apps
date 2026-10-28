@@ -143,13 +143,30 @@ function API:readAll(from)
     return out
 end
 
+--- Today's devices (since from) with their queries: { { id, name, model, queries } } as the API
+-- gives them, every page of them (at most 10 of 500), or nil and why.
+function API:devices(from)
+    local out, cursor = {}, nil
+    for __ = 1, 10 do
+        local d, meta = self:request("GET", "/profiles/" .. self.profile .. "/analytics/devices",
+            { from = from, limit = 500, cursor = cursor })
+        if not d then return nil, meta end
+        for __, x in ipairs(type(d) == "table" and d or {}) do out[#out + 1] = x end
+        local pag = type(meta) == "table" and type(meta.pagination) == "table" and meta.pagination or {}
+        cursor = M.str(pag.cursor)
+        if cursor == "" then break end
+    end
+    return out
+end
+
 --- The query log, newest first: { items, cursor }, or nil and why.
--- opts: { status = "blocked" | "allowed" | nil, search, cursor, limit }.
+-- opts: { status = "blocked" | "allowed" | nil, search, device (an id), cursor, limit }.
 function API:logs(opts)
     opts = opts or {}
     local params = { limit = opts.limit or M.LOG_PAGE }
     if opts.status and opts.status ~= "all" then params.status = opts.status end
     if opts.search and opts.search ~= "" then params.search = opts.search end
+    if opts.device and opts.device ~= "" then params.device = opts.device end
     if opts.cursor and opts.cursor ~= "" then params.cursor = opts.cursor end
     local d, meta = self:request("GET", "/profiles/" .. self.profile .. "/logs", params)
     if not d then return nil, meta end

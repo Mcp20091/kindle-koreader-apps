@@ -21,6 +21,11 @@ App.pages.nextdns = {
       this.asked = true;
       this.act('logs', {});
     }
+    // (and today's devices, for the device filter, once)
+    if (s.summary && !s.devices && !this.askedDevices) {
+      this.askedDevices = true;
+      App.api('/api/nextdns/act', { json: { name: 'devices', args: {} } }).catch(() => {});
+    }
     if (s.configured) {
       this.timer = setTimeout(() => {
         if (main.isConnected && location.hash.startsWith('#nextdns') && !document.querySelector('.modal')) this.reload();
@@ -92,15 +97,20 @@ App.pages.nextdns = {
     const run = () => page.act('logs', { search: search.value.trim() });
     search.addEventListener('keydown', (e) => { if (e.key === 'Enter') run(); });
     const items = App.arr(L.items);
+    // The device: today's devices, busiest first (there can be many: the browser's list scrolls and
+    // jumps to a typed name), and the one shown even when it isn't in today's list.
+    const devices = App.arr(s.devices).map((d) => [d.id, d.name + ' (' + Number(d.queries || 0).toLocaleString() + ')']);
+    if (L.device && !devices.some(([id]) => id === L.device)) devices.unshift([L.device, L.deviceName || L.device]);
+    const device = App.select([['', 'All devices'], ...devices], L.device || '', (v) => page.act('logs', { device: v }));
     return h('div', { class: 'card' }, h('h2', {}, 'Recent queries'),
       App.tabs([['all', 'All'], ['blocked', 'Blocked'], ['allowed', 'Allowed']], L.filter || 'all', (f) => page.act('logs', { filter: f })),
-      h('div', { class: 'row', style: 'gap:8px;margin:10px 0' }, search,
+      h('div', { class: 'row', style: 'gap:8px;margin:10px 0' }, device, search,
         h('button', { class: 'btn', onclick: run }, 'Search'),
         L.search ? h('button', { class: 'btn', onclick: () => page.act('logs', { search: '' }) }, 'Clear') : null,
         h('button', { class: 'btn', onclick: () => page.act('logs', {}) }, 'Refresh')),
       L.reading && !items.length ? h('p', { class: 'muted' }, 'Reading the queries…') : null,
       L.why ? h('p', { class: 'muted small' }, L.why) : null,
-      L.items && !items.length ? h('p', { class: 'muted' }, L.search ? 'No queries with “' + L.search + '”.' : 'No queries yet.') : null,
+      L.items && !items.length ? h('p', { class: 'muted' }, (L.search ? 'No queries with “' + L.search + '”.' : 'No queries yet.') + (L.device ? ' (' + (L.deviceName || L.device) + ' only)' : '')) : null,
       ...items.map((e) => this.row(e.domain, e.line,
         e.statusText ? h('span', { class: 'pill ' + (e.status === 'blocked' ? 'bad' : 'ok') }, e.statusText) : null,
         ...this.domainButtons(s, e.domain))),

@@ -336,8 +336,11 @@ function UI.logItems(plugin)
             plugin:readLogs({ filter = f.id })
         end }
     end
+    -- (the device: a page of today's devices to pick from, however many there are)
+    chips[#chips + 1] = { text = L.device ~= "" and M.short(L.deviceName) or _("All devices"), on = L.device ~= "",
+        fn = function() UI.devices(plugin) end }
     if L.search ~= "" then
-        chips[#chips + 1] = { text = T(_("“%1” · Clear"), L.search), on = true, fn = function() plugin:readLogs({ search = "" }) end }
+        chips[#chips + 1] = { text = T(_("“%1” · Clear"), M.short(L.search, 14)), on = true, fn = function() plugin:readLogs({ search = "" }) end }
     end
     t[#t + 1] = { chips = chips }
     if not L.items then
@@ -346,7 +349,9 @@ function UI.logItems(plugin)
     end
     if L.why then t[#t + 1] = { note = plugin:whyText(L.why) } end
     if #L.items == 0 then
-        t[#t + 1] = { message = L.search ~= "" and T(_("No queries with “%1”."), L.search) or _("No queries yet.") }
+        local msg = L.search ~= "" and T(_("No queries with “%1”."), L.search) or _("No queries yet.")
+        if L.device ~= "" then msg = T(_("%1 (%2 only)"), msg, L.deviceName) end
+        t[#t + 1] = { message = msg }
         return t
     end
     local now = os.time()
@@ -381,6 +386,60 @@ function UI.logs(plugin, opts)
           end,
           on_refresh = function() plugin:readLogs({}) end })
     plugin:readLogs({ search = opts.search or (opts.search == nil and plugin:logState().search) or "" })
+end
+
+-- ------------------------------------------------------------------ devices
+
+--- The Devices page's rows: All devices, then today's devices (busiest first), or those
+-- matching the search. pick(id, name) chooses one.
+function UI.deviceItems(plugin, list, why, q, pick)
+    local L = plugin:logState()
+    local t = {}
+    if not list then
+        t[#t + 1] = { message = why and plugin:whyText(why) or _("Reading the devices…") }
+        return t
+    end
+    t[#t + 1] = { text = _("All devices"), icon = "list", right = L.device == "" and _("Shown") or nil,
+        callback = function() pick("", "") end }
+    local found = M.findDevices(list, q)
+    t[#t + 1] = { band = q ~= "" and T(_("“%1”"), q) or _("TODAY"), right = tostring(#found) }
+    if #found == 0 then
+        t[#t + 1] = { message = q ~= "" and T(_("No device with “%1”."), q) or _("No devices today.") }
+    end
+    for __, d in ipairs(found) do
+        local sub = {}
+        if d.model ~= "" and d.model ~= d.name then sub[#sub + 1] = d.model end
+        sub[#sub + 1] = T(_("%1 queries"), M.number(d.queries))
+        t[#t + 1] = { text = d.name, sub = table.concat(sub, " · "), icon = "tablet",
+            right = d.id == L.device and _("Shown") or nil, callback = function() pick(d.id, d.name) end }
+    end
+    return t
+end
+
+--- Today's devices, to show the queries of one: a page (there can be many), busiest first, with
+-- a search in the title bar to find one by name.
+function UI.devices(plugin)
+    local list, why, q = plugin:knownDevices(), nil, ""
+    local p
+    local function pick(id, name)
+        if p then p:onClose() end
+        plugin:readLogs({ device = id, deviceName = name })
+    end
+    local function find()
+        ask(_("Find a device"), q, function(v)
+            q = trim(v)
+            UI.refreshAll()
+        end, { ok = _("Find"), okIcon = "search", description = _("Part of its name, such as laptop.") })
+    end
+    p = page(_("Devices"), function() return UI.deviceItems(plugin, list, why, q, pick) end,
+        { buttons = { { "search", find } },
+          on_refresh = function()
+              plugin:devices(function(l, w) list, why = l, w UI.refreshAll() end, true)
+          end })
+    plugin:devices(function(l, w)
+        list, why = l, w
+        UI.refreshAll()
+    end)
 end
 
 -- ------------------------------------------------------------------ the lists

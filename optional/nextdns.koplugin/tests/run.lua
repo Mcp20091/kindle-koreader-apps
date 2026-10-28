@@ -211,5 +211,37 @@ eq(one(200, '{"null"}'):profileData() ~= nil, true, "data null")
 eq(select(2, one(500, ""):profiles()), "HTTP 500", "500 with nothing")
 eq(select(2, API.new({ key = "k", profile = "p" }, net({ { url = "/profiles/p$", status = 404, body = "" } })):readAll(0)), "notfound", "readAll: profile missing")
 
+-- devices, for the log's device filter
+local devs = M.devices({
+    { id = "D2", name = "Phone", model = "Pixel", queries = 2846 },
+    { id = "__UNIDENTIFIED__", queries = 97 },
+    { id = "D1", name = "Laptop", model = "MacBook", queries = 3120 },
+    { id = "D3", model = "Kindle Scribe", queries = 412 },
+    { id = "" },
+})
+eq(#devs, 4, "devices: empty ids left out")
+eq(devs[1].name, "Laptop", "devices: busiest first")
+eq(devs[3].name, "Kindle Scribe", "devices: unnamed one by its model")
+eq(devs[4].name, "Not identified", "devices: the unidentified ones")
+eq(#M.findDevices(devs, "LAP"), 1, "find a device by name, any case")
+eq(M.findDevices(devs, "pixel")[1].id, "D2", "find a device by model")
+eq(#M.findDevices(devs, ""), 4, "find: empty is all")
+eq(M.short("Living room TV"), "Living room TV", "short: fits")
+eq(M.short("A very long device name here"), "A very long device…", "short: cut")
+eq(M.short("Pat’s tablet in the den", 5), "Pat…", "short: not inside a character")
+
+ANSWERS['{"dev1"}'] = { data = { { id = "D1", queries = 5 } }, meta = { pagination = { cursor = "p2" } } }
+ANSWERS['{"dev2"}'] = { data = { { id = "D2", queries = 3 } }, meta = { pagination = { cursor = "" } } }
+local dapi = API.new({ key = "k", profile = "abc123" }, net({
+    { url = "cursor=p2", body = '{"dev2"}' },
+    { url = "/analytics/devices", body = '{"dev1"}' },
+    { url = "/logs", body = '{"logs"}' },
+}))
+local dl = dapi:devices(1793059200)
+eq(dl and #dl, 2, "api: every page of devices")
+eq(sent[#sent - 1].url, "https://api.nextdns.io/profiles/abc123/analytics/devices?from=1793059200&limit=500", "api: devices since midnight")
+dapi:logs({ device = "D1", status = "blocked" })
+eq(sent[#sent].url, "https://api.nextdns.io/profiles/abc123/logs?device=D1&limit=40&status=blocked", "api: logs for one device")
+
 print(string.format("%d passed, %d failed", passed, failed))
 os.exit(failed == 0 and 0 or 1)
