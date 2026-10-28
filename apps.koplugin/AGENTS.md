@@ -21,6 +21,10 @@ center, pop-ups and Undo. It adds the title bar over books and the library, and 
 - `appsview.lua`: the launcher screen and its modes (`tiles`, `hub`, `page`, `switcher`, search).
   It also draws the widgets sleep screen (its parts in `View.widgetOrder`: the `sleep_widgets_order` setting, the
   web page's order; `sleep_widgets` turns each off).
+- `appsinfo.lua`: what each app says about itself (`PS.appInfo`: tiles, order, groups, gestures,
+  notifications' names, Button labels, web tab), read by the model, the Settings list, the switcher,
+  the notifications, the pop-ups and the shared menus. No app is named in the launcher's lists:
+  `Model.TILES` has `{ apps = true }` where the apps' tiles go.
 - `appsmodel.lua`: tiles, their order and their lines. Plain Lua with no KOReader modules, so the
   tests can run it.
 - `appscanvas.lua`: drawing in units. The short side of the screen is 620 units, so on a Kindle

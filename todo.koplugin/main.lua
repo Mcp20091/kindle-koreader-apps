@@ -117,8 +117,15 @@ function Todo:init()
     self:scheduleBackground()
     self:scheduleReminders()
     self:shareWithApps()
-    -- A tap on one of its notifications in the shared list (Apps): the task, or Sync.
     local PS = require("pluginshare")
+    -- What it is for the launcher and the web page: its tiles, Settings group, web tab
+    -- (apps.koplugin/appsinfo.lua).
+    PS.appInfo = PS.appInfo or {}
+    PS.appInfo.todo = { name = _("To Do"), icon = "list-checks", order = 20, group = "tools",
+        tiles = { { key = "todo", event = "ShowTodo", line = function(todo) return todo:appsLine() end } },
+        web = { page = "todo", routes = "webtodo", script = "web/todo.js", dir = self.path,
+            card = "Lists and tasks, import and export, account and options." } }
+    -- A tap on one of its notifications in the shared list (Apps): the task, or Sync.
     PS.notifyOpeners = PS.notifyOpeners or {}
     PS.notifyOpeners.todo = function(route)
         local todo = Todo.instance
@@ -2292,6 +2299,16 @@ function Todo:tileMenu(key)
         { text = _("Open"), fn = function() self:openTile(key) end },
         { text = _("Add to launcher"), enabled = apps ~= nil and apps.addPin ~= nil and pin ~= nil, fn = function() apps:addPin(pin) end },
     })
+end
+
+--- The launcher's tile line: "2 today · 1 overdue", "Nothing due".
+function Todo:appsLine()
+    if not self.store then return "" end
+    local s = require("todomodel").summary(self.store:lists(), self:today(), { hidden = self:hiddenSet() })
+    if s.today == 0 and s.overdue == 0 then
+        return s.week > 0 and T(_("Nothing today · %1 this week"), s.week) or _("Nothing due")
+    end
+    return T(_("%1 today"), s.today) .. (s.overdue > 0 and (" · " .. T(_("%1 overdue"), s.overdue)) or "")
 end
 
 return Todo

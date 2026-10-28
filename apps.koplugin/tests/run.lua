@@ -2,6 +2,29 @@
 package.path = "./?.lua;" .. package.path
 local Model = require("appsmodel")
 
+-- The apps as they register themselves at start (PS.appInfo, appsinfo.lua): the tests'
+-- stand-in for PluginShare, with the real apps' tiles, orders and groups.
+local function tile(key, extra)
+    local t = { key = key, line = function() return "" end }
+    for k, v in pairs(extra or {}) do t[k] = v end
+    return t
+end
+package.loaded["pluginshare"] = { appInfo = {
+    homeassistant = { name = "Home Assistant", icon = "house", order = 10, group = "home",
+        tiles = { tile("ha"), tile("dashboard", { name = "Dashboard", fresh = true, shown = function() return true end }) } },
+    todo = { name = "To Do", order = 20, group = "tools", tiles = { tile("todo") } },
+    notes = { name = "Notes", order = 30, group = "writing", explore = "Handwritten notebooks", tiles = { tile("notes") } },
+    crosswords = { name = "Crosswords", icon = "newspaper", order = 40, group = "writing", tiles = { tile("crosswords", { icon = "grid-3x3" }) } },
+    library = { name = "Library", order = 45, group = "reading", gestures = {} },
+    wikipedia = { name = "Wikipedia", order = 50, group = "reading", tiles = { tile("wikipedia") } },
+    syncthing = { name = "Syncthing", order = 60, group = "tools", tiles = { tile("syncthing") },
+        gestures = { "^syncthing_", "^toggle_syncthing_server$" } },
+    sshclient = { name = "SSH", icon = "terminal", order = 70, group = "tools", tiles = { tile("ssh") } },
+    flashforge = { name = "FlashForge", order = 80, group = "tools", tiles = { tile("flashforge") } },
+    pangolin = { name = "Pangolin", order = 85, group = "tools", tiles = { tile("pangolin") } },
+    webpage = { name = "Web server", order = 90, group = "tools", tiles = { tile("web", { switches = true }) } },
+} }
+
 local failed, passed = 0, 0
 local function check(name, got, want)
     if got == want then passed = passed + 1 else
@@ -94,6 +117,41 @@ do
     check("a group's page", keys(Model.page(all, { { id = "g1" } }, { ha = "g1", dashboard = "g1" }, "g1", { wifi = true })), "ha,dashboard")
     check("a gone group's tiles come back", #Model.page(all, {}, { ha = "g9" }, nil, nil), #all)
     check("move among a page", table.concat(Model.moveAmong({ "a", "b", "c", "d" }, { "a", "c", "d" }, "c", -1), ","), "c,b,a,d")
+end
+
+-- What the apps say about themselves (appsinfo.lua): nothing in the launcher names them.
+do
+    local Info = require("appsinfo")
+    check("apps in their order", table.concat(Info.order(), ","), "homeassistant,todo,notes,crosswords,library,wikipedia,syncthing,sshclient,flashforge,pangolin,webpage")
+    check("a tile gets its app's plugin", Info.tile("ssh").plugin, "sshclient")
+    check("a tile keeps its own icon", Info.tile("crosswords").icon .. "," .. Info.tile("ha").icon, "grid-3x3,house")
+    check("a tile goes in its app's group", Info.tile("dashboard").group, "home")
+    local pats = table.concat(Info.gestures(), " ")
+    check("gestures: the app's name to start with", pats:find("^%^homeassistant_", 1) ~= nil and pats:find("%^crosswords_", 1, false) ~= nil, true)
+    check("gestures: an app's own", pats:find("toggle_syncthing_server", 1, true) ~= nil, true)
+    check("gestures: none when it says so", pats:find("library", 1, true), nil)
+    check("notification name", (Info.nameOf("sshclient")), "SSH")
+    local labels = {}
+    for __, a in ipairs(Info.labelApps()) do labels[#labels + 1] = a.key end
+    check("Button labels: each app's first tile, not a switch", table.concat(labels, ","), "ha,todo,notes,crosswords,wikipedia,syncthing,ssh,flashforge,pangolin")
+    -- A new app: its tile, group and gestures with no change to the launcher.
+    local PS = package.loaded["pluginshare"]
+    PS.appInfo.printer3 = { name = "Printer", icon = "printer", order = 87, group = "tools", tiles = { tile("printer3", { event = "ShowPrinter" }) } }
+    check("a new app's tile in its place", keys(Model.tiles(nil, nil, all)):find("pangolin,printer3,web", 1, true) ~= nil, true)
+    local tools
+    for __, sg in ipairs(Model.suggestions(Model.tiles(nil, nil, all), {}, {})) do
+        if sg.group.key == "tools" then tools = keys(sg.tiles) end
+    end
+    check("a new app in its suggested group", tools, "todo,syncthing,ssh,flashforge,pangolin,printer3,web")
+    check("a new app's gestures", table.concat(Info.gestures(), " "):find("^printer3_", 1, true) ~= nil, true)
+    PS.appInfo.printer3 = nil
+    -- An app's tile hidden while it says so (Home Assistant's Dashboard, not set up).
+    local shown = PS.appInfo.homeassistant.tiles[2].shown
+    PS.appInfo.homeassistant.tiles[2].shown = function() return false end
+    check("a tile not shown now", keys(Model.tiles(nil, nil, all)):find("dashboard", 1, true), nil)
+    PS.appInfo.homeassistant.tiles[2].shown = function() error("broken") end
+    check("a tile whose check fails isn't shown", keys(Model.tiles(nil, nil, all)):find("dashboard", 1, true), nil)
+    PS.appInfo.homeassistant.tiles[2].shown = shown
 end
 
 check("web button starts hidden", Model.quickOn(nil, "web"), false)

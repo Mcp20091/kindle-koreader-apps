@@ -159,37 +159,6 @@ end
 
 -- Notes' notebooks without reading their ink: how many, and the newest one's
 -- name (from the start of its file).
-local function notebooksLine(notes)
-    local dir = notes.store and notes.store.dir
-    local lfs = require("libs/libkoreader-lfs")
-    if not dir or lfs.attributes(dir, "mode") ~= "directory" then return nil end
-    local count, newest, newestTime = 0, nil, -1
-    for name in lfs.dir(dir) do
-        if name:match("^nb%d+%.lua$") then
-            count = count + 1
-            local t = lfs.attributes(dir .. "/" .. name, "modification") or 0
-            if t > newestTime then newest, newestTime = name, t end
-        end
-    end
-    if count == 0 then return _("No notebooks yet") end
-    local title
-    local f = io.open(dir .. "/" .. newest, "r")
-    if f then
-        local head = f:read(2048) or ""
-        f:close()
-        local quoted = head:match('name=("[^"\\]*")') or head:match("name=(%b\"\")")
-        if quoted then
-            local fn = loadstring("return " .. quoted)
-            if fn then
-                setfenv(fn, {})
-                local ok, v = pcall(fn)
-                if ok and type(v) == "string" then title = v end
-            end
-        end
-    end
-    return title and T(_("%1 notebooks \u{00B7} last: %2"), count, title) or T(_("%1 notebooks"), count)
-end
-
 local function try(fn)
     local ok, v = pcall(fn)
     if ok then return v end
@@ -352,6 +321,11 @@ function View:status(tile)
         end
         return n == 1 and _("1 tile") or T(_("%1 tiles"), n)
     end
+    -- An app's tile: the line it gives (appsinfo.lua), from its plugin.
+    if tile.line then
+        local p = self:plugin(tile.app)
+        return p and try(function() return tile.line(p) end) or ""
+    end
     local key = tile.key
     if key == "readingtime" then
         local stats = try(function() return self.apps:readingStats() end)
@@ -373,26 +347,6 @@ function View:status(tile)
         return tag and T(_("Update available: %1"), tag) or _("Every app's settings")
     elseif key == "kosettings" then
         return _("Device, screen, network and more")
-    elseif key == "wikipedia" then
-        local w = self:plugin("wikipedia")
-        local line = w and w.appsLine and try(function() return w:appsLine() end) or ""
-        return line ~= "" and line or _("Search and save articles")
-    elseif key == "syncthing" then
-        -- "On · Up to date", "On · Syncing · 3 files left", "Off".
-        local s = self:plugin("syncthing")
-        return s and s.appsLine and try(function() return s:appsLine() end) or ""
-    elseif key == "flashforge" then
-        -- "Printing 42% · 1 h 5 min left", "Ready".
-        local s = self:plugin("flashforge")
-        return s and s.appsLine and try(function() return s:appsLine() end) or ""
-    elseif key == "pangolin" then
-        -- "All online · 4 sites", "1 site offline".
-        local s = self:plugin("pangolin")
-        return s and s.appsLine and try(function() return s:appsLine() end) or ""
-    elseif key == "ssh" then
-        -- "3 hosts".
-        local s = self:plugin("sshclient")
-        return s and s.appsLine and try(function() return s:appsLine() end) or ""
     elseif key == "battery" then
         return try(function() return require("appsbattery").line(self:ui()) end) or ""
     elseif key == "weather" then
@@ -417,49 +371,6 @@ function View:status(tile)
     elseif key == "library" then
         local home = G_reader_settings:readSetting("home_dir")
         return home and (home:match("([^/]+)/*$") or home) or _("Your books")
-    elseif key == "ha" then
-        local ha = self:plugin("homeassistant")
-        if not (ha and ha.snap) then return ha and ha.api and ha.api:signedIn() and _("Open to load") or _("Not signed in") end
-        return try(function()
-            local HaModel = require("hamodel")
-            local on = #HaModel.onNow(ha.snap, ha.prefs)
-            local att = HaModel.attention(ha.snap, ha.prefs)
-            return (on > 0 and T(_("%1 on"), on) or _("All off")) .. " · " .. att.text
-        end) or ""
-    elseif key == "dashboard" then
-        local ha = self:plugin("homeassistant")
-        local w = ha and ha.snap and ha.snap.weather
-        if not w then return _("Clock, weather, cameras") end
-        return try(function()
-            local HaModel = require("hamodel")
-            local text = HaModel.weather(w.state)
-            local inside = HaModel.inside(ha.snap, ha.prefs)
-            return (w.temp and HaModel.formatTemp(w.temp) .. " " or "") .. text ..
-                (inside and (" · " .. T(_("inside %1"), HaModel.formatTemp(inside))) or "")
-        end) or ""
-    elseif key == "todo" then
-        local todo = self:plugin("todo")
-        if not (todo and todo.store) then return "" end
-        return try(function()
-            local s = require("todomodel").summary(todo.store:lists(), todo:today(), { hidden = todo:hiddenSet() })
-            if s.today == 0 and s.overdue == 0 then
-                return s.week > 0 and T(_("Nothing today · %1 this week"), s.week) or _("Nothing due")
-            end
-            return T(_("%1 today"), s.today) .. (s.overdue > 0 and (" · " .. T(_("%1 overdue"), s.overdue)) or "")
-        end) or ""
-    elseif key == "notes" then
-        local notes = self:plugin("notes")
-        if not (notes and notes.store) then return "" end
-        return try(function() return notebooksLine(notes) end) or ""
-    elseif key == "crosswords" then
-        -- The Crosswords app: today's puzzle, as the crossword tile says it.
-        local notes = self:plugin("notes")
-        if not (notes and notes.todaysCrosswordInfo) then return "" end
-        return try(function() return crosswordLine(notes, nil, true) end) or ""
-    elseif key == "web" then
-        local web = self:plugin("webpage")
-        local address = web and web.address and web:address() or ""
-        return address ~= "" and T(_("On · %1"), address) or _("Off · Tap to start")
     elseif key == "wifi" then
         return NetworkMgr:isWifiOn() and (NetworkMgr:isConnected() and _("Connected") or _("On")) or _("Off")
     elseif key == "exit" then
@@ -537,6 +448,9 @@ function View:open(tile)
         end
     elseif tile.event then
         if ui then ui:handleEvent(Event:new(tile.event)) end
+    elseif tile.open then
+        local p = self:plugin(tile.app)
+        if p then try(function() tile.open(p) end) end
     elseif key == "weather" then
         require("appsweather").open(self)
         return
@@ -597,11 +511,6 @@ function View:open(tile)
         self:render()
         UIManager:setDirty(self, "full")
         return
-    elseif key == "web" then
-        local web = self:plugin("webpage")
-        if web then
-            if web:address() ~= "" then web:showAddress() else web:start() end
-        end
     elseif key == "wifi" then
         -- Says what is happening at once (turning Wi-Fi off takes a few
         -- seconds on a Kindle), then the real state when KOReader is done.
@@ -2609,7 +2518,7 @@ function View.buttonLabels(view)
     local PS = require("pluginshare")
     local function apps()
         local out = {}
-        for __, a in ipairs(Popup.LABEL_APPS) do
+        for __, a in ipairs(Popup.labelApps()) do
             if a.key == "apps" or view:plugin(a.plugin) then table.insert(out, a) end
         end
         return out

@@ -344,9 +344,13 @@ do
             local ui = current and current:ui()
             local function has(name) return ui and ui[name] ~= nil end
             local out = {}
-            if has("notes") then table.insert(out, { icon = "notebook-pen", title = _("Notes"), text = _("Handwritten notebooks") }) end
-            if has("crosswords") then table.insert(out, { icon = "grid-3x3", title = _("Crosswords"), text = _("Daily crosswords to solve with the pen") }) end
-            if has("wikipedia") then table.insert(out, { icon = "wikipedia", title = _("Wikipedia"), text = _("Read articles and save them for offline") }) end
+            -- (The apps that say what they are ready for: their `explore`, appsinfo.lua.)
+            for __, a in ipairs(require("appsinfo").list()) do
+                if a.entry.explore and has(a.plugin) then
+                    local tile = (a.entry.tiles or {})[1]
+                    table.insert(out, { icon = tile and tile.icon or a.entry.icon, title = a.entry.name, text = a.entry.explore })
+                end
+            end
             if has("statistics") then table.insert(out, { icon = "activity", title = _("Reading statistics"), text = _("Reading time, streaks and progress by book") }) end
             table.insert(out, { icon = "type", title = _("Fonts"), text = _("Download fonts from Google Fonts") })
             table.insert(out, { icon = "search", title = _("Search"), text = _("Search books, notes, tasks and settings") })
@@ -675,18 +679,12 @@ function Apps:tiles(withHidden)
     return Model.tiles(s.order, s.hidden, Apps.has(ui), withHidden, s.pins, s.groups)
 end
 
---- Whether a tile's plugin (or "@frontlight", "@homeassistant" (set up), or "plugin:call") is there, on `ui`.
+--- Whether a tile's plugin (or "@frontlight", or "plugin:call") is there, on `ui`.
 function Apps.has(ui)
     return function(name)
         if name == "@frontlight" then
             local Device = require("device")
             return Device:hasFrontlight() and true or false
-        end
-        -- Home Assistant set up (its Dashboard is nothing without it).
-        if name == "@homeassistant" then
-            local ha = ui and ui.homeassistant
-            local ok, signed = pcall(function() return ha.api:signedIn() end)
-            return ok and signed == true
         end
         -- "plugin:call": the plugin, new enough to have that call.
         local plugin, call = name:match("^([^:]+):(.+)$")

@@ -283,7 +283,7 @@ App.pages.todo = {
     async function signIn() {
       await saveClient();
       const st = await App.api('/api/todo/signin', { json: {} }).catch(App.fail);
-      if (st) App.pages.notes.showCode(codeBox, st, '/api/todo/signin', 'Signed in to To Do. Syncing…');
+      if (st) App.showCode(codeBox, st, '/api/todo/signin', 'Signed in to To Do. Syncing…');
     }
     async function signOut() {
       if (!await App.confirm('Sign out', 'Sign out of To Do? Tasks saved on the Kindle and unsent changes will be removed.', 'Sign out', true)) return;

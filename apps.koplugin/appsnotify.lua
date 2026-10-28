@@ -60,21 +60,17 @@ local Notify = {}
 local MAX = 100
 local FILE = DataStorage:getSettingsDir() .. "/notifications.lua"
 
--- The apps' names and icons in the list.
+-- The apps' names and icons in the list: the launcher's here, each app's as it says
+-- (appsinfo.lua, by its plugin's name).
 local APPS = {
-    todo = { _("To Do"), "list-checks" },
-    homeassistant = { _("Home Assistant"), "house" },
-    notes = { _("Notes"), "notebook-pen" },
-    crosswords = { _("Crosswords"), "newspaper" },
-    wikipedia = { _("Wikipedia"), "wikipedia" },
-    syncthing = { _("Syncthing"), "folder-sync" },
-    sshclient = { _("SSH"), "terminal" },
-    ssh = { _("SSH"), "terminal" },
-    flashforge = { _("FlashForge"), "printer" },
-    pangolin = { _("Pangolin"), "shield-check" },
-    webpage = { _("Web server"), "globe" },
     apps = { _("Launcher"), "app-window" },
 }
+
+local function appOf(app)
+    if APPS[app] then return APPS[app] end
+    local ok, name, icon = pcall(function() return require("appsinfo").nameOf(app) end)
+    if ok and name then return { name, icon } end
+end
 
 local store        -- LuaSettings
 local opens = {}   -- entry id -> open function (this run only)
@@ -189,11 +185,13 @@ function Notify.markSeen()
 end
 
 function Notify.appName(e)
-    return e.name or (APPS[e.app] and APPS[e.app][1]) or e.app
+    local a = appOf(e.app)
+    return e.name or (a and a[1]) or e.app
 end
 
 function Notify.appIcon(e)
-    return e.icon or (APPS[e.app] and APPS[e.app][2]) or "bell"
+    local a = appOf(e.app)
+    return e.icon or (a and a[2]) or "bell"
 end
 
 --- The app's pop-up for it (PS.notifyPopups), when it has one.

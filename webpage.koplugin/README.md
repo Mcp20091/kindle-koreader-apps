@@ -72,8 +72,9 @@ luajit tests/run.lua
 
 - `webserver.lua`: the HTTP server, polled by KOReader's event loop (one request at a time; spare
   connections that send nothing are set aside; uploads go straight to disk).
-- `webfiles.lua`, `webbooks.lua`, `webapps.lua`, `webha.lua`, `webtodo.lua`, `webnotes.lua`, `webhome.lua`
-  and the rest: each section's API (see AGENTS.md for the full list).
+- `webfiles.lua`, `webbooks.lua`, `webapps.lua`, `webhome.lua` and the rest: each section's API (see
+  AGENTS.md for the full list). Each app's own tab (Home Assistant, To Do, SSH...) is in that app's
+  folder, as it says in `PS.appInfo` (`apps.koplugin/appsinfo.lua`).
 - `webcommon.lua`: the open KOReader screen's plugins, Microsoft's sign-in by code.
 - `web/`: the page (plain HTML, CSS and JavaScript; light and dark).
 - `main.lua`: the menu, starting and stopping, the address and QR code, staying awake.

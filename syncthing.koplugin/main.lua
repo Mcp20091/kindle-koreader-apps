@@ -85,6 +85,15 @@ function Syncthing:init()
     local PS = require("pluginshare")
     PS.notifyOpeners = PS.notifyOpeners or {}
     PS.notifyOpeners.syncthing = function() openApp() end
+    -- What it is for the launcher and the web page: its tile, Settings group, web tab
+    -- (apps.koplugin/appsinfo.lua).
+    PS.appInfo = PS.appInfo or {}
+    PS.appInfo.syncthing = { name = _("Syncthing"), icon = "folder-sync", order = 60, group = "tools",
+        -- "On · Up to date", "On · Syncing · 3 files left", "Off".
+        tiles = { { key = "syncthing", event = "ShowSyncthing", line = function(s) return s:appsLine() end } },
+        gestures = { "^syncthing_", "^toggle_syncthing_server$" },
+        web = { page = "syncthing", routes = "websyncthing", script = "web/syncthing.js", dir = self.path,
+            card = "Folders, devices and requests." } }
     -- The web page's backup: the settings always; Syncthing's own folder (its
     -- config, this Kindle's keys and so its device ID, its database) only with
     -- "Include keys and sign-ins".

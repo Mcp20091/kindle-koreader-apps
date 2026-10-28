@@ -399,6 +399,14 @@ end
 function FlashForge:shareWithApps()
     local PS = require("pluginshare")
     PS.notifyOpeners = PS.notifyOpeners or {}
+    -- What it is for the launcher and the web page: its tile (only there while it's installed:
+    -- an optional app), Settings group, web tab (apps.koplugin/appsinfo.lua).
+    PS.appInfo = PS.appInfo or {}
+    PS.appInfo.flashforge = { name = _("FlashForge"), icon = "printer", order = 80, group = "tools",
+        -- "Printing 42% · 1 h 5 min left", "Ready".
+        tiles = { { key = "flashforge", event = "ShowFlashForge", line = function(f) return f:appsLine() end } },
+        web = { page = "flashforge", routes = "webflashforge", script = "web/flashforge.js", dir = self.path,
+            card = "Your 3D printer: the print, pause and cancel, the light and settings." } }
     PS.notifyOpeners.flashforge = function()
         local ff = current()
         if ff then ff:show() end

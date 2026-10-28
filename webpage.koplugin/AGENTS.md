@@ -24,8 +24,16 @@ updates, backups and every app's setup, with a keyboard and a big screen.
     `web/fonts.js`: list, upload, remove with Undo, default font, Google Fonts in a child process).
     `webai` (the AI tab, `web/ai.js`: the routes `/api/ai…`; the work is the launcher's `appsai.lua`:
     services, keys, jobs, Try a prompt in a child process, Advanced and its preview).
-  - For the other plugins: `webha`, `webtodo`, `webnotes`, `webcrosswords`, `webwikipedia`,
-    `websyncthing`, `webssh`, `webservers` (the Files tab's Servers and catalogs card, `web/servers.js`:
+  - Each app's tab is in the app's own folder, not here: its routes module and `web/<tab>.js`
+    (`homeassistant.koplugin/webha.lua` and `web/ha.js`, To Do's `webtodo`, Notes' `webnotes`,
+    Crosswords' `webcrosswords`, Wikipedia's `webwikipedia`, Syncthing's `websyncthing`, SSH's
+    `webssh`, the optional FlashForge's `webflashforge` and Pangolin's `webpangolin`). The app says so in
+    `PS.appInfo.<plugin>.web` (`apps.koplugin/appsinfo.lua`); `webcommon.webApps()` reads it (without
+    the launcher), `main.lua` loads each routes module, `/static/app/<plugin>/<file>` serves the app's
+    `web/` folder, and `/api/home`'s `apps` lists the tabs: `App.addApps` in `web/app.js` puts their links
+    after the Launcher's and loads their scripts before the first page. `plugins` is the launcher and
+    every app that registers. A new app needs no change here.
+  - `webservers` (the Files tab's Servers and catalogs card, `web/servers.js`:
     the Library's FTP, WebDAV and OPDS lists and download folder; `library.koplugin/libraryweb.lua` does
     the work; Test runs in a child process and is polled; passwords never come back).
   - `webbooks` fixes reading sessions (`/api/reading/day`, `/forget`, `/edit`) through the
@@ -41,13 +49,12 @@ updates, backups and every app's setup, with a keyboard and a big screen.
   - `webcommon` is shared: the running KOReader screen, and Microsoft's sign-in by code for To Do
     and OneNote.
 - `web/`: the page, plain HTML, CSS and JS with no build step. `index.html`, `app.js` (tabs,
-  helpers), one `.js` per tab, `login.html` and `manifest.webmanifest`.
+  helpers, the apps' tabs added at start, `App.showCode` for a sign-in code), one `.js` per own tab, `login.html` and `manifest.webmanifest`.
 - `watchdog.sh`: while the server runs, it notes in `crash.log` where KOReader is stuck if the
   heartbeat file isn't written for 30 s.
 
-The Notes, Crosswords, Wikipedia, Syncthing and SSH parts (`webnotes`, `webcrosswords`,
-`webwikipedia`, `websyncthing`, `webssh` and their `web/*.js`) follow those plugins. Change them
-together with those plugins.
+The apps' tabs (in their own folders) use this plugin's `webcommon` and `web/app.js` (`App.*`,
+`h`): keep those stable, and change a tab together with its app.
 
 What it saves:
 - `koreader/settings/webpage-https-{key,cert}.pem` (the Kindle's own certificate) and

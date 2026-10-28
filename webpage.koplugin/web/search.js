@@ -58,7 +58,7 @@ App.pages.search = {
     const lq = q.toLowerCase();
     const [kindle, notes, index] = await Promise.all([
       App.api('/api/search?q=' + enc).catch(() => ({})),
-      App.plugins && App.plugins.notes === false ? Promise.resolve(null)
+      App.plugins && !App.plugins.notes ? Promise.resolve(null)
         : App.api('/api/notes/search?q=' + enc).catch(() => null),
       App.pageIndex().catch(() => []),
     ]);

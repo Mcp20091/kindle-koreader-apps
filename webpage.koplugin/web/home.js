@@ -21,16 +21,8 @@ App.pages.home = {
         card('#files', 'Files', 'Upload, download and organize books and other files.', true),
         card('#reading', 'Reading', 'Reading time, days in a row and each book.', true),
         card('#apps', 'Launcher', 'Tiles, shortcuts and settings.', s.plugins.apps),
-        card('#ha', 'Home Assistant', 'Connection, devices, Quick tiles, layout, settings and backup.', s.plugins.homeassistant),
-        card('#todo', 'To Do', 'Lists and tasks, import and export, account and options.', s.plugins.todo),
-        card('#notes', 'Notes', 'Notebooks in their folders, settings, OneNote and AI.', s.plugins.notes),
-        card('#crosswords', 'Crosswords', 'Puzzle books, and getting new crosswords.', s.plugins.crosswords),
-        card('#wikipedia', 'Wikipedia', 'Saved articles, and saving new ones to the Kindle.', s.plugins.wikipedia),
-        card('#syncthing', 'Syncthing', 'Folders, devices and requests.', s.plugins.syncthing),
-        card('#ssh', 'SSH', 'Hosts, the command list and keys.', s.plugins.sshclient),
-        // (an optional app: its card only when it's installed)
-        s.plugins.flashforge ? card('#flashforge', 'FlashForge', 'Your 3D printer: the print, pause and cancel, the light and settings.', true) : null,
-        s.plugins.pangolin ? card('#pangolin', 'Pangolin', 'Your Pangolin server: sites, resources and clients, and turning them on or off.', true) : null,
+        // (Each app's, as it says: only those installed.)
+        ...(App.webApps || []).map((a) => card('#' + a.page, a.name, a.card || '', true)),
         card('#fonts', 'Fonts', 'Your fonts, getting more, the default and the font settings.', s.plugins.apps),
         card('#koreader', 'KOReader', 'Folders, common settings and KOReader’s whole menu.', true),
         card('#system', 'System', 'Update plugins, backups, logs, gestures and the password.', true)),

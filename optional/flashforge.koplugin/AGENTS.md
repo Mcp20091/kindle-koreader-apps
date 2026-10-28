@@ -8,8 +8,10 @@ notifications, launcher, guide) are in the top-level AGENTS.md; this file covers
 A FlashForge 3D printer on the Kindle, over the printer's own LAN HTTP API (no Home Assistant): the print,
 temperatures, pause/resume/cancel/clear, light, filtration, a camera picture, the Material Station, and
 starting one of the printer's recent files with material matching on the AD5X. An **optional** app: it lives
-in `optional/`, isn't in the main install zip, and has its own (`optional/build-zip.py`). The launcher shows
-its tile only when it's installed (`plugin = "flashforge"` in appsmodel's TILES).
+in `optional/`, isn't in the main install zip, and has its own (`optional/build-zip.py`). It says what it is in
+`PS.appInfo.flashforge` (main.lua's `shareWithApps`): its tile, Settings group and web tab
+(`webflashforge.lua`, `web/flashforge.js`, here), so the launcher and the web page show it only when
+it's installed, with nothing of it in their code.
 
 ## The printer's API (what ffapi.lua speaks)
 

@@ -19,6 +19,14 @@ function Share.install(notes)
     -- (For what is registered before Notes starts: Preview in Settings > AI > Advanced.)
     Share.notes = notes
     local ps = PS()
+    -- What it is for the launcher and the web page: its tile, Settings group, web tab
+    -- (apps.koplugin/appsinfo.lua).
+    ps.appInfo = ps.appInfo or {}
+    ps.appInfo.notes = { name = _("Notes"), icon = "notebook-pen", order = 30, group = "writing",
+        explore = _("Handwritten notebooks"),
+        tiles = { { key = "notes", event = "ShowNotes", line = function(n) return Share.appsLine(n) end } },
+        web = { page = "notes", routes = "webnotes", script = "web/notes.js", dir = notes.path,
+            card = "Notebooks in their folders, settings, OneNote and AI." } }
     if ps.registerSettings then
         -- (settings: each of them by name, for the launcher's search.)
         ps.registerSettings{ key = "notes", name = _("Notes"), icon = "notebook-pen",
@@ -145,6 +153,39 @@ end
 function Share.opened()
     local ps = PS()
     if ps.noteRecent then pcall(ps.noteRecent, "notes") end
+end
+
+--- The launcher's tile line: "12 notebooks · last: Ideas" (the newest notebook's name read
+-- from the start of its file, without loading it).
+function Share.appsLine(notes)
+    local dir = notes.store and notes.store.dir
+    local lfs = require("libs/libkoreader-lfs")
+    if not dir or lfs.attributes(dir, "mode") ~= "directory" then return "" end
+    local count, newest, newestTime = 0, nil, -1
+    for name in lfs.dir(dir) do
+        if name:match("^nb%d+%.lua$") then
+            count = count + 1
+            local t = lfs.attributes(dir .. "/" .. name, "modification") or 0
+            if t > newestTime then newest, newestTime = name, t end
+        end
+    end
+    if count == 0 then return _("No notebooks yet") end
+    local title
+    local f = io.open(dir .. "/" .. newest, "r")
+    if f then
+        local head = f:read(2048) or ""
+        f:close()
+        local quoted = head:match('name=("[^"\\]*")') or head:match("name=(%b\"\")")
+        if quoted then
+            local fn = loadstring("return " .. quoted)
+            if fn then
+                setfenv(fn, {})
+                local ok, v = pcall(fn)
+                if ok and type(v) == "string" then title = v end
+            end
+        end
+    end
+    return title and T(_("%1 notebooks \u{00B7} last: %2"), count, title) or T(_("%1 notebooks"), count)
 end
 
 return Share

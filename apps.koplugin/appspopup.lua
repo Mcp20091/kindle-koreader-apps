@@ -324,21 +324,15 @@ end
 
 -- ------------------------------------------------------------------ request and read
 
--- The apps whose Button labels can differ from the launcher's: { key (the tile's), plugin, name }.
-Popup.LABEL_APPS = {
-    { key = "apps", name = "Launcher" },
-    { key = "ha", plugin = "homeassistant", name = "Home Assistant" },
-    { key = "todo", plugin = "todo", name = "To Do" },
-    { key = "notes", plugin = "notes", name = "Notes" },
-    { key = "crosswords", plugin = "crosswords", name = "Crosswords" },
-    { key = "wikipedia", plugin = "wikipedia", name = "Wikipedia" },
-    { key = "syncthing", plugin = "syncthing", name = "Syncthing" },
-    { key = "ssh", plugin = "sshclient", name = "SSH" },
-    { key = "flashforge", plugin = "flashforge", name = "FlashForge" },
-    { key = "pangolin", plugin = "pangolin", name = "Pangolin" },
-}
+-- The apps whose Button labels can differ from the launcher's: { key (the tile's), plugin, name }:
+-- the launcher, then each app's first tile (appsinfo.lua). A function: apps register at start.
+function Popup.labelApps()
+    local out = { { key = "apps", name = "Launcher" } }
+    for __, a in ipairs(require("appsinfo").labelApps()) do table.insert(out, a) end
+    return out
+end
 
---- The app whose screen is under the pop-ups now (a key of LABEL_APPS), or nil over
+--- The app whose screen is under the pop-ups now (a key of labelApps()), or nil over
 -- KOReader's library or a book: the top full-screen widget, matched against the
 -- launcher and each app's open screen (as the switcher finds them).
 function Popup.currentApp()
@@ -355,7 +349,7 @@ function Popup.currentApp()
     local FileManager = package.loaded["apps/filemanager/filemanager"]
     local ui = (ReaderUI and ReaderUI.instance) or (FileManager and FileManager.instance)
     if not ui then return nil end
-    for __, a in ipairs(Popup.LABEL_APPS) do
+    for __, a in ipairs(Popup.labelApps()) do
         local p = a.plugin and ui[a.plugin]
         if type(p) == "table" then
             for __, field in ipairs({ "screen", "page", "view", "widget" }) do

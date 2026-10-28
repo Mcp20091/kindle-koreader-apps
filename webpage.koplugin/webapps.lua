@@ -27,10 +27,10 @@ local function state(a)
     out.settings.button_labels = G_reader_settings:readSetting("apps_button_labels") ~= false
     -- Each app's own (Default, On, Off), as on the Kindle's Button labels page.
     local okP, Popup = pcall(require, "appspopup")
-    if okP and Popup.LABEL_APPS then
+    if okP and Popup.labelApps then
         out.buttonLabelApps = {}
         local by = G_reader_settings:readSetting("apps_button_labels_by_app") or {}
-        for __, ap in ipairs(Popup.LABEL_APPS) do
+        for __, ap in ipairs(Popup.labelApps()) do
             if ap.key == "apps" or (a.plugin and a:plugin(ap.plugin)) then
                 local v = by[ap.key]
                 table.insert(out.buttonLabelApps, { key = ap.key, name = ap.name, value = v == nil and "default" or (v and "on" or "off") })
@@ -273,7 +273,7 @@ function Web.routes(server)
         elseif type(b.key) == "string" and b.hidden ~= nil then
             s.hidden = s.hidden or {}
             local tile
-            for __, t in ipairs(Model.TILES) do if t.key == b.key then tile = t end end
+            for __, t in ipairs(Model.allTiles()) do if t.key == b.key then tile = t end end
             -- (Shown: false for one hidden to start with, no entry for the others.)
             if b.hidden == true then s.hidden[b.key] = true
             elseif tile and tile.offByDefault then s.hidden[b.key] = false

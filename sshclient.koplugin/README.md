@@ -22,7 +22,7 @@ Connect from a Kindle to your other devices (PCs, a NAS, a Raspberry Pi) and run
 - **Notifications**: a command that took a minute or more ("Command finished on NAS: …"); tapping it shows the output (after a restart, the host's page).
 - **Launcher**: event `ShowSSH` opens it; `ui.sshclient:appsLine()` gives "3 hosts". Icon: `terminal`. Quick buttons: a saved command, or a host's Status.
 - **Gestures**: **SSH** (opens it) and **SSH: run a saved command** (a choice of every host's saved commands).
-- **Web page**: an SSH tab in webpage.koplugin (`webssh.lua`, `web/ssh.js`) calls `ui.sshclient:webState()` and `ui.sshclient:act(name, args)`: hosts with passwords (never sent back), each host's commands, the command list, key upload, paste and creation, AI help (`aiStart` / `aiResult`) and Import ~/.ssh/config (`importConfig`).
+- **Web page**: an SSH tab (`webssh.lua`, `web/ssh.js`, here; the web server loads them) calls `ui.sshclient:webState()` and `ui.sshclient:act(name, args)`: hosts with passwords (never sent back), each host's commands, the command list, key upload, paste and creation, AI help (`aiStart` / `aiResult`) and Import ~/.ssh/config (`importConfig`).
 
 ## Install
 

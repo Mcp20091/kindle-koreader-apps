@@ -134,8 +134,8 @@ user asked for this to hold everywhere, so check every new screen against it:
   web page's changes; for the AI: `M.redact` (secrets blanked), `M.aiPart`,
   `M.aiOutputText`, `M.aiFollowUp`, `M.aiCommands` (COMMAND: lines)) and `sshkeys.lua` (base64, OpenSSH and Dropbear key
   formats, public key lines).
-- The web page's SSH tab lives in the web server plugin (`webssh.lua`,
-  `web/ssh.js`) and only calls `webState()` / `act()`, and for AI help
+- The web page's SSH tab is here (`webssh.lua`, `web/ssh.js`, served by the web server as
+  `PS.appInfo.sshclient.web` says) and only calls `webState()` / `act()`, and for AI help
   `aiStart(args)` / `aiResult(key)` (`plugin.lastOutput`: the last output page).
 
 ## Data on the Kindle

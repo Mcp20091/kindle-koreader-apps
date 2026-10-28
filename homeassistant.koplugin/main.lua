@@ -163,8 +163,24 @@ function HomeAssistant:init()
     self:hookSleepScreen()
     self:hookSleepAlerts()
     self:shareWithApps()
-    -- A tap on one of its notifications in the shared list (Apps).
     local PS = require("pluginshare")
+    -- What it is for the launcher and the web page: its tiles, Settings group, web tab
+    -- (apps.koplugin/appsinfo.lua).
+    PS.appInfo = PS.appInfo or {}
+    PS.appInfo.homeassistant = { name = _("Home Assistant"), icon = "house", order = 10, group = "home",
+        tiles = {
+            { key = "ha", event = "ShowHomeAssistant", line = function(ha) return ha:appsLine() end },
+            -- (Nothing without Home Assistant set up; a tap opens it anew, not Home Assistant's screen.)
+            { key = "dashboard", name = _("Dashboard"), icon = "layout-dashboard", event = "ShowHomeAssistantDashboard",
+                fresh = true, line = function(ha) return ha:dashboardLine() end,
+                shown = function()
+                    local ha = HomeAssistant.instance
+                    return ha ~= nil and ha.api:signedIn() == true
+                end },
+        },
+        web = { page = "ha", routes = "webha", script = "web/ha.js", dir = self.path,
+            card = "Connection, devices, Quick tiles, layout, settings and backup." } }
+    -- A tap on one of its notifications in the shared list (Apps).
     PS.notifyOpeners = PS.notifyOpeners or {}
     PS.notifyOpeners.homeassistant = function(route)
         local ha = HomeAssistant.instance
@@ -1325,6 +1341,28 @@ function HomeAssistant:followRoomLight(force)
     local lo, hi = powerd.fl_min or 0, powerd.fl_max or 100
     local pct = ROOM_LIGHT[level + 1] or 50
     pcall(powerd.setIntensity, powerd, math.floor(lo + (hi - lo) * pct / 100 + 0.5))
+end
+
+--- The launcher's tile line: "3 on · All locked", or what's missing.
+function HomeAssistant:appsLine()
+    if not self.snap then return self.api and self.api:signedIn() and _("Open to load") or _("Not signed in") end
+    local T = require("ffi/util").template
+    local HaModel = require("hamodel")
+    local on = #HaModel.onNow(self.snap, self.prefs)
+    local att = HaModel.attention(self.snap, self.prefs)
+    return (on > 0 and T(_("%1 on"), on) or _("All off")) .. " · " .. att.text
+end
+
+--- The Dashboard tile's line: "64° Sunny · inside 70°".
+function HomeAssistant:dashboardLine()
+    local w = self.snap and self.snap.weather
+    if not w then return _("Clock, weather, cameras") end
+    local T = require("ffi/util").template
+    local HaModel = require("hamodel")
+    local text = HaModel.weather(w.state)
+    local inside = HaModel.inside(self.snap, self.prefs)
+    return (w.temp and HaModel.formatTemp(w.temp) .. " " or "") .. text ..
+        (inside and (" · " .. T(_("inside %1"), HaModel.formatTemp(inside))) or "")
 end
 
 return HomeAssistant
