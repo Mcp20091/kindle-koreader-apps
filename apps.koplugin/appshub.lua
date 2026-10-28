@@ -346,7 +346,11 @@ function Hub.rows(view, c, F, rows, changed)
                     if r.hold then c:hit(0, y, c.W, 34, function() end, r.hold) end
                 end, 36)
             elseif r.note then
-                F:block(40, function(y) c:text(14, y + 24, r.note, 10, { color = C.GREY, maxw = c.W - 28 }) end)
+                -- (as many lines as it needs, up to six: one line is as before)
+                local lines = c:wrap(r.note, 10, c.W - 28, 6)
+                F:block(40 + 16 * (#lines - 1), function(y)
+                    for i, l in ipairs(lines) do c:text(14, y + 24 + 16 * (i - 1), l, 10, { color = C.GREY }) end
+                end)
             else
                 if view.pageJump and r[1] == view.pageJump then view.pageJumpTo = view.pageJumpTo or (F.page or 1) end
                 F:block(36, function(y)

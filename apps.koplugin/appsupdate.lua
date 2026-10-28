@@ -34,6 +34,10 @@ local U = {}
 U.DEFAULT_REPO = "Mcp20091/kindle-koreader-apps"
 -- What these apps are called together: the header over the version (Settings > Updates, Set up).
 U.NAME = "Clod UI"
+
+-- What the optional apps are and how they're updated, over their list (Settings > Updates and Set up
+-- your Kindle; the web page's System > Updates says the same): an installed one shows Remove, not Update.
+U.OPTIONAL_NOTE = _("Extra apps that aren't in the main install. Tap one to install it. After that you don't update it yourself: each time a version is installed (Check for updates, Select version or a test version), every optional app you have is updated to that version's copy along with the rest. That's why an installed one shows Remove, not Update. Update shows only when the copy on the Kindle is too old for the launcher: tap it to install it again.")
 local ASSET = "kindle-plugins.zip"
 -- Files in a plugin's folder that are the user's, not the plugin's.
 local KEEP = { "client_id.txt", "notes_defaults.lua" }
@@ -921,7 +925,7 @@ function U.settingsRows(plugin, refresh)
         { _("Check automatically"), U.auto(), function() U.setAuto(not U.auto()) end },
         { _("Undo a plugin update"), "", function() require("appsundo").undoMenu(plugin) end },
         { heading = _("OPTIONAL APPS") },
-        { note = _("Not in the main install. Installed ones update with the rest.") },
+        { note = U.OPTIONAL_NOTE },
     }
     -- (Installed from a branch, as could be done before: the way back to the releases.)
     if branch then
