@@ -1927,8 +1927,8 @@ function View.drawSleep(apps, c)
 end
 
 --- The parts the Apps widgets sleep screen can show, in their order.
-View.WIDGETS = { "clock", "book", "todo", "ha", "notifications" }
-View.WIDGET_NAMES = { clock = _("Clock and weather"), book = _("Current book"), todo = _("To Do today"), ha = _("Home Assistant alerts"),
+View.WIDGETS = { "clock", "forecast", "book", "todo", "ha", "notifications" }
+View.WIDGET_NAMES = { clock = _("Clock and weather"), forecast = _("Weather forecast"), book = _("Current book"), todo = _("To Do today"), ha = _("Home Assistant alerts"),
     notifications = _("Latest notifications") }
 
 --- The parts in their order: as set (sleep_widgets_order), the others after in the usual order.
@@ -2112,6 +2112,30 @@ function View.drawWidgets(apps, c)
                 for i = 1, n do c:text(76, yy + 56 + i * 26, lines[i], 12, { maxw = c.W - 130 }) end
             end)
         end
+    end
+    parts.forecast = function()
+        -- The next hours, then the next days, each a column: when, its icon, the temperature(s), the chance of rain.
+        local n = math.max(4, math.min(8, math.floor((c.W - 92) / 84)))
+        local okF, f = pcall(function() return require("appsweather").forecast(apps, n) end)
+        if not (okF and f) then return end
+        local rows = {}
+        if #f.hours > 0 then table.insert(rows, { list = f.hours, hours = true }) end
+        if #f.days > 0 then table.insert(rows, { list = f.days }) end
+        card(38 + #rows * 96, function(yy)
+            heading(yy, _("FORECAST"), agoText(f.at))
+            local cw = (c.W - 92) / n
+            for r, row in ipairs(rows) do
+                local ry = yy + 38 + (r - 1) * 96
+                if r > 1 then c:hline(46, ry - 4, c.W - 92) end
+                for i, e in ipairs(row.list) do
+                    local x = 46 + (i - 1) * cw + cw / 2
+                    c:text(x, ry + 16, e.label, 10.5, { align = "middle", color = C.GREY })
+                    c:icon(e.icon, x - 11, ry + 24, 22)
+                    c:text(x, ry + 66, row.hours and e.temp or (e.high .. " / " .. e.low), row.hours and 12 or 11, { align = "middle", bold = true, maxw = cw - 4 })
+                    if e.rain and e.rain > 0 then c:text(x, ry + 84, e.rain .. "%", 10, { align = "middle", color = C.GREY }) end
+                end
+            end
+        end)
     end
     parts.notifications = function()
         local okN, Notify = pcall(require, "appsnotify")
