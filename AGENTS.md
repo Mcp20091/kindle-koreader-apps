@@ -185,7 +185,7 @@ This repo is public, and so is everything sent to GitHub: files, commit messages
 
 - Each plugin has `tests/run.lua`, plain Lua, run with KOReader's LuaJIT from the plugin folder: `luajit tests/run.lua`.
 - The KOReader emulator (the Linux AppImage, extracted) runs the plugins on a PC: link the plugin folders into its `plugins/` and start it with `EMULATE_READER_W=1240 EMULATE_READER_H=1654 EMULATE_READER_DPI=200` for the Scribe's shape. `SDL_VIDEODRIVER=offscreen` with `Screen:shot()` takes screenshots.
-- A test release (to install on the Kindle before a real one): `bash tools/test-release.sh [notes.md]` from a branch other than main. It runs the tests, pushes the branch, tags the next `vX.Y.Z-testN` and waits for GitHub to build it as a pre-release, which only shows under Settings > Updates > Select version.
+- A test release (to install on the Kindle before a real one): `bash tools/test-release.sh [notes.md]` from a branch other than main. It runs the tests, pushes the branch, tags the next `vX.Y.Z-testN` and waits for GitHub to build it as a pre-release, which only shows under Settings > Updates > Select version, with Show test versions on.
 - Behaviour that only exists on a Kindle (power manager, sleep cover, lipc, firewall) can't be tested on the emulator: prove it on the device with a log-only probe before building on it.
 
 ## The guide
