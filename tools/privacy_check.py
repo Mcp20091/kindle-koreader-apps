@@ -159,19 +159,24 @@ def picture_metadata(data):
 def check_diff(diff, hits, where=''):
     """The added lines of a `git diff -U0` (and new files' names)."""
     rel = ''
+    left = 0  # the hunk's lines still to come (an added "++ x" line is not a file's "+++ " header)
     for line in diff.split('\n'):
-        if line.startswith('+++ '):
+        if left > 0 and line[:1] in '+- ':
+            left -= 1
+            if line.startswith('+') and rel and is_text(rel):
+                n += 1
+                for kind, text in scan_line(line[1:], rel):
+                    hits.append((where + rel, n, kind, text))
+        elif line.startswith('+++ '):
             rel = line[6:] if line.startswith('+++ b/') else ''
             for kind, text in scan_line(rel, rel):
                 hits.append((where + rel, 0, kind, 'in the file name'))
             n = 0
         elif line.startswith('@@'):
-            m = re.search(r'\+(\d+)', line)
-            n = int(m.group(1)) - 1 if m else 0
-        elif line.startswith('+') and rel and is_text(rel):
-            n += 1
-            for kind, text in scan_line(line[1:], rel):
-                hits.append((where + rel, n, kind, text))
+            m = re.match(r'@@ -\d+(?:,(\d+))? \+(\d+)(?:,(\d+))? @@', line)
+            if m:
+                n = int(m.group(2)) - 1
+                left = int(m.group(1) or 1) + int(m.group(3) or 1)
 
 
 def check_names(names, hits, where, staged):
