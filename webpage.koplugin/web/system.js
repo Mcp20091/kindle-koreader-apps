@@ -357,7 +357,7 @@ App.pages.system = {
           App.setting('Show test versions', tests, 'Versions for trying changes before they’re released, in Select version.'),
           also, note,
           h('div', { class: 'group-head' }, 'Optional apps'),
-          h('div', { class: 'small muted' }, 'Extra apps that aren’t in the main install. Tap one to install it. After that you don’t update it yourself: each time a version is installed (Check for updates, Select version or a test version), every optional app you have is updated to that version’s copy along with the rest. That’s why an installed one shows Remove, not Update. Update shows only when the copy on the Kindle is too old for the launcher: tap it to install it again.'),
+          h('div', { class: 'small muted' }, 'Extra apps you can add. Installed ones update automatically with everything else.'),
           optional, p.panel].filter(Boolean));
         look();
       }, () => box.append(h('p', { class: 'muted small' }, 'Not available.')));

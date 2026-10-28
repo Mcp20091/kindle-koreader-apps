@@ -287,7 +287,7 @@ do
         return upd.rel ~= nil and U.newer(upd.rel.tag, U.installed(Apps.instance))
     end
     PS.registerSetup{ key = "updates", order = 12, icon = "download", title = _("Updates"),
-        text = _("New versions of these apps come from GitHub, in Settings > Updates at the top of Settings: Check for updates, Select version, and the optional apps (such as FlashForge), which aren't in the main install and, once installed, are updated with the rest. With Check automatically on, a notification tells you when there's a new one."),
+        text = _("New versions of these apps come from GitHub, in Settings > Updates at the top of Settings: Check for updates, Select version, and the optional apps (such as FlashForge), which aren't in the main install and update automatically once installed. With Check automatically on, a notification tells you when there's a new one."),
         done = function() return require("appsupdate").look.rel ~= nil and not newer() end,
         doneText = _("Up to date"),
         notDoneText = function() return newer() and _("A new version is out") or _("Not checked yet") end,

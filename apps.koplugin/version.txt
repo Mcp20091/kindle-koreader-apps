@@ -1,5 +1,5 @@
 2026-10-28 19:30
-Oct 28  Launcher: Settings > Updates explains the optional apps over their list: installed ones are updated with every version installed, which is why they show Remove, not Update; a note on a Settings page takes as many lines as it needs
+Oct 28  Launcher: Settings > Updates says installed optional apps update automatically with everything else
 Oct 28  Fonts: three tabs along the top (Your fonts, Get more, Settings); the font new books open in at the top of Your fonts, a new default with Undo; Get more browses all of Google Fonts (search, kinds, popular, A–Z or newest, pages), its list fetched in the background and kept a month; the page bar is one bar when there are too many pages for a part each
 Oct 28  Launcher: Help (in the three dots) in the apps' read pop-up, in pages, rewritten for today's apps, with User guide (the guide's QR code and PDF)
 Oct 27  Launcher: App lock, a passcode (keypad) or password before the apps you tick (Settings > Launcher > App lock and the web page); unlocked until the Kindle sleeps, a locked app covered when it wakes
