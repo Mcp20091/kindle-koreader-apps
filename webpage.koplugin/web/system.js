@@ -357,7 +357,7 @@ App.pages.system = {
           App.setting('Show test versions', tests, 'Versions for trying changes before they’re released, in Select version.'),
           also, note,
           h('div', { class: 'group-head' }, 'Optional apps'),
-          h('div', { class: 'small muted' }, 'Extra apps you can add. Installed ones update automatically with everything else.'),
+          h('div', { class: 'small muted' }, 'Install optional apps here. Once installed, they update automatically with each new version of the primary apps.'),
           optional, p.panel].filter(Boolean));
         look();
       }, () => box.append(h('p', { class: 'muted small' }, 'Not available.')));

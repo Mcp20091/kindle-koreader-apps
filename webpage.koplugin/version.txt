@@ -1,5 +1,5 @@
 2026-10-28 19:30
-Oct 28  Web server: System > Updates says installed optional apps update automatically with everything else
+Oct 28  Web server: System > Updates says installed optional apps update automatically with each new version
 Oct 28  Web server: the Fonts tab in the Kindle's three tabs (Your fonts, Get more, Settings); Get more browses all of Google Fonts, each name drawn in its own typeface; Set as default with Undo
 Oct 27  Web server: App lock on the Launcher tab, each change asking for the passcode first
 Oct 27  Updates tab: Branch is gone; Show test versions (with a warning) puts test versions in Select version; a Kindle on a branch gets Back to the releases
