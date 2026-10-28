@@ -23,6 +23,7 @@ package.loaded["pluginshare"] = { appInfo = {
     flashforge = { name = "FlashForge", order = 80, group = "optional", tiles = { tile("flashforge", { group = "tools" }) } },
     pangolin = { name = "Pangolin", order = 85, group = "optional", tiles = { tile("pangolin", { group = "tools" }) } },
     nextdns = { name = "NextDNS", icon = "ban", dir = "/plugins/nextdns.koplugin", order = 87, group = "optional", tiles = { tile("nextdns", { group = "tools" }) } },
+    pfsense = { name = "pfSense", order = 88, group = "optional", tiles = { tile("pfsense", { group = "tools" }) } },
     webpage = { name = "Web server", order = 90, group = "tools", tiles = { tile("web", { switches = true }) } },
 } }
 
@@ -70,17 +71,17 @@ do
     check("quick: another app's button", Model.quickKey({ app = "homeassistant", id = "light.kitchen" }), "a:homeassistant:light.kitchen")
     check("quick: groups don't go in groups", (function() Model.quickPut(q, "g:g1", "g:g1") return #q end)(), 4)
 end
-check("all tiles", keys(Model.tiles(nil, nil, all)), "reading,library,readingtime,weather,ha,dashboard,todo,notes,crosswords,wikipedia,syncthing,ssh,flashforge,pangolin,nextdns,web,fonts,settings,wifi,light,night,exit")
+check("all tiles", keys(Model.tiles(nil, nil, all)), "reading,library,readingtime,weather,ha,dashboard,todo,notes,crosswords,wikipedia,syncthing,ssh,flashforge,pangolin,nextdns,pfsense,web,fonts,settings,wifi,light,night,exit")
 check("missing plugins left out", keys(Model.tiles(nil, nil, none)), "reading,library,weather,fonts,settings,wifi,night,exit")
-check("saved order first", keys(Model.tiles({ "todo", "ha" }, nil, all)), "todo,ha,reading,library,readingtime,weather,dashboard,notes,crosswords,wikipedia,syncthing,ssh,flashforge,pangolin,nextdns,web,fonts,settings,wifi,light,night,exit")
-check("hidden left out", keys(Model.tiles(nil, { library = true, wifi = true }, all)), "reading,readingtime,weather,ha,dashboard,todo,notes,crosswords,wikipedia,syncthing,ssh,flashforge,pangolin,nextdns,web,fonts,settings,light,night,exit")
-check("hidden kept when asked", #Model.tiles(nil, { library = true }, all, true), 26)
+check("saved order first", keys(Model.tiles({ "todo", "ha" }, nil, all)), "todo,ha,reading,library,readingtime,weather,dashboard,notes,crosswords,wikipedia,syncthing,ssh,flashforge,pangolin,nextdns,pfsense,web,fonts,settings,wifi,light,night,exit")
+check("hidden left out", keys(Model.tiles(nil, { library = true, wifi = true }, all)), "reading,readingtime,weather,ha,dashboard,todo,notes,crosswords,wikipedia,syncthing,ssh,flashforge,pangolin,nextdns,pfsense,web,fonts,settings,light,night,exit")
+check("hidden kept when asked", #Model.tiles(nil, { library = true }, all, true), 27)
 check("off by default: hidden to start with", Model.isHidden(nil, { key = "restart", offByDefault = true }), true)
 check("off by default: shown when set so", Model.isHidden({ restart = false }, { key = "restart", offByDefault = true }), false)
 check("a usual tile shown", Model.isHidden({}, { key = "exit" }), false)
 local tiles = Model.tiles(nil, nil, all)
-check("move later", table.concat(Model.move(tiles, "reading", 1), ","), "library,reading,readingtime,weather,ha,dashboard,todo,notes,crosswords,wikipedia,syncthing,ssh,flashforge,pangolin,nextdns,web,fonts,settings,wifi,light,night,exit")
-check("move past the start stays", table.concat(Model.move(tiles, "reading", -1), ","), "reading,library,readingtime,weather,ha,dashboard,todo,notes,crosswords,wikipedia,syncthing,ssh,flashforge,pangolin,nextdns,web,fonts,settings,wifi,light,night,exit")
+check("move later", table.concat(Model.move(tiles, "reading", 1), ","), "library,reading,readingtime,weather,ha,dashboard,todo,notes,crosswords,wikipedia,syncthing,ssh,flashforge,pangolin,nextdns,pfsense,web,fonts,settings,wifi,light,night,exit")
+check("move past the start stays", table.concat(Model.move(tiles, "reading", -1), ","), "reading,library,readingtime,weather,ha,dashboard,todo,notes,crosswords,wikipedia,syncthing,ssh,flashforge,pangolin,nextdns,pfsense,web,fonts,settings,wifi,light,night,exit")
 -- Pins: tiles of their own after the apps, keyed by what they open; not twice; removed by key.
 local pins = {}
 local added
@@ -92,7 +93,7 @@ pins = Model.addPin(pins, { kind = "ha", name = "Kitchen", route = { kind = "roo
 pins = Model.addPin(pins, { kind = "todo", name = "Groceries", id = "L9" })
 pins = Model.addPin(pins, { kind = "note", name = "Ideas", id = "nb1" })
 check("pins after the apps", keys(Model.tiles(nil, nil, all, false, pins)),
-    "reading,library,readingtime,weather,ha,dashboard,todo,notes,crosswords,wikipedia,syncthing,ssh,flashforge,pangolin,nextdns,web,fonts,settings,wifi,light,night,exit,pin:ha:security:,pin:ha:room:Kitchen,pin:todo:L9,pin:note:nb1")
+    "reading,library,readingtime,weather,ha,dashboard,todo,notes,crosswords,wikipedia,syncthing,ssh,flashforge,pangolin,nextdns,pfsense,web,fonts,settings,wifi,light,night,exit,pin:ha:security:,pin:ha:room:Kitchen,pin:todo:L9,pin:note:nb1")
 check("pins of missing plugins left out", keys(Model.tiles(nil, nil, function(p) return p == "todo" end, false, pins)),
     "reading,library,weather,todo,fonts,settings,wifi,night,exit,pin:todo:L9")
 check("pins in the saved order", keys(Model.tiles({ "pin:todo:L9", "reading" }, nil, none, false, pins)), "reading,library,weather,fonts,settings,wifi,night,exit")
@@ -114,7 +115,7 @@ do
     check("a quick button turned off keeps its tile", keys(Model.page(Model.tiles(nil, nil, function() return true end), nil, nil, nil, { night = true })):find("wifi") ~= nil, true)
     local all = Model.tiles(nil, nil, function() return true end, false, nil, { { id = "g1", name = "Smart home" } })
     local main = Model.page(all, { { id = "g1", name = "Smart home" } }, { ha = "g1", dashboard = "g1" }, nil, { wifi = true, light = true, night = true })
-    check("main page: grouped and quick-button tiles left off", keys(main), "reading,library,readingtime,weather,todo,notes,crosswords,wikipedia,syncthing,ssh,flashforge,pangolin,nextdns,web,fonts,settings,exit,group:g1")
+    check("main page: grouped and quick-button tiles left off", keys(main), "reading,library,readingtime,weather,todo,notes,crosswords,wikipedia,syncthing,ssh,flashforge,pangolin,nextdns,pfsense,web,fonts,settings,exit,group:g1")
     check("a group's page", keys(Model.page(all, { { id = "g1" } }, { ha = "g1", dashboard = "g1" }, "g1", { wifi = true })), "ha,dashboard")
     check("a gone group's tiles come back", #Model.page(all, {}, { ha = "g9" }, nil, nil), #all)
     check("move among a page", table.concat(Model.moveAmong({ "a", "b", "c", "d" }, { "a", "c", "d" }, "c", -1), ","), "c,b,a,d")
@@ -123,7 +124,7 @@ end
 -- What the apps say about themselves (appsinfo.lua): nothing in the launcher names them.
 do
     local Info = require("appsinfo")
-    check("apps in their order", table.concat(Info.order(), ","), "homeassistant,todo,notes,crosswords,library,wikipedia,syncthing,sshclient,flashforge,pangolin,nextdns,webpage")
+    check("apps in their order", table.concat(Info.order(), ","), "homeassistant,todo,notes,crosswords,library,wikipedia,syncthing,sshclient,flashforge,pangolin,nextdns,pfsense,webpage")
     check("a tile gets its app's plugin", Info.tile("ssh").plugin, "sshclient")
     check("a tile keeps its own icon", Info.tile("crosswords").icon .. "," .. Info.tile("ha").icon, "grid-3x3,house")
     check("a tile goes in its app's group", Info.tile("dashboard").group, "home")
@@ -136,16 +137,16 @@ do
     check("the apps' folders, for their icons", table.concat(Info.dirs(), ","), "/plugins/nextdns.koplugin")
     local labels = {}
     for __, a in ipairs(Info.labelApps()) do labels[#labels + 1] = a.key end
-    check("Button labels: each app's first tile, not a switch", table.concat(labels, ","), "ha,todo,notes,crosswords,wikipedia,syncthing,ssh,flashforge,pangolin,nextdns")
+    check("Button labels: each app's first tile, not a switch", table.concat(labels, ","), "ha,todo,notes,crosswords,wikipedia,syncthing,ssh,flashforge,pangolin,nextdns,pfsense")
     -- A new app: its tile, group and gestures with no change to the launcher.
     local PS = package.loaded["pluginshare"]
     PS.appInfo.printer3 = { name = "Printer", icon = "printer", order = 88, group = "tools", tiles = { tile("printer3", { event = "ShowPrinter" }) } }
-    check("a new app's tile in its place", keys(Model.tiles(nil, nil, all)):find("nextdns,printer3,web", 1, true) ~= nil, true)
+    check("a new app's tile in its place", keys(Model.tiles(nil, nil, all)):find("nextdns,printer3,pfsense,web", 1, true) ~= nil, true)
     local tools
     for __, sg in ipairs(Model.suggestions(Model.tiles(nil, nil, all), {}, {})) do
         if sg.group.key == "tools" then tools = keys(sg.tiles) end
     end
-    check("a new app in its suggested group", tools, "todo,syncthing,ssh,flashforge,pangolin,nextdns,printer3,web")
+    check("a new app in its suggested group", tools, "todo,syncthing,ssh,flashforge,pangolin,nextdns,printer3,pfsense,web")
     check("a new app's gestures", table.concat(Info.gestures(), " "):find("^printer3_", 1, true) ~= nil, true)
     PS.appInfo.printer3 = nil
     -- An app's tile hidden while it says so (Home Assistant's Dashboard, not set up).
@@ -332,6 +333,86 @@ do
     b:forget()
     check("ms: signed out", b:signedIn(), false)
     check("ms: App ID stays", b:clientId(), "C1")
+end
+
+-- App lock (appslock.lua's core): made-up passcodes, a fake hash and clock.
+do
+    package.loaded["gettext"] = package.loaded["gettext"] or function(x) return x end
+    package.loaded["ffi/util"] = package.loaded["ffi/util"] or { template = function(s, ...)
+        local args = { ... }
+        return (s:gsub("%%(%d)", function(i) return tostring(args[tonumber(i)]) end))
+    end }
+    local hadPS = package.loaded["pluginshare"]
+    package.loaded["pluginshare"] = { appInfo = {
+        sshclient = { name = "SSH", order = 70, tiles = { { key = "ssh" } } },
+        todo = { name = "To Do", order = 20, tiles = { { key = "todo" } } },
+        homeassistant = { name = "Home Assistant", order = 10, tiles = { { key = "ha" }, { key = "dashboard" } }, lock = false },
+        webpage = { name = "Web server", order = 90, tiles = { { key = "web", switches = true } } },
+        library = { name = "Library", order = 45 },
+    }, lockApps = { pfsense = { key = "pfsense", name = "pfSense", plugin = "pfsense" } } }
+    local Lock = require("appslock")
+    local data, clock, saves = {}, 1000, 0
+    local l = Lock.new{ now = function() return clock end, random = function() return "salt1" end,
+        hash = function(salt, secret) return salt .. ":" .. secret:reverse() end,
+        store = { get = function(k) return data[k] end, set = function(k, v) data[k] = v end, save = function() saves = saves + 1 end } }
+    check("lock: the apps that registered, by name, then Settings", (function()
+        local names = {}
+        for i, a in ipairs(Lock.apps()) do names[i] = a.key end
+        return table.concat(names, ",")
+    end)(), "pfsense,ssh,todo,settings")
+    package.loaded["pluginshare"].appInfo.homeassistant.lock = nil
+    check("lock: an app's other tiles find it", Lock.appOf("dashboard").plugin, "homeassistant")
+    check("lock: no tile, or one that only switches: not listed", tostring((Lock.appOf("library"))) .. "," .. tostring((Lock.appOf("web"))), "nil,nil")
+    check("lock: found by plugin name too", Lock.appOf("sshclient").key, "ssh")
+    check("lock: nothing set, nothing locked", l:needs("ssh"), false)
+    check("lock: a passcode is 4 to 8 digits", Lock.valid("passcode", "123"), "Use 4 to 8 digits.")
+    check("lock: no letters in a passcode", Lock.valid("passcode", "12a4"), "Use 4 to 8 digits.")
+    check("lock: 8 digits are fine", Lock.valid("passcode", "12345678"), true)
+    check("lock: a password of 4 or more", Lock.valid("password", "abc"), "Use at least 4 characters.")
+    check("lock: a short one isn't set", l:set("passcode", "12"), false)
+    check("lock: set", l:set("passcode", "2468"), true)
+    check("lock: kept as a hash, never the passcode", tostring(data.hash) .. "," .. tostring(data.salt), "salt1:8642,salt1")
+    for k, v in pairs(data) do if v == "2468" then check("lock: the passcode itself saved as " .. k, true, false) end end
+    check("lock: its length, for the keypad", l:digits(), 4)
+    check("lock: unlocked right after setting it", l:isOpen(), true)
+    l:setLocked("ssh", true)
+    check("lock: one app locked", l:countLocked(), 1)
+    check("lock: unlocked still", l:needs("ssh"), false)
+    check("lock: an app not ticked never asks", (function() l:relock() return l:needs("todo") end)(), false)
+    check("lock: asleep, it asks again", l:needs("ssh"), true)
+    check("lock: by its plugin name too", l:needs("sshclient"), true)
+    check("lock: something not an app never asks", l:needs("apps"), false)
+    local ok, why = l:try("1111")
+    check("lock: a wrong passcode", tostring(ok) .. "," .. why, "false,wrong")
+    check("lock: still locked", l:needs("ssh"), true)
+    check("lock: checked from the web page: right, still locked", tostring(l:check("2468")) .. "," .. tostring(l:needs("ssh")), "true,true")
+    ok = l:try("2468")
+    check("lock: the right one", ok, true)
+    check("lock: open after", l:needs("ssh"), false)
+    l:relock()
+    l:try("1") l:try("2")
+    local ok3, why3, left = l:try("3")
+    check("lock: 3 wrong, then a wait", tostring(ok3) .. "," .. why3 .. "," .. left, "false,wait,30")
+    check("lock: even the right one waits", select(2, l:try("2468")), "wait")
+    check("lock: the line for a wait", Lock.why("passcode", "wait", 12.2), "Try again in 13 seconds.")
+    check("lock: the line for a wrong password", Lock.why("password", "wrong"), "Wrong password. Try again.")
+    clock = clock + 31
+    check("lock: after the wait, the right one opens", l:try("2468"), true)
+    l:setStay(5)
+    check("lock: 5 minutes", l:isOpen(), true)
+    clock = clock + 5 * 60
+    check("lock: after 5 minutes it asks again", l:needs("ssh"), true)
+    l:setStay("sleep")
+    check("lock: until sleep is the default, not saved", data.stay, nil)
+    l:set("password", "made-up words")
+    check("lock: a password", l:kind() .. "," .. tostring(l:digits()), "password,nil")
+    l:relock()
+    check("lock: the password opens", l:try("made-up words"), true)
+    l:clear()
+    check("lock: turned off: nothing asks", l:needs("ssh"), false)
+    check("lock: the apps stay ticked", l:apps().ssh, true)
+    check("lock: no hash left", data.hash, nil)
+    package.loaded["pluginshare"] = hadPS
 end
 
 print(string.format("%d passed, %d failed", passed, failed))

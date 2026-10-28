@@ -359,6 +359,9 @@ end
 -- { kind = "room", name = "Kitchen" }...: Back from it closes).
 function HomeAssistant:show(start)
     if self.screen then return end
+    -- App lock (the launcher's): its passcode first, when this app is locked.
+    local lock = require("pluginshare").lock
+    if lock and lock.ask("ha", function() self:show(start) end) then return end
     if not self.api:signedIn() then return self:askSignIn(function() self:show(start) end) end
     local PS = require("pluginshare")
     if PS.noteRecent then PS.noteRecent(start == "dashboard" and "dashboard" or "ha") end

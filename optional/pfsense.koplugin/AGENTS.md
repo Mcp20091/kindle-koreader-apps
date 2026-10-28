@@ -1,0 +1,83 @@
+# AGENTS.md: pfSense (optional/pfsense.koplugin)
+
+Notes for AI coding agents working on this plugin. The shared parts of the apps (title bar, pop-ups,
+notifications, launcher, guide) are in the top-level AGENTS.md; this file covers only pfSense.
+
+## What it is
+
+A pfSense firewall on the Kindle, over the **REST API package** (pfSense-pkg-RESTAPI, "pfrest", v2) with an
+API key: the system's health, gateways, interfaces, services (start, stop, restart), DHCP leases and the ARP
+table (Wake-on-LAN), DHCP static mappings and DNS Resolver host overrides (add, change, delete), firewall rules
+on or off, WireGuard and OpenVPN status, the system and firewall logs, packages with updates, reboot and
+pfSense's own update. An **optional** app: it lives in `optional/`, isn't in the main install zip, and has its
+own (`optional/build-zip.py`; the release makes `kindle-pfsense.zip`). The launcher shows its tile only when
+it's installed, from what it says about itself (`PS.appInfo.pfsense` in `shareWithApps`: its tile, Settings
+group, web tab; see MAKING-AN-APP.md).
+
+## The API (what pfsapi.lua speaks)
+
+The reference is pfrest's OpenAPI document (the firewall's `/api/v2/documentation`, or pfrest.org). Change
+pfsapi.lua and its tests together when it changes.
+
+- Base URL `<url>/api/v2` (the user types `https://192.168.1.1`; `pfsmodel.cleanUrl` drops a typed `/api/v2`).
+  `X-API-Key: <key>` (pfrest's KeyAuth; it must be ticked in System > REST API > Settings > Authentication
+  methods, where only BasicAuth is on to start with). pfSense's own certificate is self-signed: KOReader's
+  luasec doesn't check it.
+- Answers are `{ code, status, response_id, message, data }`. 401 `"signin"`, 403 `"forbidden"` (the key's
+  user lacks the privilege, named `api-v2-<path>-<method>`, or `page-all`), 404 `"notfound"`, 424 `"missing"`
+  (a package the endpoint needs, such as WireGuard, isn't installed). An HTML answer is `"notapi"` (the web
+  interface's login page). `ping` reads `/system/version` without a key: its JSON 401 is an answer.
+- Lists page with `limit`/`offset` (`API:all`, 200 at a time) and sort with `sort_by`/`sort_order`
+  (`SORT_DESC` for the newest log lines first).
+- **An object's `id` is its place in its list**, so it moves when one before it goes. Every change reads the
+  object first and checks it's the one meant (`"changed"` when not): a rule by its `tracker`, a static mapping
+  by its MAC (`parent_id` is the DHCP server's interface, such as `lan`), a host override by host and domain,
+  an ARP entry by its address, a service by its internal name (its id looked up from the list).
+- Changes that don't apply by themselves are applied after: `POST /firewall/apply` (rules),
+  `/services/dhcp_server/apply` (static mappings), `/services/dns_resolver/apply` (host overrides).
+- Reading: `readAll{ status, lists }`. The status (system, version, hostname, gateways, interfaces, services)
+  every read; the lists (leases, arp, rules, statics, overrides, peers, ovpn) on the first read, while a page
+  showing one is on top, and on ⟳ (`pfsmodel.merge` keeps them between). Packages (slow: pfSense asks its
+  package server) and logs are read only when their page opens.
+- Left out on purpose: updating a package (the API has no such call: the Packages page says to use System >
+  Package Manager), firewall aliases, NAT, user management, the command prompt, halt.
+
+## Files
+
+- `main.lua`: the plugin. Settings (`settings/pfsense.lua`: url, key, name; reader settings
+  `pfsense_interval`, `pfsense_notify`), reading in the background (`fetch`, `status`, `packages`, `log`),
+  actions (`act`, with the change applied to what was read at once and a read after; reboot and update don't
+  read again), setup's check, notifications, the launcher's line, every registration with the launcher
+  (`shareWithApps`), quick buttons (status, a rule on or off by tracker, Wake a static mapping), search, and
+  the web page's `webState()` / `webAct(name, args)`.
+- `pfsui.lua`: the screens (main page, Gateways, Interfaces, Services, Devices, ARP table, Static mappings,
+  DNS host overrides, Firewall rules, VPN, Logs, Packages, Details, Settings, setup), and reading every so
+  often while a live page is on top (`UI.poll`).
+- `pfsmodel.lua`: plain Lua, tested: the lists as tables, words for states, sizes, lines, counts, attention,
+  the launcher's line, notifications between two reads (`changes`), search, log lines (`logLine`,
+  `filterLine` for pfSense's filterlog CSV).
+- `pfsapi.lua`: the requests (blocking: only in a child process). `API.new(cfg, request)`: the tests pass a
+  stand-in network.
+- `pfsbg.lua`, `pfsko.lua`, `pfspage.lua`: Pangolin's pgbg/pgko/pgpage (themselves from FlashForge's and
+  SSH's), renamed.
+- `pfstitle.lua`, `pfscanvas.lua`: **copies** of the launcher's `appsbar.lua` and `appscanvas.lua`. Re-copy
+  them when those change; don't edit them here.
+- `icons/` (Lucide, ISC; every icon it draws, `router` for the app, `star` for the fallback), `tests/run.lua`,
+  `version.txt` (its What changed), `README.md` (its guide: what it does, what it needs, setting it up).
+- `webpfsense.lua`, `web/pfsense.js`: its web page tab (routes and the tab, in this folder: the web server has nothing of it).
+
+## Rules
+
+- Stopping a service, Reboot and Update ask first; deleting a static mapping or host override has Undo (it
+  adds it again); everything else just does it.
+- The API key never goes in logs, the diagnostics file or `webState()`; the backup has it only with Include
+  keys and sign-ins.
+- Made-up data only (192.168.1.x from the export's allowed examples, home.example.com, aa:bb:cc:dd:ee:0x).
+
+## Testing
+
+```sh
+luajit tests/run.lua        # pfsmodel, and pfsapi against a stand-in network
+```
+
+Tried on the emulator against a stand-in REST API (made-up data), not yet against a real pfSense or on a Kindle.

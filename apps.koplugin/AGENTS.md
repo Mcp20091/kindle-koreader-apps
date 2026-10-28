@@ -138,6 +138,15 @@ Plugins load in alphabetical order, so Apps is first. Other plugins must still c
   your Kindle. `help = { button, title, steps = { … }, after, guide }` adds a "How to…" page: the
   short steps, numbered, and a QR code of `Setup.GUIDE_URL .. guide` (the public repo's guide folder;
   change it there if the repo moves). `PS.showSetup()`.
+- App lock (`appslock.lua`): every app with a tile in `PS.appInfo` is listed (`Lock.apps`; a
+  `PS.lockApps.<key> = { key, name, plugin }` entry adds one by hand). `PS.lock.ask(key, fn)` (true:
+  the passcode is up, return; fn runs once it's right) at the top of an app's show; `PS.lock.run(key,
+  fn)` runs fn now or after the passcode. The core is plain Lua, tested (`Lock.new{ store, now, hash,
+  random }`); the keypad is `Popup.keypad` in appspopup.lua, or the password box; Settings > Launcher >
+  App lock is `Lock.rows`; the cover at sleep shows at wake when there's a sleep screen (on a Kindle
+  it's drawn before the Suspend event). The launcher guards tiles, Recent apps (appsswitcher),
+  notifications (appsnotify), search (appssearch), quick buttons (appsquick), its Settings screens
+  (`View:lockSettings`) and `PS.showSettings`. `tests/check_app_lock.py` checks every app asks.
 - `PS.noteRecent(key)` puts an app first in Recent apps (call it when the app opens).
   `PS.showSwitcher()`.
 - `PS.showControlCenter(koMenu)`, `PS.appsHome()` (the ⌂ button), `PS.appsView()`.

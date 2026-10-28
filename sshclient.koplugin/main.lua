@@ -17,7 +17,6 @@ and run a saved command), and calls for the web page (webState, act).
 ]]
 
 local Dispatcher = require("dispatcher")
-local UIManager = require("ui/uimanager")
 local WidgetContainer = require("ui/widget/container/widgetcontainer")
 local logger = require("logger")
 local _ = require("gettext")
@@ -124,6 +123,9 @@ function SSH:addToMainMenu(menu_items)
 end
 
 function SSH:show()
+    -- App lock (the launcher's): its passcode first, when this app is locked.
+    local lock = require("pluginshare").lock
+    if lock and lock.ask("ssh", function() self:show() end) then return end
     return require("sshui").show(self)
 end
 
@@ -133,9 +135,12 @@ function SSH:onShowSSH()
 end
 
 function SSH:onRunSSHCommand(ref)
+    -- App lock (the launcher's): its passcode first, when this app is locked.
+    local lock = require("pluginshare").lock
+    if lock and lock.ask("ssh", function() self:onRunSSHCommand(ref) end) then return true end
     local h, c = M.hostCommand(self.store.data, ref)
     if not h then
-        UIManager:show(require("ui/widget/infomessage"):new{ text = _("This SSH command was deleted. Choose another for the gesture.") })
+        require("sshko").message(_("This SSH command was deleted. Choose another for the gesture."))
         return true
     end
     require("sshui").withPin(h, function() require("sshrun").command(self, h, c.cmd) end)

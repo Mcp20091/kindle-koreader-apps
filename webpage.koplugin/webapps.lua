@@ -59,6 +59,15 @@ local function state(a)
         end
         out.choices[kind] = list
     end
+    -- App lock (appslock.lua): whether it's on, its kind, how long it stays unlocked and the apps.
+    local okL, Lock = pcall(require, "appslock")
+    if okL then
+        local l = Lock.get()
+        out.lock = { available = true, set = l:isSet(), kind = l:kind(), stay = l:stay(), apps = {} }
+        for __, ap in ipairs(Lock.apps()) do
+            table.insert(out.lock.apps, { key = ap.key, name = ap.name, on = l:apps()[ap.key] == true })
+        end
+    end
     -- The quick buttons (appsquick.lua): the list as set, and the built-ins there are.
     local okQ, Quick = pcall(require, "appsquick")
     if okQ then
@@ -214,6 +223,47 @@ function Web.routes(server)
             end
         end
         res:json({ icons = list })
+    end)
+
+    -- App lock, as Settings > Launcher > App lock: { current, kind, secret, stay, apps = { key = bool },
+    -- off }. With a passcode set, every change needs it (`current`); wrong tries count and wait as on
+    -- the Kindle. Neither is ever logged.
+    server:route("POST", "^/api/apps/lock$", function(req, res)
+        local okL, Lock = pcall(require, "appslock")
+        if not okL then return res:error(404, "The launcher isn't installed") end
+        local l = Lock.get()
+        local b = req.json() or {}
+        if l:isSet() then
+            local right, why, left = l:check(type(b.current) == "string" and b.current or "")
+            if not right then return res:error(403, Lock.why(l:kind(), why, left)) end
+        end
+        if b.off then
+            l:clear()
+            return res:json({ ok = true })
+        end
+        if b.secret ~= nil then
+            local kind = b.kind == "password" and "password" or "passcode"
+            local secret = type(b.secret) == "string" and b.secret or ""
+            local valid = Lock.valid(kind, secret)
+            if valid ~= true then return res:error(400, valid) end
+            -- (Set from here, the Kindle stays locked or unlocked as it was.)
+            local was = l.unlockedAt
+            l:set(kind, secret)
+            l.unlockedAt = was
+        end
+        if b.stay ~= nil then
+            local known = false
+            for __, v in ipairs(Lock.STAYS) do if v == b.stay then known = true end end
+            if not known then return res:error(400, "Unknown time") end
+            l:setStay(b.stay)
+        end
+        if type(b.apps) == "table" then
+            for k, v in pairs(b.apps) do
+                local ap = Lock.appOf(k)
+                if ap then l:setLocked(ap.key, v == true) end
+            end
+        end
+        res:json({ ok = true })
     end)
 
     server:route("POST", "^/api/apps/settings$", function(req, res)

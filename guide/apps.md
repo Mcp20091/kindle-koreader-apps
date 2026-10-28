@@ -22,7 +22,7 @@ To leave the launcher, open **Library** or a book, or tap **Exit KOReader**. Bac
 - **Search**: books, notebooks, tasks, Home Assistant's devices and more (see "Search").
 - **Refresh**: the tiles' lines worked out again, and the screen flashed clean.
 - **The bell**: Notifications from every app (see Finding your way around), with how many are new.
-- **⋮** has **Open on the web page**, **Restart KOReader** (after asking), **Help**, **Light** (on a Kindle with a front light), **Night mode**, **Refresh screen** and **Settings** (every app's).
+- **⋮** has **Open on the web page**, **Restart KOReader** (after asking), **Help**, **Recent apps**, **Light** (on a Kindle with a front light), **Night mode**, **Refresh screen** and **Settings** (every app's). **Help** is a short page on the home screen, the bar at the top of every app, Settings and Updates, and the gestures; its **User guide** button shows this guide's QR code, and downloads or opens its PDF on the Kindle.
 
 ### At a glance
 
@@ -267,7 +267,7 @@ Both are part of every app's bar; see "Finding your way around" in Getting start
 
 ## Settings
 
-**⋮ > Settings** lists every app's settings in one place (see Getting started), in groups to start with (the same as the home screen's suggested groups): **Getting started** (**Updates**, **Set up your Kindle**), **Settings** (Launcher, Edit home screen, Fonts, Gestures, Battery, KOReader), **Accounts** (AI, Microsoft), **Reading**, **Home**, **Writing**, **Tools** and **Optional apps** (FlashForge, Pangolin and NextDNS, once installed). An app installed later goes in its own group, or under **Other** when it has none.
+**⋮ > Settings** lists every app's settings in one place (see Getting started), in groups to start with (the same as the home screen's suggested groups): **Getting started** (**Updates**, **Set up your Kindle**), **Settings** (Launcher, Edit home screen, Fonts, Gestures, Battery, KOReader), **Accounts** (AI, Microsoft), **Reading**, **Home**, **Writing**, **Tools** and **Optional apps** (FlashForge, Pangolin, NextDNS and pfSense, once installed). An app installed later goes in its own group, or under **Other** when it has none.
 
 Hold a row for **Move up**, **Move down**, **Move to a group…** (or **New group…**) and **Hide**; hold a group's name to **Rename**, move or **Delete** it (its rows go to **Other**), or make a **New group…**. At the end, under **THIS LIST**: **Layout** (**Groups**, or **One list** without headings) and **Reset this list** (back to the suggested groups, nothing hidden). A hidden row is still found by search, marked **hidden from Settings**: hold it there and choose **Show in Settings**; the list says how many are hidden.
 
@@ -345,6 +345,28 @@ For a dark screen, use **Night mode** (the quick button, the control center or *
 
 - **Open at startup**: the launcher opens when KOReader starts.
 
+### App lock
+
+A passcode (4 to 8 digits, on a keypad) or a password before the apps you choose, so someone who picks up your Kindle can't open them. **App lock** opens its own page (it asks first, once there's a passcode):
+
+![App lock](img/apps-lock.png)
+
+- **Passcode**: **Off** to start with. Tap it, choose **Passcode (digits)** or **Password**, then enter it twice. Once set, the same row (**On · Change**) changes it.
+- **Stay unlocked**: once the passcode is right, every locked app stays open until the Kindle sleeps (the default), or for 5 minutes, 15 minutes or 1 hour (sleep locks them again too).
+- **Turn off passcode**: every app opens without asking. The apps you ticked stay ticked, for when you set one again.
+- **LOCKED APPS**: a switch for each app (optional apps too, once installed), and **Settings**, which locks the Settings list and every app's settings (where your keys and sign-ins are).
+- **Web page password**: the web page reaches every app's data from your phone or computer, so give it its own password (see "The web page").
+
+A locked app asks however it's opened: its tile, Recent apps, KOReader's Tools menu, a gesture, a notification, search (a locked app's results show as **Locked** until you unlock it) and its quick buttons. Tap the digits with a finger or the pen (a firm press works too); it opens at the last digit. After 3 wrong tries, wait 30 seconds. **Cancel** or Back leaves it shut.
+
+If a locked app is on the screen when the Kindle sleeps, the keypad covers it when it wakes, so the app doesn't show until the passcode is right. **Cancel** there goes to the launcher.
+
+![The keypad after the Kindle wakes](img/apps-lock-keypad.png)
+
+The web page's Launcher tab has the same settings; there, each change asks for your passcode first. A backup has the passcode only with **Include keys and sign-ins**; restored without it, the apps stay ticked but nothing asks until you set a passcode again. Forgot it? Connect the Kindle to a computer and delete `koreader/settings/apps_lock.lua`; every app then opens without asking.
+
+> App lock keeps people out of the apps on the Kindle; it doesn't encrypt anything. What the apps save is still in the Kindle's files, and At a glance, the sleep screen and notifications can still show a line from a locked app.
+
 ### Wi-Fi
 
 - **Turn off when idle**: **Off**, or after 5, 15 or 30 minutes with no network use. Downloads, syncing and Home Assistant's updates count as use. It never turns Wi-Fi off while the web server is on, and time asleep doesn't count. A notice says when it happens.
@@ -361,7 +383,7 @@ Settings > **Updates**:
 - **Back to the releases**: only on a Kindle that was installed from a branch (an option of earlier versions). It installs the latest release, and updates come from the releases again.
 
 While an update installs, a pop-up says how far it is: **Downloading… 40%**, then **Checking the update: notes (5 of 10)** and **Installing notes (5 of 10)**, a plugin at a time. The Kindle keeps answering meanwhile, so there's no need to restart it.
-- **OPTIONAL APPS**: apps that aren't in the main install (FlashForge, for a FlashForge 3D printer; Pangolin, for a Pangolin server; NextDNS, for a NextDNS profile), listed on the page from the latest release (or from the test version installed, which can have newer ones) once the Kindle is on Wi-Fi. Each shows **Install**, or **Remove** once it's installed; installed ones are updated along with the rest. **Update** instead means the copy on the Kindle is older than the launcher (it has no tile then): it installs it again. If one can't be updated with the rest, a notification says so. Removing one keeps it under **Undo a plugin update**, which can bring it back. KOReader restarts after each.
+- **OPTIONAL APPS**: apps that aren't in the main install (FlashForge, for a FlashForge 3D printer; Pangolin, for a Pangolin server; NextDNS, for a NextDNS profile; pfSense, for a pfSense firewall), listed on the page from the latest release (or from the test version installed, which can have newer ones) once the Kindle is on Wi-Fi. Each shows **Install**, or **Remove** once it's installed; installed ones are updated along with the rest. **Update** instead means the copy on the Kindle is older than the launcher (it has no tile then): it installs it again. If one can't be updated with the rest, a notification says so. Removing one keeps it under **Undo a plugin update**, which can bring it back. KOReader restarts after each.
 - **Check automatically**: on to start with. Once a day, only while the Kindle is already on Wi-Fi, a notification says when there's a newer release; tap it to see what's new and update. Until it's installed, the launcher's **Settings** tile says **Update available**.
 
 After an update, its notes show once when KOReader starts again (**What's new in …**).
