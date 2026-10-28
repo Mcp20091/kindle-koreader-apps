@@ -1,5 +1,6 @@
-2026-10-28 01:30
+2026-10-28 02:30
+Oct 28  pfSense: Aliases (add or remove entries, Add to an alias from a device), NAT (port forwards, outbound and 1:1 with switches), a device's Connections with Close all, and Ping
+Oct 28  pfSense: the default gateway, gateway groups and static routes; WireGuard peers on or off, OpenVPN Disconnect, OpenVPN clients and IPsec; certificates' expiry (with a notification) and ACME renew; Config history
+Oct 28  pfSense: Online and Offline (Running and Stopped) filters on Devices, Static mappings and Services
 Oct 28  pfSense: the logs open again (the API won't sort a log by its line number: the newest 100 are kept instead), and every log the API has (DHCP, Authentication, OpenVPN, REST API too)
 Oct 28  pfSense: Search on the lists (by name, IP or MAC address, description) and sort by name or IP address, reversed or not, on the Kindle and the web page
-Oct 28  pfSense: interfaces that are on no longer show as Disabled
-Oct 27  pfSense: a new optional app for a pfSense firewall over its REST API package (the system's health, gateways, interfaces, services started, stopped or restarted, devices from DHCP leases and the ARP table with Wake-on-LAN, DHCP static mappings and DNS host overrides added, changed or deleted, firewall rules on or off, VPN status, the system and firewall logs, packages with updates, reboot and update), in optional/ with its own zip

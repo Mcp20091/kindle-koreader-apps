@@ -10,8 +10,16 @@ Your [pfSense](https://www.pfsense.org) firewall on a Kindle, over the [REST API
 - **DHCP static mappings**: by interface; **Add**, change the IP address, hostname or description, **Wake**, **Delete** (with Undo).
 - **DNS host overrides** (the DNS Resolver's): **Add**, change the host, domain, addresses, aliases or description, **Delete** (with Undo).
 - **Firewall rules**: by interface, each with a switch (applied at once).
-- **VPN**: WireGuard peers (with the WireGuard package) and OpenVPN servers with who's connected.
+- **Aliases**: the address, network and port lists rules use; add or remove an entry (with Undo), and **Add to an alias** from a device.
+- **NAT**: port forwards, outbound mappings and 1:1 NAT, each with a switch; the outbound NAT mode.
+- **Connections**: a device's connections through the firewall now, and **Close all** (so a block works at once).
+- **Ping** from pfSense (⋮, the Ping tile, or a device's page).
+- **Gateways and routing**: the default gateway (IPv4 and IPv6) to pick, **Make default** on a gateway, gateway groups, and static routes with a switch.
+- **VPN**: WireGuard peers with a switch each and how they're doing; OpenVPN servers with who's connected (**Disconnect**), OpenVPN clients, IPsec tunnels.
+- **Certificates**: when each runs out; one within 14 days goes under Needs attention with a notification; **Renew now** for ACME (Let's Encrypt) ones.
+- **Config history**: the recent changes, who made them and when.
 - **Logs**: the System, Firewall, DHCP, Authentication, OpenVPN and REST API logs, newest first; firewall lines as pass or block, from and to.
+- **Online or offline**: Devices and Static mappings show only the online (or offline) ones with a tap, Services only the running (or stopped) ones.
 - **Search and sort**: Devices, the ARP table, Static mappings and DNS overrides have **Search** (a name, an IP or MAC address, a word of the description) and sort by **Name** or **IP address**, with **Reverse**; Services, Firewall rules and the logs have Search. The sort is kept, and is the same on the web page.
 - **Packages**: installed ones, with the ones that have an update first.
 - **Update pfSense** and **Reboot** (⋮, both ask first).

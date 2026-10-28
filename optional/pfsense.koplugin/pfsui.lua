@@ -63,6 +63,7 @@ function UI.more()
     if not plugin then return end
     local extra = {}
     if plugin:configured() then
+        table.insert(extra, { _("Ping"), function() UI.askPing(plugin) end })
         table.insert(extra, { _("Update pfSense"), function() UI.update(plugin) end })
         table.insert(extra, { _("Reboot"), function() UI.reboot(plugin) end })
         table.insert(extra, { _("Details"), function() UI.details(plugin) end })
@@ -262,12 +263,20 @@ local BROWSE = {
     { "rules", "shield-check", _("Firewall rules") },
     { "arp", "list", _("ARP table") },
     { "vpn", "key-round", _("VPN") },
+    { "aliases", "shield", _("Aliases") },
+    { "nat", "arrow-right-left", _("NAT") },
+    { "connections", "plug", _("Connections") },
+    { "ping", "wifi", _("Ping") },
+    { "certs", "lock", _("Certificates") },
+    { "history", "history", _("Config history") },
     { "logs", "scroll-text", _("Logs") },
     { "packages", "package", _("Packages") },
 }
 
 -- A browse tile's second line when nothing read says more (every tile has one, so they line up).
-local BROWSE_SUB = { logs = _("System and firewall"), packages = _("Updates"), vpn = _("WireGuard and OpenVPN") }
+local BROWSE_SUB = { logs = _("System, firewall, DHCP…"), packages = _("Updates"), vpn = _("WireGuard, OpenVPN, IPsec"),
+    aliases = _("Address lists"), nat = _("Port forwards"), connections = _("A device's, to close"), ping = _("From pfSense"),
+    certs = _("When they expire"), history = _("Recent changes") }
 
 --- A browse tile's second line, from what was read.
 local function browseSub(d, key, c)
@@ -287,6 +296,20 @@ local function browseSub(d, key, c)
         if d.peers and #d.peers > 0 then return T(_("%1 of %2 connected"), c.peersOnline, c.peers) end
         if d.ovpn and #d.ovpn > 0 then return T(_("%1 OpenVPN"), #d.ovpn) end
         return nil
+    end
+    if key == "aliases" then return d.aliases and tostring(#d.aliases) end
+    if key == "nat" then
+        if not d.forwards then return nil end
+        local off = 0
+        for __, r in ipairs(d.forwards) do if r.disabled then off = off + 1 end end
+        local n = #d.forwards == 1 and _("1 port forward") or T(_("%1 port forwards"), #d.forwards)
+        return off > 0 and T(_("%1 · %2 off"), n, off) or n
+    end
+    if key == "certs" then
+        if not d.certs then return nil end
+        local soon = 0
+        for __, c in ipairs(d.certs) do if M.certSoon(c) then soon = soon + 1 end end
+        return soon > 0 and T(_("%1 expiring soon"), soon) or tostring(#d.certs)
     end
     if key == "packages" then
         local list = UI.plugin and UI.plugin:packageList()
@@ -332,7 +355,7 @@ function UI.mainItems(plugin)
     local attention = M.attention(d)
     if #attention > 0 then
         t[#t + 1] = { band = _("NEEDS ATTENTION"), right = tostring(#attention) }
-        local icons = { gateway = "activity", interface = "network", service = "cpu" }
+        local icons = { gateway = "activity", interface = "network", service = "cpu", cert = "lock" }
         for __, a in ipairs(attention) do
             local x = a.item
             t[#t + 1] = { text = x.name, sub = a.why, icon = icons[a.kind], dot = "off", chevron = true,
@@ -384,7 +407,8 @@ end
 function UI.list(plugin, key)
     local open = { gateways = UI.gateways, interfaces = UI.interfaces, services = UI.services, leases = UI.devices,
         statics = UI.statics, overrides = UI.overrides, rules = UI.rules, arp = UI.arpTable, vpn = UI.vpn,
-        logs = UI.logs, packages = UI.packages }
+        logs = UI.logs, packages = UI.packages, aliases = UI.aliases, nat = UI.nat, certs = UI.certs, history = UI.history,
+        connections = function(p) UI.askConnections(p) end, ping = function(p) UI.askPing(p) end }
     if open[key] then open[key](plugin) end
 end
 
@@ -398,6 +422,9 @@ function UI.item(plugin, kind, id)
     if kind == "static" then return UI.static(plugin, id) end
     if kind == "override" then return UI.override(plugin, id) end
     if kind == "rule" then return UI.rule(plugin, id) end
+    if kind == "alias" then return UI.alias(plugin, id) end
+    if kind == "forward" or kind == "outbound" or kind == "onetoone" then return UI.natRule(plugin, kind, id) end
+    if kind == "cert" then return UI.certs(plugin) end
 end
 
 --- The items of a list page: notRead, or not allowed, or fn(d, t).
@@ -418,8 +445,20 @@ end
 
 -- ------------------------------------------------------------------ searching and sorting lists
 
--- What each list is searched for now (its key -> the words as typed), while KOReader runs.
+-- What each list is searched for now (its key -> the words as typed), and which of its items
+-- show (its key -> true: only online or running ones, false: only the others), while KOReader runs.
 UI.find = {}
+UI.only = {}
+
+-- The lists with something online or not: the chips' words, and whether an item is (d: what was read).
+local STATUS = {
+    leases = { _("Online"), _("Offline"), function(x) return x.online end },
+    statics = { _("Online"), _("Offline"), function(x, d)
+        for __, l in ipairs(d.leases or {}) do if l.mac == x.mac then return l.online end end
+        return false
+    end },
+    services = { _("Running"), _("Stopped"), function(x) return x.running end },
+}
 
 local function short(s, n)
     if #s <= n then return s end
@@ -444,6 +483,19 @@ local function controls(plugin, key, t, sortable)
                 description = _("A name, an IP address, a MAC address or a word of the description.") })
         end }
     end
+    local status = STATUS[key]
+    if status then
+        -- (a tap shows only those; again, all of them)
+        local only = UI.only[key]
+        chips[#chips + 1] = { text = status[1], on = only == true, fn = function()
+            UI.only[key] = only ~= true or nil
+            UI.refreshAll()
+        end }
+        chips[#chips + 1] = { text = status[2], on = only == false, fn = function()
+            if only == false then UI.only[key] = nil else UI.only[key] = false end
+            UI.refreshAll()
+        end }
+    end
     if sortable then
         local by, reverse = plugin:sortOf(key)
         local function sortBy(b, r)
@@ -458,29 +510,89 @@ local function controls(plugin, key, t, sortable)
     return q and q:lower() or nil
 end
 
---- A list as it shows now: sorted as chosen (sortable lists) and searched.
+--- A list as it shows now: sorted as chosen (sortable lists), searched, and only the online (or
+-- offline) ones when chosen.
 local function shown(plugin, d, key, q)
-    local list = M.SORTABLE[key] and plugin:sortedList(key) or d[key]
-    return M.filter(list, q)
+    local list = M.filter(M.SORTABLE[key] and plugin:sortedList(key) or d[key], q)
+    local only, status = UI.only[key], STATUS[key]
+    if only == nil or not status then return list end
+    local out = {}
+    for __, x in ipairs(list) do
+        if (status[3](x, d) and true or false) == only then out[#out + 1] = x end
+    end
+    return out
 end
 
---- What a searched list says when nothing has the words.
+--- What a searched (or filtered) list says when nothing is left.
 local function noneFound(t, q)
-    if q then t[#t + 1] = { message = T(_("Nothing has “%1”."), q) } end
+    t[#t + 1] = { message = q and T(_("Nothing has “%1”."), q) or _("None like that now.") }
 end
 
 -- ------------------------------------------------------------------ gateways and interfaces
 
+--- The family (inet or inet6) of a gateway or group by its name, from what was read (inet if not known).
+local function familyOf(d, name)
+    local g = M.find(d, "gwconfig", name) or M.find(d, "gwgroup", name)
+    return g and g.family == "inet6" and "inet6" or "inet"
+end
+
+--- Choose the default gateway for a family: a gateway, a group, or automatic.
+local function chooseDefault(plugin, family)
+    local d = plugin:data()
+    if not d then return end
+    local options = { { label = _("Automatic"), value = "" } }
+    for __, g in ipairs(d.gwconfig or {}) do
+        if (g.family == family or g.family == "") and not g.disabled then
+            options[#options + 1] = { label = g.descr ~= "" and T("%1 · %2", g.name, g.descr) or g.name, value = g.name }
+        end
+    end
+    for __, g in ipairs(d.gwgroups or {}) do
+        if g.family == family or g.family == "" then options[#options + 1] = { label = T(_("%1 (group)"), g.name), value = g.name } end
+    end
+    local now = d.defaultgw and d.defaultgw[family] or ""
+    KO.choose(family == "inet6" and _("Default gateway (IPv6)") or _("Default gateway (IPv4)"), options, now, function(name)
+        if name == now then return end
+        act(plugin, "default_gw", { family = family, name = name }, name ~= "" and T(_("Default gateway: %1"), name) or _("Default gateway: automatic"),
+            { text = _("Changing the default gateway…") })
+    end)
+end
+
 function UI.gateways(plugin)
     listPage(plugin, _("Gateways"), listItems(plugin, "gateways", "api-v2-status-gateways-get", function(d, t)
+        if d.defaultgw then
+            t[#t + 1] = { band = _("DEFAULT GATEWAY") }
+            t[#t + 1] = { setting = true, text = _("IPv4"), value = d.defaultgw.inet ~= "" and d.defaultgw.inet or _("Automatic"),
+                callback = function() chooseDefault(plugin, "inet") end }
+            t[#t + 1] = { setting = true, text = _("IPv6"), value = d.defaultgw.inet6 ~= "" and d.defaultgw.inet6 or _("Automatic"),
+                callback = function() chooseDefault(plugin, "inet6") end }
+        end
         t[#t + 1] = { band = _("GATEWAYS"), right = tostring(#d.gateways) }
         if #d.gateways == 0 then t[#t + 1] = { message = _("No gateways.") } end
         for __, g in ipairs(d.gateways) do
-            t[#t + 1] = { text = g.name, sub = M.gatewayLine(g), icon = "activity", dot = dotOf(g.state ~= "down"),
-                chevron = true, callback = function() UI.gateway(plugin, g.id) end }
+            local isDefault = d.defaultgw and (d.defaultgw.inet == g.name or d.defaultgw.inet6 == g.name)
+            t[#t + 1] = { text = g.name, sub = M.gatewayLine(g) .. (isDefault and (" · " .. _("Default")) or ""), icon = "activity",
+                dot = dotOf(g.state ~= "down"), chevron = true, callback = function() UI.gateway(plugin, g.id) end }
+        end
+        if d.gwgroups and #d.gwgroups > 0 then
+            t[#t + 1] = { band = _("GATEWAY GROUPS"), right = tostring(#d.gwgroups) }
+            for __, g in ipairs(d.gwgroups) do
+                local members = {}
+                for __, m in ipairs(g.members) do members[#members + 1] = m.tier and T(_("%1 (tier %2)"), m.gateway, m.tier) or m.gateway end
+                local isDefault = d.defaultgw and (d.defaultgw.inet == g.name or d.defaultgw.inet6 == g.name)
+                t[#t + 1] = { text = g.name, sub = table.concat(members, ", ") .. (isDefault and (" · " .. _("Default")) or ""), icon = "activity" }
+            end
+        end
+        if d.routes and #d.routes > 0 then
+            t[#t + 1] = { band = _("STATIC ROUTES"), right = tostring(#d.routes) }
+            for __, r in ipairs(d.routes) do
+                t[#t + 1] = { toggle = not r.disabled, text = r.name, sub = M.routeLine(r), callback = function()
+                    act(plugin, "route_enabled", { id = r.id, network = r.network, gateway = r.gateway, on = r.disabled },
+                        r.disabled and _("Route on") or _("Route off"))
+                end }
+            end
         end
         return t
-    end))
+    end), true)
 end
 
 function UI.gateway(plugin, id)
@@ -496,8 +608,31 @@ function UI.gateway(plugin, id)
         row(t, _("Packet loss"), g.loss and T(_("%1%"), string.format("%.0f", g.loss)) or nil)
         row(t, _("Monitor IP"), g.monitor)
         row(t, _("Source IP"), g.source)
+        local cfg = M.find(d, "gwconfig", g.name)
+        if cfg then
+            row(t, _("Interface"), cfg.iface:upper())
+            row(t, _("Address"), cfg.gateway)
+            row(t, _("Description"), cfg.descr)
+        end
+        if d.defaultgw then
+            local family = familyOf(d, g.name)
+            local isDefault = d.defaultgw[family] == g.name
+            row(t, _("Default"), isDefault and _("Yes") or _("No"))
+            if not isDefault then
+                t[#t + 1] = { gap = 8 }
+                t[#t + 1] = { tiles = { { icon = "check", text = _("Make default"), primary = true, fn = function()
+                    KO.confirm{ title = T(_("Make %1 the default gateway?"), g.name),
+                        text = _("Traffic to the internet goes out through it from now on. If it doesn't work, the Kindle may lose the internet too (not the firewall)."),
+                        ok = _("Make default"), cancel = _("Cancel"),
+                        onOk = function()
+                            act(plugin, "default_gw", { family = family, name = g.name }, T(_("Default gateway: %1"), g.name),
+                                { text = _("Changing the default gateway…") })
+                        end }
+                end } }, cols = 2 }
+            end
+        end
         return t
-    end)
+    end, true)
 end
 
 function UI.interfaces(plugin)
@@ -637,7 +772,10 @@ function UI.device(plugin, id)
         row(t, _("Lease ends"), l.ends)
         t[#t + 1] = { gap = 8 }
         local mapping = M.staticFor(d, l.mac)
-        local tiles = { { icon = "zap", text = _("Wake"), fn = function() wake(plugin, l.iface, l.mac) end } }
+        local tiles = { { icon = "zap", text = _("Wake"), fn = function() wake(plugin, l.iface, l.mac) end },
+            { icon = "plug", text = _("Connections"), fn = function() UI.connections(plugin, l.ip, l.name) end },
+            { icon = "wifi", text = _("Ping"), fn = function() UI.ping(plugin, l.ip) end },
+            { icon = "shield", text = _("Add to an alias"), fn = function() UI.addToAlias(plugin, l.ip, l.name) end } }
         if mapping then
             tiles[#tiles + 1] = { icon = "tag", text = _("Static mapping"), fn = function() UI.static(plugin, mapping.key) end }
         else
@@ -687,6 +825,8 @@ function UI.arpEntry(plugin, id)
             mapping and { icon = "tag", text = _("Static mapping"), fn = function() UI.static(plugin, mapping.key) end }
                 or { icon = "plus", text = _("Add a static mapping"),
                     fn = function() UI.addStatic(plugin, { parent = a.iface, mac = a.mac, ip = a.ip, hostname = a.hostname }) end },
+            { icon = "plug", text = _("Connections"), fn = function() UI.connections(plugin, a.ip, a.name) end },
+            { icon = "wifi", text = _("Ping"), fn = function() UI.ping(plugin, a.ip) end },
             -- (it comes back by itself when the device talks again: no Undo needed)
             { icon = "trash-2", text = _("Remove"), fn = function()
                 act(plugin, "arp_delete", { id = a.id, ip = a.ip }, _("Removed from the ARP table"))
@@ -1003,31 +1143,75 @@ function UI.vpn(plugin)
         if early then return early end
         local d = plugin:data()
         local t = {}
-        if d.peers and #d.peers > 0 then
+        -- WireGuard: each peer as configured (its switch), with how it's doing now (by its public key)
+        local status = {}
+        for __, p in ipairs(d.peers or {}) do status[p.id] = p end
+        local peers = d.wgpeers or {}
+        if #peers == 0 then
+            for __, p in ipairs(d.peers or {}) do peers[#peers + 1] = { key = p.id, name = p.name, enabled = true, readonly = true } end
+        end
+        if #peers > 0 then
             local c = M.counts(d)
             t[#t + 1] = { band = _("WIREGUARD PEERS"), right = T(_("%1 connected"), c.peersOnline) }
-            for __, p in ipairs(d.peers) do
-                local sub = M.peerLine(p)
-                if p.endpoint ~= "" and p.online then sub = sub .. " · " .. p.endpoint end
-                t[#t + 1] = { text = p.name, sub = sub, icon = "key-round", dot = dotOf(p.online),
-                    right = (p.rx + p.tx > 0) and M.bytes(p.rx + p.tx) or nil }
+            for __, w in ipairs(peers) do
+                local p = status[w.key]
+                local sub = p and M.peerLine(p) or (w.enabled and _("Never connected") or _("Off"))
+                if p and p.endpoint ~= "" and p.online then sub = sub .. " · " .. p.endpoint end
+                if p and p.rx + p.tx > 0 then sub = sub .. " · " .. M.bytes(p.rx + p.tx) end
+                if w.readonly then
+                    t[#t + 1] = { text = w.name, sub = sub, icon = "key-round", dot = p and dotOf(p.online) or nil }
+                else
+                    t[#t + 1] = { toggle = w.enabled, text = w.name, sub = sub, callback = function()
+                        act(plugin, "wg_enabled", { num = w.num, key = w.key, on = not w.enabled },
+                            w.enabled and _("Peer off") or _("Peer on"), { text = _("Applying WireGuard…") })
+                    end }
+                end
             end
         end
+        -- OpenVPN servers: who's connected, each with Disconnect
         if d.ovpn and #d.ovpn > 0 then
             for __, s in ipairs(d.ovpn) do
-                t[#t + 1] = { band = s.name:upper(), right = T(_("%1 connected"), #s.conns) }
-                if #s.conns == 0 then t[#t + 1] = { note = _("No one connected.") } end
-                for __, c in ipairs(s.conns) do
+                local conns = {}
+                for __, c in ipairs(d.ovpnconns or {}) do if c.parent == s.id then conns[#conns + 1] = c end end
+                if not d.ovpnconns then conns = s.conns end
+                t[#t + 1] = { band = s.name:upper(), right = T(_("%1 connected"), #conns) }
+                if #conns == 0 then t[#t + 1] = { note = _("No one connected.") } end
+                for __, c in ipairs(conns) do
                     local sub = {}
-                    for __, x in ipairs({ c.vip, c.remote, c.since }) do if x ~= "" then sub[#sub + 1] = x end end
-                    t[#t + 1] = { text = c.name ~= "" and c.name or c.remote, icon = "laptop", dot = "on",
-                        sub = table.concat(sub, " · ") }
+                    for __, x in ipairs({ c.vip, c.remote }) do if x ~= "" then sub[#sub + 1] = x end end
+                    if c.since then sub[#sub + 1] = M.ago(c.since) end
+                    if c.rx and c.rx + c.tx > 0 then sub[#sub + 1] = M.bytes(c.rx + c.tx) end
+                    t[#t + 1] = { text = c.name ~= "" and c.name or c.remote, icon = "laptop", dot = "on", sub = table.concat(sub, " · "),
+                        chevron = c.key ~= nil, callback = c.key and function()
+                            KO.list(c.name, { { text = _("Disconnect"), fn = function()
+                                act(plugin, "ovpn_kill", { parent = c.parent, id = c.id, name = c.name, remote = c.remote },
+                                    T(_("%1 disconnected"), c.name))
+                            end } })
+                        end or nil }
                 end
+            end
+        end
+        if d.ovpnclients and #d.ovpnclients > 0 then
+            t[#t + 1] = { band = _("OPENVPN CLIENTS"), right = tostring(#d.ovpnclients) }
+            for __, c in ipairs(d.ovpnclients) do
+                local sub = {}
+                for __, x in ipairs({ c.up and _("Connected") or (c.state ~= "" and c.state or _("Not connected")), c.remote, c.vip }) do
+                    if x ~= "" then sub[#sub + 1] = x end
+                end
+                t[#t + 1] = { text = c.name, sub = table.concat(sub, " · "), icon = "key-round", dot = dotOf(c.up) }
+            end
+        end
+        if d.ipsec and #d.ipsec > 0 then
+            t[#t + 1] = { band = _("IPSEC TUNNELS"), right = tostring(#d.ipsec) }
+            for __, x in ipairs(d.ipsec) do
+                local sub = { x.up and _("Established") or (x.state ~= "" and x.state or _("Down")) }
+                if x.remote ~= "" then sub[#sub + 1] = x.remote end
+                t[#t + 1] = { text = x.name, sub = table.concat(sub, " · "), icon = "lock", dot = dotOf(x.up) }
             end
         end
         if #t == 0 then
             t[#t + 1] = { message = _("No VPN to show.") }
-            t[#t + 1] = { note = _("WireGuard peers (with the WireGuard package) and OpenVPN servers show here.") }
+            t[#t + 1] = { note = _("WireGuard peers (with the WireGuard package), OpenVPN servers and clients, and IPsec tunnels show here.") }
         end
         return t
     end, true)
@@ -1128,6 +1312,326 @@ function UI.packages(plugin)
         end
         return t
     end, { on_refresh = function() list, why = nil, nil UI.refreshAll() load(true) end })
+    load()
+end
+
+-- ------------------------------------------------------------------ aliases
+
+function UI.aliases(plugin)
+    listPage(plugin, _("Aliases"), listItems(plugin, "aliases", "api-v2-firewall-aliases-get", function(d, t)
+        local q = controls(plugin, "aliases", t)
+        local list = M.filter(d.aliases, q)
+        if q then
+            -- (an alias's entries are searched too)
+            list = {}
+            for __, a in ipairs(d.aliases) do
+                local hit = M.matches(a, q)
+                for __, e in ipairs(a.entries) do hit = hit or M.matches(e, q) end
+                if hit then list[#list + 1] = a end
+            end
+        end
+        t[#t + 1] = { band = _("ALIASES"), right = tostring(#list) }
+        if #d.aliases == 0 then t[#t + 1] = { message = _("No aliases.") } elseif #list == 0 then noneFound(t, q) end
+        for __, a in ipairs(list) do
+            t[#t + 1] = { text = a.name, sub = M.aliasLine(a), icon = "shield", chevron = true, callback = function() UI.alias(plugin, a.id) end }
+        end
+        t[#t + 1] = { note = _("Aliases are the lists of addresses, networks or ports that firewall rules use. A change is applied at once.") }
+        return t
+    end), true)
+end
+
+--- An alias by its name (ids move; names are unique).
+local function aliasByName(d, name)
+    for __, a in ipairs(d and d.aliases or {}) do if a.name == name then return a end end
+end
+
+--- An alias's entries set (addresses and their descriptions, in order), with done(ok) after.
+local function setAlias(plugin, a, entries, okText, done)
+    local addresses, details = {}, {}
+    for k, e in ipairs(entries) do addresses[k], details[k] = e.address, e.detail end
+    plugin:act("alias_set", { id = a.id, name = a.name, addresses = addresses, details = details }, function(ok, text)
+        if ok then
+            if okText then KO.toast(okText) end
+        else
+            KO.message(text, _("pfSense"))
+        end
+        if done then done(ok) end
+    end, { text = _("Saving…") })
+end
+
+--- An entry added to an alias: its address (and a description).
+local function addEntry(plugin, a, address, detail)
+    local entries = {}
+    for k, e in ipairs(a.entries) do
+        if e.address == address then return KO.toast(T(_("%1 is in %2 already"), address, a.name), 3) end
+        entries[k] = e
+    end
+    entries[#entries + 1] = { address = address, detail = detail or "" }
+    setAlias(plugin, a, entries, T(_("Added to %1"), a.name))
+end
+
+function UI.alias(plugin, id)
+    local d0 = plugin:data()
+    local a0 = d0 and M.find(d0, "alias", id)
+    local name = a0 and a0.name
+    listPage(plugin, name or _("Alias"), function()
+        local d = plugin:data()
+        local a = aliasByName(d, name)
+        local t = {}
+        if not a then return gone(plugin, t) end
+        t[#t + 1] = { tiles = { { icon = "plus", text = _("Add"), primary = true, fn = function()
+            local what = a.type == "port" and _("Port") or (a.type == "network" and _("Network") or _("Address"))
+            ask(what, "", function(v)
+                v = trim(v)
+                if v == "" then return end
+                ask(_("Description"), "", function(desc) addEntry(plugin, a, v, trim(desc)) end,
+                    { ok = _("Add"), okIcon = "plus", description = _("Optional: what it is.") })
+            end, { ok = _("Next"), okIcon = "chevron-right", description = a.type == "port" and _("A port or range, such as 443 or 8000:8080.")
+                or (a.type == "network" and _("A network, such as 192.168.1.0/24.") or _("An IP address, a range or a hostname, such as 192.168.1.20.")) })
+        end } }, cols = 3 }
+        t[#t + 1] = { band = _("ALIAS") }
+        row(t, _("Type"), M.aliasType(a))
+        row(t, _("Description"), a.descr)
+        t[#t + 1] = { band = _("ENTRIES"), right = tostring(#a.entries) }
+        if #a.entries == 0 then t[#t + 1] = { message = _("It has no entries.") } end
+        for k, e in ipairs(a.entries) do
+            t[#t + 1] = { text = e.address, sub = e.detail ~= "" and e.detail or nil, icon = "shield", chevron = true, callback = function()
+                KO.list(e.address, { { text = _("Remove"), fn = function()
+                    local entries, removed = {}, nil
+                    for j, x in ipairs(a.entries) do if j ~= k then entries[#entries + 1] = x else removed = x end end
+                    setAlias(plugin, a, entries, nil, function(ok)
+                        if not ok then return end
+                        KO.undo(T(_("Removed from %1"), a.name), function()
+                            local now = aliasByName(plugin:data(), a.name)
+                            if now then addEntry(plugin, now, removed.address, removed.detail) end
+                        end)
+                    end)
+                end } })
+            end }
+        end
+        return t
+    end, true)
+end
+
+--- Add an address to one of the host aliases (from a device's page).
+function UI.addToAlias(plugin, ip, name)
+    local d = plugin:data()
+    local options = {}
+    for __, a in ipairs(d and d.aliases or {}) do
+        if a.type == "host" then options[#options + 1] = { text = a.descr ~= "" and T("%1 · %2", a.name, a.descr) or a.name,
+            fn = function() addEntry(plugin, a, ip, name ~= ip and name or "") end } end
+    end
+    if #options == 0 then
+        return KO.message(_("There's no host alias to add it to. Make one in pfSense: Firewall > Aliases."), _("Add to an alias"))
+    end
+    KO.list(T(_("Add %1 to"), ip), options)
+end
+
+-- ------------------------------------------------------------------ NAT
+
+--- A NAT list's band and rows with their switches (hold: the rule's page).
+local function natRows(plugin, t, kind, list, title)
+    if not list or #list == 0 then return end
+    t[#t + 1] = { band = title, right = tostring(#list) }
+    for __, r in ipairs(list) do
+        t[#t + 1] = { toggle = not r.disabled, text = r.name, sub = M.natLine(r), callback = function()
+            act(plugin, "nat_enabled", { kind = kind, id = r.id, sig = r.sig, on = r.disabled },
+                r.disabled and _("Turned on") or _("Turned off"))
+        end, hold_callback = function() UI.natRule(plugin, kind, r.id) end }
+    end
+end
+
+function UI.nat(plugin)
+    listPage(plugin, _("NAT"), function()
+        local early = notRead(plugin)
+        if early then return early end
+        local d = plugin:data()
+        local t = {}
+        local q = controls(plugin, "nat", t)
+        if d.skipped.forwards then
+            t[#t + 1] = { band = _("PORT FORWARDS") }
+            notAllowed(plugin, t, "forwards", "api-v2-firewall-nat-port-forwards-get")
+        else
+            natRows(plugin, t, "forward", M.filter(d.forwards, q), _("PORT FORWARDS"))
+            if d.forwards and #d.forwards == 0 then t[#t + 1] = { band = _("PORT FORWARDS") } t[#t + 1] = { note = _("No port forwards.") } end
+        end
+        if d.natmode then
+            t[#t + 1] = { band = _("OUTBOUND NAT") }
+            row(t, _("Mode"), M.natMode(d.natmode))
+        end
+        natRows(plugin, t, "outbound", M.filter(d.outbound, q), d.natmode and _("OUTBOUND MAPPINGS") or _("OUTBOUND NAT"))
+        natRows(plugin, t, "onetoone", M.filter(d.onetoone, q), _("1:1 NAT"))
+        t[#t + 1] = { note = _("Tap a switch to turn a rule on or off (applied at once). Hold one for its details.") }
+        return t
+    end, true)
+end
+
+function UI.natRule(plugin, kind, id)
+    local d0 = plugin:data()
+    local r0 = d0 and M.find(d0, kind, id)
+    local sig = r0 and r0.sig
+    listPage(plugin, r0 and r0.name or _("NAT"), function()
+        local d = plugin:data()
+        local r
+        -- (by what it is, not its place in the list)
+        for __, x in ipairs(d and d[M.KINDS[kind]] or {}) do
+            local same = sig ~= nil
+            for f, v in pairs(sig or {}) do if x.sig[f] ~= v then same = false end end
+            if same then r = x end
+        end
+        local t = {}
+        if not r then return gone(plugin, t) end
+        t[#t + 1] = { band = kind == "forward" and _("PORT FORWARD") or (kind == "outbound" and _("OUTBOUND NAT") or _("1:1 NAT")) }
+        t[#t + 1] = { toggle = not r.disabled, text = _("Enabled"), sub = _("Applied at once"), callback = function()
+            act(plugin, "nat_enabled", { kind = kind, id = r.id, sig = r.sig, on = r.disabled }, r.disabled and _("Turned on") or _("Turned off"))
+        end }
+        row(t, _("Interface"), r.iface:upper())
+        row(t, _("Protocol"), r.protocol and r.protocol ~= "" and r.protocol:upper() or nil)
+        if kind == "forward" then
+            row(t, _("Source"), r.source)
+            row(t, _("Destination"), r.dest .. (r.dport ~= "" and (":" .. r.dport) or ""))
+            row(t, _("Forwarded to"), r.target .. (r.lport ~= "" and (":" .. r.lport) or ""))
+        elseif kind == "outbound" then
+            row(t, _("Source"), r.source)
+            row(t, _("Destination"), r.dest)
+            row(t, _("Translated to"), r.nonat and _("No NAT") or (r.target ~= "" and r.target or _("Interface address")))
+        else
+            row(t, _("External address"), r.external)
+            row(t, _("Internal address"), r.source)
+            row(t, _("Destination"), r.dest)
+        end
+        row(t, _("Description"), r.descr)
+        return t
+    end, true)
+end
+
+-- ------------------------------------------------------------------ connections and ping
+
+--- A device's connections (the firewall states from or to its address), with Close all.
+function UI.connections(plugin, ip, name)
+    local list, why
+    local p
+    local function load()
+        list, why = nil, nil
+        plugin:states(ip, function(l, text)
+            list, why = l, text
+            if alive(p) then UI.refreshAll() end
+        end)
+    end
+    p = page(name and name ~= ip and T("%1 · %2", name, ip) or ip, function()
+        local t = {}
+        if not list then
+            t[#t + 1] = { message = why or _("Reading the connections…") }
+            return t
+        end
+        t[#t + 1] = { tiles = { { icon = "ban", text = _("Close all"), fn = function()
+            KO.confirm{ title = T(_("Close %1's connections?"), name or ip),
+                text = _("Everything it has open is cut off now, so a block (a rule or an alias) works at once. It can connect again where it's allowed to."),
+                ok = _("Close all"), cancel = _("Cancel"), danger = true,
+                onOk = function()
+                    plugin:act("kill_states", { ip = ip }, function(ok, text)
+                        if ok then KO.toast(_("Connections closed")) load() else KO.message(text, _("pfSense")) end
+                    end, { text = _("Closing…") })
+                end }
+        end } }, cols = 3 }
+        t[#t + 1] = { band = _("CONNECTIONS"), right = tostring(#list) }
+        if #list == 0 then t[#t + 1] = { message = _("No connections now.") } end
+        for __, x in ipairs(list) do
+            local sub = {}
+            for __, v in ipairs({ x.protocol:upper(), x.iface, x.state, x.age }) do if v ~= "" then sub[#sub + 1] = v end end
+            t[#t + 1] = { text = T("%1 → %2", x.source, x.dest), sub = table.concat(sub, " · "), icon = "plug",
+                right = x.bytes > 0 and M.bytes(x.bytes) or nil }
+        end
+        return t
+    end, { on_refresh = function() load() UI.refreshAll() end })
+    load()
+end
+
+--- Connections: which device (its address).
+function UI.askConnections(plugin)
+    ask(_("Connections"), "", function(v)
+        v = trim(v)
+        if not M.isIPv4(v) then return KO.toast(_("Enter an IP address, such as 192.168.1.20")) end
+        local d = plugin:data()
+        local name
+        for __, l in ipairs(d and d.leases or {}) do if l.ip == v then name = l.name end end
+        UI.connections(plugin, v, name)
+    end, { ok = _("Show"), okIcon = "search", description = _("A device's IP address: its connections through the firewall now. Devices and the ARP table have it on each one's page too.") })
+end
+
+--- A ping from pfSense, its answer to read.
+function UI.ping(plugin, host)
+    plugin:ping(host, function(r, why)
+        if not r then return KO.message(why, _("Ping")) end
+        local title = r.ok and T(_("%1 answers"), host) or T(_("%1 doesn't answer"), host)
+        local read = KO.read()
+        if read then
+            return read{ title = title, text = r.output ~= "" and r.output or title,
+                buttons = { { icon = "check", text = _("Done"), primary = true } } }
+        end
+        KO.message(r.output, title)
+    end)
+end
+
+function UI.askPing(plugin)
+    ask(_("Ping"), "", function(v)
+        v = trim(v)
+        if v == "" then return end
+        UI.ping(plugin, v)
+    end, { ok = _("Ping"), okIcon = "wifi", description = _("An IP address or a name, pinged from pfSense (three times), such as 1.2.3.4 or example.com.") })
+end
+
+-- ------------------------------------------------------------------ certificates and history
+
+function UI.certs(plugin)
+    listPage(plugin, _("Certificates"), listItems(plugin, "certs", "api-v2-system-certificates-get", function(d, t)
+        t[#t + 1] = { band = _("CERTIFICATES"), right = tostring(#d.certs) }
+        if #d.certs == 0 then t[#t + 1] = { message = _("No certificates.") } end
+        for __, c in ipairs(d.certs) do
+            t[#t + 1] = { text = c.name, sub = M.certLine(c) .. (c["until"] ~= "" and (" · " .. c["until"]) or ""), icon = "lock",
+                dot = c.days and dotOf(not M.certSoon(c)) or nil }
+        end
+        if d.acme and #d.acme > 0 then
+            t[#t + 1] = { band = _("ACME (LET'S ENCRYPT)"), right = tostring(#d.acme) }
+            for __, a in ipairs(d.acme) do
+                t[#t + 1] = { text = a.name, sub = a.active and (a.descr ~= "" and a.descr or nil) or _("Disabled"), icon = "lock",
+                    chevron = true, callback = function()
+                        KO.list(a.name, { { text = _("Renew now"), fn = function()
+                            act(plugin, "acme_renew", { name = a.name }, _("Renewal started: the ACME package renews it in the background"))
+                        end } })
+                    end }
+            end
+        end
+        t[#t + 1] = { note = T(_("A certificate that runs out within %1 days shows under Needs attention, with a notification."), M.CERT_DAYS) }
+        return t
+    end), true)
+end
+
+function UI.history(plugin)
+    local list, why
+    local p
+    local function load()
+        plugin:history(function(l, text)
+            list, why = l, text
+            if alive(p) then UI.refreshAll() end
+        end)
+    end
+    p = page(_("Config history"), function()
+        local t = {}
+        if not list then
+            t[#t + 1] = { message = why or _("Reading…") }
+            return t
+        end
+        local q = controls(plugin, "history", t)
+        local found = M.filter(list, q)
+        t[#t + 1] = { band = _("CHANGES"), right = tostring(#found) }
+        if #list == 0 then t[#t + 1] = { message = _("No changes kept.") } elseif #found == 0 then noneFound(t, q) end
+        for __, x in ipairs(found) do
+            local when = x.time and (os.date("%b %d", x.time) .. " · " .. M.clock(x.time, twentyFour())) or ""
+            t[#t + 1] = { text = x.description ~= "" and x.description or _("Change"), sub = when, icon = "history" }
+        end
+        return t
+    end, { on_refresh = function() list = nil UI.refreshAll() load() end })
     load()
 end
 

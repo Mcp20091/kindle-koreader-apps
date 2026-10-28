@@ -259,6 +259,50 @@ eq(#M.newest({}, 100), 0, "an empty log")
 eq(M.logTime("2026-10-27T14:35:01+00:00 x") > M.logTime("2026-10-27T08:00:00+00:00 y"), true, "ISO times compare")
 eq(M.logTime("no time"), nil, "a line without a time")
 
+-- aliases, NAT, routes, VPN, certificates
+local d2 = M.data({
+    aliases = { { id = 0, name = "Kids", type = "host", descr = "Kids devices", address = { "192.168.1.42", "192.168.1.20" }, detail = { "Laptop" } } },
+    forwards = { { id = 0, interface = "wan", protocol = "tcp", destination = "wanip", destination_port = "443", target = "192.168.1.50",
+        local_port = "443", descr = "NAS", disabled = false },
+        { id = 1, interface = "wan", protocol = "udp", destination_port = "51820", target = "192.168.1.5", local_port = "51820", disabled = true } },
+    outbound = { { id = 0, interface = "wan", source = "192.168.1.0/24", nonat = true } },
+    onetoone = { { id = 0, interface = "wan", external = "10.0.0.2", source = "192.168.1.50" } },
+    routes = { { id = 0, network = "10.0.0.0/24", gateway = "WAN_DHCP", disabled = true } },
+    wgpeers = { { id = 3, publickey = "AbCd1234", enabled = false, tun = "tun_wg0", descr = "Phone" } },
+    ovpnconns = { { parent_id = 1, id = 0, common_name = "pat", remote_host = "1.2.3.4", connect_time_unix = 1000 } },
+    ipsec = { { con_id = "con1", state = "ESTABLISHED", remote_host = "1.2.3.4" } },
+    certs = { { id = 0, descr = "Web", valid_days_left = 90 }, { id = 1, descr = "VPN", valid_days_left = 5 }, { id = 2, descr = "Old", valid_days_left = -2 } },
+    defaultgw = { defaultgw4 = "WAN_DHCP", defaultgw6 = "" }, natmode = { mode = "hybrid" } })
+eq(M.aliasLine(d2.aliases[1]), "Hosts · 2 entries · Kids devices", "alias line")
+eq(d2.aliases[1].entries[1].detail, "Laptop", "an entry's description")
+eq(d2.aliases[1].entries[2].detail, "", "an entry without one")
+eq(d2.forwards[1].name, "NAS", "port forward by its description")
+eq(d2.forwards[2].name, "any:51820 to 192.168.1.5:51820", "port forward without one")
+eq(M.natLine(d2.forwards[1]), "WAN · TCP · wanip:443 → 192.168.1.50:443", "port forward line")
+eq(M.natLine(d2.forwards[2]):sub(1, 8), "Disabled", "disabled first")
+eq(M.natLine(d2.outbound[1]), "WAN · 192.168.1.0/24: no NAT", "outbound line")
+eq(M.natLine(d2.onetoone[1]), "WAN · 10.0.0.2 ↔ 192.168.1.50", "1:1 line")
+eq(M.natMode(d2.natmode), "Hybrid", "outbound mode")
+eq(M.routeLine(d2.routes[1]), "Disabled · 10.0.0.0/24 via WAN_DHCP", "route line")
+eq(M.find(d2, "wgpeer", "AbCd1234").num, 3, "WireGuard peer by its key, with its place")
+eq(d2.ovpnconns[1].key, "1:0", "an OpenVPN connection's key")
+eq(d2.ipsec[1].up, true, "IPsec established")
+eq(d2.defaultgw.inet, "WAN_DHCP", "default gateway")
+eq(d2.certs[1].name, "Old", "certificates soonest first")
+eq(M.certLine(d2.certs[1]), "Expired 2 days ago", "expired")
+eq(M.certLine(d2.certs[2]), "Expires in 5 days", "expires soon")
+eq(#M.attention(d2), 2, "two certificates need attention")
+eq(M.summary(d2), "2 certificates expiring", "in the summary too")
+local function certs(days) return M.data({ certs = { { id = 0, descr = "Web", valid_days_left = days } } }) end
+local cc = M.changes(certs(20), certs(14))
+eq(cc.add[1] and cc.add[1].text, "Certificate expires soon: Web", "a certificate coming close: a notification")
+eq(M.changes(certs(5), certs(90)).remove[1], "pfsense:cert:0", "renewed: it goes")
+eq(M.search(d2, "192.168.1.20")[1].kind, "alias", "search finds an alias by an entry")
+eq(M.search(d2, "nas")[1].kind, "forward", "search finds a port forward")
+local merged = M.merge(d2, M.data({ system = {} }))
+eq(merged.defaultgw.inet, "WAN_DHCP", "a status read keeps the default gateway")
+eq(#merged.forwards, 2, "and the NAT rules")
+
 -- search
 eq(#M.search(d, "nas"), 3, "search: the lease, the mapping and the override")
 eq(M.search(d, "aa:bb:cc:dd:ee:05")[1].kind, "static", "search by mac")
@@ -287,6 +331,14 @@ ANSWERS['{"unauth"}'] = { code = 401, status = "unauthorized", message = "Authen
 ANSWERS['{"rule100"}'] = { code = 200, data = { id = 1, tracker = 100 } }
 ANSWERS['{"static"}'] = { code = 200, data = { parent_id = "lan", id = 0, mac = "AA:BB:CC:DD:EE:02" } }
 ANSWERS['{"services"}'] = { code = 200, data = { { id = 0, name = "unbound" }, { id = 3, name = "ntpd" } } }
+ANSWERS['{"certs"}'] = { code = 200, data = { { id = 0, descr = "webConfigurator", valid_days_left = 3,
+    valid_until = "Oct 31 2026", prv = "PRIVATE KEY", crt = "CERTIFICATE" } } }
+ANSWERS['{"alias"}'] = { code = 200, data = { id = 2, name = "Kids", address = { "192.168.1.42" } } }
+ANSWERS['{"fwd"}'] = { code = 200, data = { id = 0, interface = "wan", target = "192.168.1.50", local_port = "443",
+    destination_port = "443", descr = "NAS" } }
+ANSWERS['{"states"}'] = { code = 200, data = { { interface = "lan", protocol = "tcp", source = "192.168.1.42:51000",
+    destination = "1.2.3.4:443", state = "ESTABLISHED:ESTABLISHED", bytes_total = 4096 } } }
+ANSWERS['{"pong"}'] = { code = 200, data = { output = "3 packets transmitted, 3 received", result_code = 0 } }
 -- (a full page of 200, then the rest)
 local page1 = {}
 for i = 1, 200 do page1[i] = { id = i - 1, ip = "192.168.1.20", mac = "aa:bb:cc:dd:ee:01" } end
@@ -308,6 +360,21 @@ local api = API.new({ url = "192.168.1.1", key = "s3cret" }, net({
     { "/services/dns_resolver/host_overrides", 200, '{"empty"}' },
     { "/status/wireguard/peers", 424, '{"bad"}' },
     { "/status/openvpn/servers", 200, '{"empty"}' },
+    { "/firewall/aliases", 200, '{"empty"}' },
+    { "/firewall/nat/port_forward%?id=0", 200, '{"fwd"}', method = "GET" },
+    { "/firewall/nat/port_forward$", 200, '{"ok"}', method = "PATCH" },
+    { "/firewall/nat/", 200, '{"empty"}', method = "GET" },
+    { "/routing/", 200, '{"empty"}', method = "GET" },
+    { "/vpn/wireguard/peers", 424, '{"bad"}' },
+    { "/status/openvpn/", 200, '{"empty"}' },
+    { "/status/ipsec/sas", 200, '{"empty"}' },
+    { "/system/certificates", 200, '{"certs"}' },
+    { "/services/acme/certificates", 424, '{"bad"}' },
+    { "/firewall/alias%?id=2", 200, '{"alias"}', method = "GET" },
+    { "/firewall/alias$", 200, '{"ok"}', method = "PATCH" },
+    { "/firewall/states", 200, '{"states"}', method = "GET" },
+    { "/firewall/states", 200, '{"ok"}', method = "DELETE" },
+    { "/diagnostics/ping", 200, '{"pong"}', method = "POST" },
     { "/firewall/rule%?id=1", 200, '{"rule100"}', method = "GET" },
     { "/firewall/rule$", 200, '{"ok"}', method = "PATCH" },
     { "/firewall/apply", 200, '{"ok"}' },
@@ -323,10 +390,37 @@ eq(all and all.hostname, nil, "no hostname is fine")
 eq(all and #all.leases, 201, "every page of a list")
 eq(all and all.skipped.arp, "forbidden", "a list the key can't read is skipped")
 eq(all and all.skipped.peers, "missing", "a package that isn't there is skipped")
+eq(all and all.certs[1].descr, "webConfigurator", "a certificate's name")
+eq(all and all.certs[1].prv, nil, "a certificate's private key never leaves the child")
+eq(all and all.certs[1].crt, nil, "nor the certificate itself")
+eq(all and all.skipped.acme, "missing", "no ACME package: skipped")
 sent = {}
 local st = api:readAll({ status = true })
 eq(st and st.leases, nil, "status only: no lists")
 eq(#sent, 6, "status only: six requests")
+
+-- aliases, NAT, states, ping
+sent = {}
+eq(api:setAlias(2, "Kids", { "192.168.1.42", "192.168.1.20" }, { "", "Tablet" }), true, "alias changed and applied")
+eq(sent[2].body, "{address={1=192.168.1.42,2=192.168.1.20},detail={1=,2=Tablet},id=2}", "the whole list of entries")
+eq(sent[3].url, "https://192.168.1.1/api/v2/firewall/apply", "then the firewall applied")
+eq(select(2, api:setAlias(2, "Guests", {}, {})), "changed", "another alias at that place")
+local fsig = { interface = "wan", target = "192.168.1.50", local_port = "443", destination_port = "443", descr = "NAS" }
+sent = {}
+eq(api:setNat("forward", 0, fsig, false), true, "port forward off")
+eq(sent[2].body, "{disabled=true,id=0}", "off is disabled")
+fsig.target = "192.168.1.20"
+eq(select(2, api:setNat("forward", 0, fsig, true)), "changed", "a different port forward at that place")
+sent = {}
+local st2 = api:states("192.168.1.42")
+eq(st2 and #st2, 1, "a device's connections, the same one only once")
+eq(sent[1].url, "https://192.168.1.1/api/v2/firewall/states?limit=200&source__startswith=192.168.1.42%3A", "from its address (not .420)")
+eq(sent[2].url:find("destination__startswith=192.168.1.42%3A", 1, true) ~= nil, true, "and to it")
+sent = {}
+eq(api:killStates("192.168.1.42"), true, "connections closed")
+eq(sent[1].method, "DELETE", "by a query")
+local pong = api:pingHost("1.2.3.4")
+eq(pong and pong.ok, true, "ping answered")
 
 sent = {}
 eq(api:setRule(1, "100", false), true, "rule changed and applied")

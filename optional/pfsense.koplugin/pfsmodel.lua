@@ -335,6 +335,173 @@ function M.filterLine(s)
     return out
 end
 
+-- ------------------------------------------------------------------ aliases, NAT, routing, VPN, certificates
+
+function M.alias(a)
+    local t = { id = num(a.id), name = str(a.name), type = str(a.type), descr = str(a.descr), entries = {} }
+    local details = list(a.detail)
+    for k, x in ipairs(list(a.address)) do
+        t.entries[#t.entries + 1] = { address = str(x), detail = str(details[k]) }
+    end
+    return t
+end
+
+local TYPE_TEXT = { host = _("Hosts"), network = _("Networks"), port = _("Ports"), url = _("URL"), urltable = _("URL table") }
+function M.aliasType(a) return TYPE_TEXT[a.type] or a.type end
+
+--- An alias's second line: "Hosts · 3 entries · Kids' devices".
+function M.aliasLine(a)
+    local parts = { M.aliasType(a) }
+    parts[#parts + 1] = #a.entries == 1 and _("1 entry") or T(_("%1 entries"), #a.entries)
+    if a.descr ~= "" then parts[#parts + 1] = a.descr end
+    return table.concat(parts, " · ")
+end
+
+-- The fields a NAT rule is told apart by (pfsapi's API.NAT[kind].sig), as read.
+local NAT_SIG = {
+    forward = { "interface", "target", "local_port", "destination_port", "descr" },
+    outbound = { "interface", "source", "target", "descr" },
+    onetoone = { "interface", "external", "source", "descr" },
+}
+
+local function sigOf(kind, r)
+    local t = {}
+    for __, f in ipairs(NAT_SIG[kind]) do t[f] = str(r[f]) end
+    return t
+end
+
+local function port(p) return str(p) ~= "" and (":" .. str(p)) or "" end
+
+function M.forward(r)
+    local t = { id = num(r.id), kind = "forward", iface = str(r.interface), protocol = str(r.protocol), source = where(r.source),
+        dest = where(r.destination), dport = str(r.destination_port), target = str(r.target), lport = str(r.local_port),
+        descr = str(r.descr), disabled = r.disabled == true, sig = sigOf("forward", r) }
+    t.name = t.descr ~= "" and t.descr or T(_("%1 to %2"), t.dest .. port(t.dport), t.target .. port(t.lport))
+    return t
+end
+
+function M.outboundRule(r)
+    local t = { id = num(r.id), kind = "outbound", iface = str(r.interface), protocol = str(r.protocol), source = where(r.source),
+        dest = where(r.destination), target = str(r.target), descr = str(r.descr), disabled = r.disabled == true,
+        nonat = r.nonat == true, sig = sigOf("outbound", r) }
+    t.name = t.descr ~= "" and t.descr or T(_("%1 to %2"), t.source, t.dest)
+    return t
+end
+
+function M.onetoone(r)
+    local t = { id = num(r.id), kind = "onetoone", iface = str(r.interface), external = str(r.external), source = where(r.source),
+        dest = where(r.destination), descr = str(r.descr), disabled = r.disabled == true, sig = sigOf("onetoone", r) }
+    t.name = t.descr ~= "" and t.descr or T(_("%1 to %2"), t.external, t.source)
+    return t
+end
+
+--- A NAT rule's second line: "WAN · TCP · any:443 → 192.168.1.50:443" ("Disabled" first when off).
+function M.natLine(r)
+    local parts = {}
+    if r.disabled then parts[#parts + 1] = _("Disabled") end
+    if r.iface ~= "" then parts[#parts + 1] = r.iface:upper() end
+    if r.protocol and r.protocol ~= "" and r.protocol ~= "any" then parts[#parts + 1] = r.protocol:upper() end
+    if r.kind == "forward" then
+        parts[#parts + 1] = T("%1 → %2", r.dest .. port(r.dport), r.target .. port(r.lport))
+    elseif r.kind == "outbound" then
+        parts[#parts + 1] = r.nonat and T(_("%1: no NAT"), r.source) or T("%1 → %2", r.source, r.target ~= "" and r.target or _("interface address"))
+    else
+        parts[#parts + 1] = T("%1 ↔ %2", r.external, r.source)
+    end
+    return table.concat(parts, " · ")
+end
+
+local NAT_MODES = { automatic = _("Automatic"), hybrid = _("Hybrid"), advanced = _("Manual"), disabled = _("Disabled") }
+function M.natMode(m) return NAT_MODES[str(m)] or str(m) end
+
+function M.gwconfig(g)
+    return { id = str(g.name), name = str(g.name), descr = str(g.descr), family = str(g.ipprotocol), iface = str(g.interface),
+        gateway = str(g.gateway), disabled = g.disabled == true }
+end
+
+function M.gwgroup(g)
+    local t = { id = str(g.name), name = str(g.name), descr = str(g.descr), family = str(g.ipprotocol), trigger = str(g.trigger), members = {} }
+    for __, x in ipairs(list(g.priorities)) do
+        if type(x) == "table" then t.members[#t.members + 1] = { gateway = str(x.gateway), tier = tonumber(x.tier) } end
+    end
+    return t
+end
+
+function M.route(r)
+    local t = { id = num(r.id), network = str(r.network), gateway = str(r.gateway), descr = str(r.descr), disabled = r.disabled == true }
+    t.name = t.descr ~= "" and t.descr or t.network
+    return t
+end
+
+--- A route's second line: "10.0.0.0/24 via WAN_DHCP" ("Disabled" first when off).
+function M.routeLine(r)
+    local s2 = T(_("%1 via %2"), r.network, r.gateway)
+    return r.disabled and (_("Disabled") .. " · " .. s2) or s2
+end
+
+function M.wgpeer(p)
+    local t = { id = str(p.publickey), key = str(p.publickey), num = num(p.id), enabled = p.enabled ~= false, tun = str(p.tun),
+        descr = str(p.descr), endpoint = str(p.endpoint), allowed = strings(p.allowedips) }
+    t.name = t.descr ~= "" and t.descr or (t.key:sub(1, 8) .. "…")
+    return t
+end
+
+function M.ovpnconn(c)
+    local t = { parent = num(c.parent_id), id = num(c.id), name = str(c.common_name), user = str(c.user_name), remote = str(c.remote_host),
+        vip = str(c.virtual_addr), rx = num(c.bytes_recv), tx = num(c.bytes_sent), since = tonumber(c.connect_time_unix) }
+    t.key = t.parent .. ":" .. t.id
+    if t.name == "" then t.name = t.user ~= "" and t.user or t.remote end
+    return t
+end
+
+function M.ovpnclient(c)
+    local t = { id = num(c.vpnid), name = str(c.name), status = str(c.status):lower(), state = str(c.state), remote = str(c.remote_host),
+        vip = str(c.virtual_addr), since = str(c.connect_time) }
+    t.up = t.status == "up" or t.state:upper() == "CONNECTED"
+    if t.name == "" then t.name = T(_("OpenVPN client %1"), t.id) end
+    return t
+end
+
+function M.ipsec(x)
+    local t = { id = str(x.con_id) ~= "" and str(x.con_id) or tostring(num(x.uniqueid)), state = str(x.state), remote = str(x.remote_host),
+        local_ = str(x.local_host), remoteId = str(x.remote_id), established = tonumber(x.established) }
+    t.name = t.id
+    t.up = t.state:upper() == "ESTABLISHED"
+    return t
+end
+
+function M.cert(c)
+    local t = { id = num(c.id), refid = str(c.refid), name = str(c.descr), type = str(c.type), from = str(c.valid_from),
+        ["until"] = str(c.valid_until), days = tonumber(c.valid_days_left) }
+    if t.name == "" then t.name = t.refid end
+    return t
+end
+
+function M.acmecert(c)
+    return { id = str(c.name), name = str(c.name), descr = str(c.descr), active = str(c.status) ~= "disabled" }
+end
+
+--- A certificate's second line: "Expires in 12 days" ("Expired 3 days ago", "Expires today").
+function M.certLine(c)
+    if not c.days then return c["until"] ~= "" and T(_("Valid until %1"), c["until"]) or _("Unknown expiry") end
+    if c.days < 0 then return -c.days == 1 and _("Expired 1 day ago") or T(_("Expired %1 days ago"), -c.days) end
+    if c.days == 0 then return _("Expires today") end
+    if c.days == 1 then return _("Expires tomorrow") end
+    return T(_("Expires in %1 days"), c.days)
+end
+
+-- A certificate needs looking at this many days before it runs out.
+M.CERT_DAYS = 14
+
+--- Whether a certificate runs out soon (or has).
+function M.certSoon(c) return c.days ~= nil and c.days <= M.CERT_DAYS end
+
+--- A firewall state (a connection): { iface, protocol, direction, source, dest, state, age, bytes }.
+function M.state(x)
+    return { iface = str(x.interface), protocol = str(x.protocol), direction = str(x.direction), source = str(x.source),
+        dest = str(x.destination), state = str(x.state), age = str(x.age), bytes = num(x.bytes_total) }
+end
+
 --- What a read brought, as sorted lists. raw: { system, version, gateways, interfaces,
 -- services, leases, arp, rules, statics, overrides, peers, ovpn, skipped }; lists not
 -- read this time stay out (nil), so the ones from before can be kept (M.merge).
@@ -367,6 +534,29 @@ function M.data(raw, now)
     each("overrides", M.override, byName)
     each("peers", M.peer, byName)
     each("ovpn", M.ovpn, byName)
+    each("aliases", M.alias, byName)
+    -- (NAT rules and routes in pfSense's order)
+    each("forwards", M.forward)
+    each("outbound", M.outboundRule)
+    each("onetoone", M.onetoone)
+    each("gwconfig", M.gwconfig, byName)
+    each("gwgroups", M.gwgroup, byName)
+    each("routes", M.route)
+    each("wgpeers", M.wgpeer, byName)
+    each("ovpnconns", M.ovpnconn, byName)
+    each("ovpnclients", M.ovpnclient, byName)
+    each("ipsec", M.ipsec, byName)
+    -- (certificates soonest to run out first)
+    each("certs", M.cert, function(a, b)
+        if (a.days or 1e9) ~= (b.days or 1e9) then return (a.days or 1e9) < (b.days or 1e9) end
+        return byName(a, b)
+    end)
+    each("acme", M.acmecert, byName)
+    if raw.defaultgw then
+        local g = list(raw.defaultgw)
+        d.defaultgw = { inet = str(g.defaultgw4), inet6 = str(g.defaultgw6) }
+    end
+    if raw.natmode then d.natmode = str(list(raw.natmode).mode) end
     return d
 end
 
@@ -375,7 +565,8 @@ end
 function M.merge(before, after)
     if not before then return after end
     for __, k in ipairs({ "system", "gateways", "interfaces", "services", "leases", "arp", "rules", "statics",
-        "overrides", "peers", "ovpn" }) do
+        "overrides", "peers", "ovpn", "aliases", "forwards", "outbound", "onetoone", "gwconfig", "gwgroups", "routes",
+        "wgpeers", "ovpnconns", "ovpnclients", "ipsec", "certs", "acme", "defaultgw", "natmode" }) do
         if after[k] == nil then after[k] = before[k] end
     end
     for k, v in pairs(before.skipped or {}) do
@@ -474,7 +665,9 @@ function M.sortOf(saved, list)
 end
 
 local KINDS = { gateway = "gateways", interface = "interfaces", service = "services", lease = "leases", arp = "arp",
-    rule = "rules", static = "statics", override = "overrides", peer = "peers", ovpn = "ovpn" }
+    rule = "rules", static = "statics", override = "overrides", peer = "peers", ovpn = "ovpn", alias = "aliases",
+    forward = "forwards", outbound = "outbound", onetoone = "onetoone", route = "routes", wgpeer = "wgpeers",
+    cert = "certs", gwconfig = "gwconfig", gwgroup = "gwgroups" }
 M.KINDS = KINDS
 
 --- One of the lists' items by kind ("gateway", "interface", …) and id.
@@ -692,6 +885,9 @@ function M.attention(d)
     for __, s in ipairs(d.services or {}) do
         if s.enabled and not s.running then out[#out + 1] = { kind = "service", item = s, why = _("Service stopped") } end
     end
+    for __, c in ipairs(d.certs or {}) do
+        if M.certSoon(c) then out[#out + 1] = { kind = "cert", item = c, why = M.certLine(c) } end
+    end
     return out
 end
 
@@ -713,6 +909,10 @@ function M.summary(d)
     local c = M.counts(d)
     if c.stopped == 1 then parts[#parts + 1] = _("1 service stopped")
     elseif c.stopped > 1 then parts[#parts + 1] = T(_("%1 services stopped"), c.stopped) end
+    local certs = 0
+    for __, x in ipairs(d.certs or {}) do if M.certSoon(x) then certs = certs + 1 end end
+    if certs == 1 then parts[#parts + 1] = _("1 certificate expiring")
+    elseif certs > 1 then parts[#parts + 1] = T(_("%1 certificates expiring"), certs) end
     if #parts == 0 then return _("All up") end
     return table.concat(parts, " · ")
 end
@@ -760,6 +960,10 @@ function M.changes(before, after)
         if not s.enabled then return nil end
         return s.running
     end, _("Service stopped: %1"))
+    track("cert", before.certs, after.certs, function(c)
+        if c.days == nil then return nil end
+        return not M.certSoon(c)
+    end, _("Certificate expires soon: %1"))
     return out
 end
 
@@ -785,6 +989,12 @@ function M.search(d, q)
         if hit(o.fqdn, o.descr, table.concat(o.ips, " "), table.concat(o.aliases, " ")) then add("override", o, M.overrideLine(o)) end
     end
     for __, r in ipairs(d.rules or {}) do if hit(r.descr) then add("rule", r, M.ruleLine(r)) end end
+    for __, a in ipairs(d.aliases or {}) do
+        local entries = {}
+        for __, e in ipairs(a.entries) do entries[#entries + 1] = e.address .. " " .. e.detail end
+        if hit(a.name, a.descr, table.concat(entries, " ")) then add("alias", a, M.aliasLine(a)) end
+    end
+    for __, r in ipairs(d.forwards or {}) do if hit(r.descr, r.target) then add("forward", r, M.natLine(r)) end end
     return out
 end
 
