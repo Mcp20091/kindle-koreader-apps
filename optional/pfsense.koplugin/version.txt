@@ -1,0 +1,2 @@
+2026-10-27 23:50
+Oct 27  pfSense: a new optional app for a pfSense firewall over its REST API package (the system's health, gateways, interfaces, services started, stopped or restarted, devices from DHCP leases and the ARP table with Wake-on-LAN, DHCP static mappings and DNS host overrides added, changed or deleted, firewall rules on or off, VPN status, the system and firewall logs, packages with updates, reboot and update), in optional/ with its own zip
