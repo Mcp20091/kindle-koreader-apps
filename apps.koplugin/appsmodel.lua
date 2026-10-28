@@ -162,6 +162,25 @@ function Model.duration(seconds)
     return math.floor(m / 60) .. " h" .. (m % 60 > 0 and (" " .. m % 60 .. " min") or "")
 end
 
+--- The book's lines under its title on the widgets sleep screen, from what the reader has in memory:
+-- b = { chapter, chapterLeft (pages), page, pages, avg (seconds a page), read (seconds) }.
+-- { "Chapter 3 · 12 pages left in the chapter", "Page 120 of 340 · About 3 h left · 5 h read" }.
+function Model.bookLines(b)
+    local out = {}
+    local chapter = b.chapter and b.chapter ~= "" and b.chapter or nil
+    local n = b.chapterLeft
+    local left = n and n >= 0 and (n == 0 and "Last page of the chapter" or n == 1 and "1 page left in the chapter"
+        or n .. " pages left in the chapter") or nil
+    if chapter or left then table.insert(out, chapter and left and (chapter .. " · " .. left) or chapter or left) end
+    if b.page and b.pages and b.pages > 0 then
+        local line = "Page " .. b.page .. " of " .. b.pages
+        if b.avg and b.avg > 0 and b.pages > b.page then line = line .. " · About " .. Model.duration((b.pages - b.page) * b.avg) .. " left" end
+        if b.read and b.read >= 60 then line = line .. " · " .. Model.duration(b.read) .. " read" end
+        table.insert(out, line)
+    end
+    return out
+end
+
 --- The most days read in a row, ever: `days` the days with reading ("2026-10-21"), any order.
 function Model.longestStreak(days)
     local sorted = {}

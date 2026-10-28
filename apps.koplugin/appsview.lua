@@ -1777,6 +1777,14 @@ local function tasksToday(todo)
     return out
 end
 
+--- "Overdue · Mon, Oct 26" for a task past its due date (To Do's day number), else nil.
+local function overdueText(t)
+    if not t.overdue then return nil end
+    local okD, Dates = pcall(require, "tododates")
+    local day = okD and t.due and try(function() return Dates.short(t.due) end)
+    return day and (_("Overdue") .. "  \u{00B7}  " .. day) or _("Overdue")
+end
+
 --- The next thing with a time: a Home Assistant calendar event, else a To Do reminder today.
 local function nextUp(apps)
     local ha = apps:plugin("homeassistant")
@@ -1909,8 +1917,9 @@ function View.drawSleep(apps, c)
                 break
             end
             c:box(28, y + 8, 18, 18, { r = 4, border = C.BLACK, bw = 1.3 })
-            c:text(58, y + 23, t.title, 13, { maxw = c.W - 190 })
-            if t.overdue then c:text(c.W - 28, y + 23, _("Overdue"), 11, { bold = true, align = "end" }) end
+            local due = overdueText(t)
+            c:text(58, y + 23, t.title, 13, { maxw = c.W - 86 - (due and c:width(due, 11) + 16 or 0) })
+            if due then c:text(c.W - 28, y + 23, due, 11, { bold = true, align = "end" }) end
             c:hline(58, y + 34, c.W - 86)
             y = y + 36
         end
@@ -1918,8 +1927,8 @@ function View.drawSleep(apps, c)
 end
 
 --- The parts the Apps widgets sleep screen can show, in their order.
-View.WIDGETS = { "clock", "book", "todo", "ha", "notifications" }
-View.WIDGET_NAMES = { clock = _("Clock"), book = _("Current book"), todo = _("To Do today"), ha = _("Home Assistant alerts"),
+View.WIDGETS = { "clock", "forecast", "book", "todo", "ha", "notifications" }
+View.WIDGET_NAMES = { clock = _("Clock and weather"), forecast = _("Weather forecast"), book = _("Current book"), todo = _("To Do today"), ha = _("Home Assistant alerts"),
     notifications = _("Latest notifications") }
 
 --- The parts in their order: as set (sleep_widgets_order), the others after in the usual order.
@@ -1995,7 +2004,19 @@ function View.drawWidgets(apps, c)
             local clock = string.format(twelve and "%d:%02d" or "%02d:%02d", hour, now.min)
             local w = c:text(46, yy + 78, clock, 56, { bold = true }) or 0
             if twelve then c:text(46 + w + 8, yy + 78, now.hour < 12 and "AM" or "PM", 18, { bold = true }) end
-            c:text(48, yy + 110, os.date("%A, %B ") .. now.day, 14, { color = C.GREY })
+            local date = os.date("%A, %B ") .. now.day
+            c:text(48, yy + 110, date, 14, { color = C.GREY })
+            -- The weather beside the time (Home Assistant's or Open-Meteo's, as set): now, then today's high and low.
+            local okW, w = pcall(function() return require("appsweather").now(apps) end)
+            if okW and w and (w.temp or w.text) then
+                local temp = w.temp or ""
+                local tw = c:width(temp, 22)
+                c:text(c.W - 46, yy + 86, temp, 22, { bold = true, align = "end" })
+                c:icon(w.alert and "triangle-alert" or w.icon, c.W - 46 - tw - 34, yy + 64, 26)
+                local line = (w.alert or w.text or "") .. (w.high and ("  \u{00B7}  " .. w.high .. " / " .. (w.low or "–")) or "")
+                c:text(c.W - 46, yy + 110, line, 11.5, { align = "end", color = C.GREY, bold = w.alert ~= nil,
+                    maxw = c.W - 92 - c:width(date, 14) - 24 })
+            end
             local powerd = Device:getPowerDevice()
             local battery = powerd and try(function() return powerd:getCapacity() end)
             local charging = powerd and try(function() return powerd:isCharging() end)
@@ -2012,6 +2033,7 @@ function View.drawWidgets(apps, c)
     parts.book = function()
         -- The book open now (its page, in memory), else the launcher's last recent book.
         local file, title, pct
+        local lines = {}
         local ReaderUI = package.loaded["apps/reader/readerui"]
         local ui = ReaderUI and ReaderUI.instance
         if ui and ui.document then
@@ -2019,13 +2041,23 @@ function View.drawWidgets(apps, c)
             local props = ui.doc_props or {}
             title = props.display_title or props.title
             pct = try(function() return math.floor(ui:getCurrentPage() / ui.document:getPageCount() * 100 + 0.5) end)
+            -- The chapter, the page, and from KOReader's reading statistics (in memory) the time
+            -- left at this pace and the time read.
+            lines = try(function()
+                local page, st = ui:getCurrentPage(), ui.statistics
+                return Model.bookLines{ page = page, pages = ui.document:getPageCount(),
+                    chapter = ui.toc and try(function() return ui.toc:getTocTitleByPage(page) end),
+                    chapterLeft = ui.toc and try(function() return ui.toc:getChapterPagesLeft(page) end),
+                    avg = st and st.avg_time,
+                    read = st and st.book_read_time and (st.book_read_time + (st.mem_read_time or 0)) }
+            end) or {}
         end
         local r = recent[1]
         if not file and r then file, title, pct = r.file, r.title, r.percent end
         if file then
             if not title or title == "" then title = Model.bookName(file) end
             pct = pct or 0
-            card(120, function(yy)
+            card(120 + #lines * 26, function(yy)
                 heading(yy, _("READING"))
                 local img = cachedCover(file, c:X(54), c:X(76))
                 if img then
@@ -2039,6 +2071,9 @@ function View.drawWidgets(apps, c)
                 c:box(116, yy + 76, c.W - 210, 8, { r = 4, border = C.BLACK })
                 if pct > 0 then c:box(117, yy + 77, (c.W - 212) * math.min(100, pct) / 100, 6, { r = 3, fill = C.BLACK }) end
                 c:text(c.W - 46, yy + 86, pct .. "%", 11, { align = "end", color = C.GREY })
+                for i, line in ipairs(lines) do
+                    c:text(116, yy + 92 + i * 26, line, 11.5, { color = C.GREY, maxw = c.W - 162 })
+                end
             end)
         end
     end
@@ -2054,8 +2089,9 @@ function View.drawWidgets(apps, c)
                 for i = 1, n do
                     local t, ty = list[i], yy + 38 + (i - 1) * 32
                     c:box(46, ty + 4, 18, 18, { r = 4, border = C.BLACK, bw = 1.3 })
-                    c:text(76, ty + 19, t.title, 13, { maxw = c.W - 210 })
-                    if t.overdue then c:text(c.W - 46, ty + 19, _("Overdue"), 11, { bold = true, align = "end" }) end
+                    local due = overdueText(t)
+                    c:text(76, ty + 19, t.title, 13, { maxw = c.W - 122 - (due and c:width(due, 11) + 16 or 0) })
+                    if due then c:text(c.W - 46, ty + 19, due, 11, { bold = true, align = "end" }) end
                 end
             end)
         end
@@ -2076,6 +2112,30 @@ function View.drawWidgets(apps, c)
                 for i = 1, n do c:text(76, yy + 56 + i * 26, lines[i], 12, { maxw = c.W - 130 }) end
             end)
         end
+    end
+    parts.forecast = function()
+        -- The next hours, then the next days, each a column: when, its icon, the temperature(s), the chance of rain.
+        local n = math.max(4, math.min(8, math.floor((c.W - 92) / 84)))
+        local okF, f = pcall(function() return require("appsweather").forecast(apps, n) end)
+        if not (okF and f) then return end
+        local rows = {}
+        if #f.hours > 0 then table.insert(rows, { list = f.hours, hours = true }) end
+        if #f.days > 0 then table.insert(rows, { list = f.days }) end
+        card(38 + #rows * 96, function(yy)
+            heading(yy, _("FORECAST"), agoText(f.at))
+            local cw = (c.W - 92) / n
+            for r, row in ipairs(rows) do
+                local ry = yy + 38 + (r - 1) * 96
+                if r > 1 then c:hline(46, ry - 4, c.W - 92) end
+                for i, e in ipairs(row.list) do
+                    local x = 46 + (i - 1) * cw + cw / 2
+                    c:text(x, ry + 16, e.label, 10.5, { align = "middle", color = C.GREY })
+                    c:icon(e.icon, x - 11, ry + 24, 22)
+                    c:text(x, ry + 66, row.hours and e.temp or (e.high .. " / " .. e.low), row.hours and 12 or 11, { align = "middle", bold = true, maxw = cw - 4 })
+                    if e.rain and e.rain > 0 then c:text(x, ry + 84, e.rain .. "%", 10, { align = "middle", color = C.GREY }) end
+                end
+            end
+        end)
     end
     parts.notifications = function()
         local okN, Notify = pcall(require, "appsnotify")

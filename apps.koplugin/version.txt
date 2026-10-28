@@ -1,6 +1,6 @@
-2026-10-27 20:55
+2026-10-27 21:25
+Oct 27  Widgets sleep screen: the weather beside the time (Clock and weather); a Weather forecast widget, the next hours and days; the book being read with its chapter and pages left in it, its page, about how long the rest takes and how long it's been read; an overdue task with the day it was due (the Summary sleep screen too)
 Oct 27  Launcher: an app's tile and quick-button icons from the app's own icons/ when the launcher hasn't them (its dir in PS.appInfo)
 Oct 27  Settings: an Optional apps group (FlashForge, Pangolin, NextDNS once installed), also when your groups were changed before
 Oct 27  Updates: Repository (was Update from), Branch (None, or a test branch to try changes before they are released), Select version (the latest or a previous one); the optional apps listed on the page, each with Install or Remove
 Oct 27  Launcher: the apps say what they are (PS.appInfo, appsinfo.lua): tiles and their lines, Settings groups, recent apps, gestures, notification names, Button labels and More to explore come from them, so a new app needs no change to the launcher
-Oct 27  Export check: made-up addresses in the FlashForge and Pangolin tests from the allowed examples; Pangolin's README names its Home Assistant integration without a link to an account; the HTTPS code's OID and PEM name and FlashForge's discovery address allowed
