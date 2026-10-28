@@ -271,7 +271,13 @@ App.pages.system = {
             for (const a of apps) {
               optional.append(h('div', {},
                 h('span', { class: 'grow' }, h('div', {}, a.title), a.description ? h('div', { class: 'small muted' }, a.description) : null),
-                a.installed
+                // (Installed but older than the launcher, so it has no tile: Update, not Remove.)
+                a.old
+                  ? h('button', { class: 'btn small primary', onclick: async () => {
+                      if (!await App.confirm('Update ' + a.title, 'This copy of ' + a.title + ' is older than the launcher, so it has no tile. Install it again from ' + o.tag + '? KOReader restarts after.', 'Update')) return;
+                      run(() => App.api('/api/update/install', { json: { ...from, optional: a.folder } }));
+                    } }, 'Update')
+                : a.installed
                   ? h('button', { class: 'btn small danger', onclick: async () => {
                       if (!await App.confirm('Remove ' + a.title, a.title + ' is taken off the Kindle; Undo a plugin update can bring it back. KOReader restarts after.', 'Remove', true)) return;
                       run(() => App.api('/api/update/remove', { json: { folder: a.folder } }));
