@@ -27,7 +27,9 @@ credit in README.md and ../guide/syncthing.md.
 - `start-syncthing`: shell script that makes the config the first time, writes `device-id`, and starts
   `syncthing serve` in the background with its PID in `/tmp/syncthing_koreader.pid`.
 - `tools/fetch-syncthing.sh [folder] [arm|amd64]`: downloads the pinned Syncthing release from GitHub and checks
-  its SHA-256. The 25 MB `syncthing` program is not in git (`.gitignore`); it ships in the install zip.
+  its SHA-256. The 25 MB `syncthing` program is in git, and the release build fetches and checks it again.
+- `tools/update-syncthing.sh [vX.Y.Z]`: moves the pinned release to a newer one (default: Syncthing's latest),
+  its checksums from the release's signed `sha256sum.txt.asc`; GitHub's Syncthing update workflow runs it weekly.
 - `cacert.pem` (from upstream), `icons/` (Lucide, ISC), `tests/run.lua`, `docs/` (user guide chapter and screenshots).
 
 ## Data it keeps

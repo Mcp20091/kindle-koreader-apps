@@ -2,11 +2,19 @@
 # made here. The Syncthing program downloaded from the Syncthing project and checked, the plugins
 # zipped as they go on the Kindle, each optional app (optional/) zipped on its own (kindle-<app>.zip,
 # which the launcher's updater installs on request), and the zips and the guide PDF put on the release.
+# The Syncthing update workflow calls it too, with the tag it pushed (a tag pushed by a workflow
+# doesn't start this one by itself).
 name: Release
 
 on:
   push:
     tags: ['v*']
+  workflow_call:
+    inputs:
+      tag:
+        description: The version tag to release (already pushed)
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -16,20 +24,24 @@ jobs:
     # (Only the public repo makes releases.)
     if: github.repository == 'Mcp20091/kindle-koreader-apps'
     runs-on: ubuntu-latest
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ inputs.tag || github.ref_name }}
 
       - name: The tag's message, for the notes
         run: |
-          git fetch --depth=1 origin "+refs/tags/${GITHUB_REF_NAME}:refs/tags/${GITHUB_REF_NAME}"
-          git tag -l --format='%(contents)' "$GITHUB_REF_NAME" > "$RUNNER_TEMP/notes.md"
+          git fetch --depth=1 origin "+refs/tags/${TAG}:refs/tags/${TAG}"
+          git tag -l --format='%(contents)' "$TAG" > "$RUNNER_TEMP/notes.md"
           cat "$RUNNER_TEMP/notes.md"
 
       - name: Syncthing for the Kindle (ARM), checked
         run: sh syncthing.koplugin/tools/fetch-syncthing.sh "$RUNNER_TEMP" arm
 
       - name: The zip
-        run: python3 tools/release_zip.py kindle-plugins.zip "$RUNNER_TEMP/syncthing" "$GITHUB_REF_NAME"
+        run: python3 tools/release_zip.py kindle-plugins.zip "$RUNNER_TEMP/syncthing" "$TAG"
 
       - name: The optional apps' zips
         run: |
@@ -45,9 +57,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           # (A tag with a dash, such as v1.2.3-test, is a pre-release: never the latest.)
-          case "$GITHUB_REF_NAME" in
+          case "$TAG" in
             *-*) latest="--prerelease" ;;
             *) latest="--latest" ;;
           esac
-          gh release create "$GITHUB_REF_NAME" kindle-*.zip "Kindle Apps Guide.pdf" \
-            --title "$GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/notes.md" --verify-tag $latest
+          gh release create "$TAG" kindle-*.zip "Kindle Apps Guide.pdf" \
+            --title "$TAG" --notes-file "$RUNNER_TEMP/notes.md" --verify-tag $latest
