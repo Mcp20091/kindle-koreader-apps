@@ -823,16 +823,29 @@ function U.lookUp(plugin, redraw)
     local look = U.look
     if look.busy or look.rel or look.why or not NetworkMgr:isConnected() then return end
     look.busy = true
+    local function optional(rel)
+        look.optionalRel = rel
+        U.optionalApps(plugin, rel, function(list, why2)
+            look.optional, look.busy = list, nil
+            if not list then look.why = why2 end
+            if redraw then redraw() end
+        end)
+    end
     local function with(rel, why)
         look.rel, look.why = rel, why
         if not rel then
             look.busy = nil
             return redraw and redraw()
         end
-        U.optionalApps(plugin, rel, function(list, why2)
-            look.optional, look.busy = list, nil
-            if not list then look.why = why2 end
-            if redraw then redraw() end
+        -- The optional apps from the version installed when it's a test one (its apps can be newer
+        -- than the latest release's, or not in it yet), else from the latest release.
+        local have = U.installed(plugin)
+        if rel.branch or not have or have == rel.tag or not have:find("-", 1, true) then return optional(rel) end
+        U.releases(function(list)
+            for __, r in ipairs(list or {}) do
+                if r.tag == have then return optional(r) end
+            end
+            optional(rel)
         end)
     end
     if fromBranch() then return branchNow(function(rel, newer) with(rel, not rel and newer or nil) end) end
@@ -891,10 +904,10 @@ function U.settingsRows(plugin, refresh)
     local look = U.look
     if look.optional and #look.optional > 0 then
         for __, o in ipairs(look.optional) do
-            rows[#rows + 1] = { o.title, o.installed and _("Remove") or _("Install"), function() U.optionalAction(plugin, o, look.rel) end }
+            rows[#rows + 1] = { o.title, o.installed and _("Remove") or _("Install"), function() U.optionalAction(plugin, o, look.optionalRel or look.rel) end }
         end
     elseif look.optional then
-        rows[#rows + 1] = { note = T(_("None in %1."), look.rel and look.rel.tag or U.repo()) }
+        rows[#rows + 1] = { note = T(_("None in %1."), (look.optionalRel or look.rel or {}).tag or U.repo()) }
     elseif look.busy then
         rows[#rows + 1] = { note = _("Looking them up…") }
     elseif look.why then

@@ -314,7 +314,7 @@ do
                         local items = {}
                         for __, o in ipairs(upd.optional) do
                             items[#items + 1] = { text = o.title .. "  \u{00B7}  " .. (o.installed and _("Remove") or _("Install")),
-                                fn = function() U.optionalAction(plugin, o, upd.rel) end }
+                                fn = function() U.optionalAction(plugin, o, upd.optionalRel or upd.rel) end }
                         end
                         require("appsko").list(_("Optional apps"), items)
                     end }

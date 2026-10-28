@@ -251,13 +251,13 @@ App.pages.system = {
           } catch (e) { p.show(e.message, 0, true); }
           busy(false);
         };
-        // The optional apps of the latest release.
-        let oseq = 0, latest = null;
+        // The optional apps of the test version installed, else of the latest release.
+        let oseq = 0, latest = null, optTag = null;
         const lookOptional = async () => {
           const mine = ++oseq;
           also.textContent = '';
           optional.replaceChildren(h('div', { class: 'small muted' }, 'Looking them up…'));
-          const from = { tag: latest };
+          const from = { tag: optTag };
           try {
             let o = await App.api('/api/update/optional', { json: from });
             while (o.pending && mine === oseq) { await sleep(1000); o = await App.api('/api/update/optional'); }
@@ -301,6 +301,7 @@ App.pages.system = {
             const all = App.arr(l.releases);
             const rel = all.filter((r) => !r.pre || u.tests || (!u.branch && r.tag === u.installed));
             latest = (all.find((r) => !r.pre) || {}).tag || null;
+            optTag = !u.branch && u.installed && u.installed.includes('-') && all.some((r) => r.tag === u.installed) ? u.installed : latest;
             if (rel.length) {
               version.replaceChildren(...rel.map((r) => h('option', { value: r.tag },
                 r.tag + (r.tag === latest ? ' · latest' : '') + (r.pre ? ' · test' : '') + (!u.branch && r.tag === u.installed ? ' · installed' : ''))));
@@ -311,7 +312,7 @@ App.pages.system = {
             }
             version.disabled = versionGo.disabled = !rel.length;
             if (back) back.disabled = !latest;
-            if (latest) lookOptional();
+            if (optTag) lookOptional();
           } catch (e) {
             if (mine !== seq) return;
             version.replaceChildren(h('option', {}, 'Couldn’t look it up'));
