@@ -22,7 +22,7 @@ To leave the launcher, open **Library** or a book, or tap **Exit KOReader**. Bac
 - **Search**: books, notebooks, tasks, Home Assistant's devices and more (see "Search").
 - **Refresh**: the tiles' lines worked out again, and the screen flashed clean.
 - **The bell**: Notifications from every app (see Finding your way around), with how many are new.
-- **⋮** has **Open on the web page**, **Restart KOReader** (after asking), **Help**, **Light** (on a Kindle with a front light), **Night mode**, **Refresh screen** and **Settings** (every app's).
+- **⋮** has **Open on the web page**, **Restart KOReader** (after asking), **Help**, **Recent apps**, **Light** (on a Kindle with a front light), **Night mode**, **Refresh screen** and **Settings** (every app's). **Help** is a short page on the home screen, the bar at the top of every app, Settings and Updates, and the gestures; its **User guide** button shows this guide's QR code, and downloads or opens its PDF on the Kindle.
 
 ### At a glance
 
