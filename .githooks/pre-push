@@ -1,0 +1,7 @@
+#!/bin/sh
+# The personal-data check on every commit the push sends (changes, messages, authors) and the branch name (tools/privacy_check.py).
+# On once per clone: git config core.hooksPath .githooks
+root=$(git rev-parse --show-toplevel)
+[ -f "$root/tools/privacy_check.py" ] || exit 0
+py=$(command -v python || command -v python3) || { echo "privacy check: no Python, so nothing was checked"; exit 1; }
+exec "$py" "$root/tools/privacy_check.py" --push

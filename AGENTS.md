@@ -82,7 +82,7 @@ A plugin folder is what gets copied to `koreader/plugins/` on the Kindle. An opt
 - **Pop-ups only as wide as what's in them** (the shared box sizes itself; buttons keep their size). A panel at the bottom (the handwriting strip, the Undo bar) passes taps above it to the box under it.
 - **Something running shows it.** Anything left running (the web server) has an ongoing notification (`PS.notify{ ongoing = true }`) and its icon in every app's clock corner, until it stops.
 - **The Kindle and the web page do the same things.** A setting or action added on one is added on the other, in the same words. On the web page a service named in a description is a link (`App.link`); on the Kindle it stays plain text (no browser there).
-- **No personal data anywhere**: code, comments, tests, fixtures, docs and screenshots use made-up values only (example addresses such as 192.168.1.50, paths such as `/mnt/us/documents`, invented names and devices).
+- **No personal data anywhere**: code, comments, tests, fixtures, docs and screenshots use made-up values only (example addresses such as 192.168.1.50, paths such as `/mnt/us/documents`, invented names and devices). The same goes for everything else that reaches GitHub: commit messages, branch names, pull requests, comments and release notes (see "Branches, commits and pull requests").
 - **Never slow the pen.** Nothing of ours runs in the input path of the Notes and Crosswords drawing areas. `apps.koplugin/tests/check_input_path.py` checks that no plugin replaces a function of KOReader's input path.
 - **Never block KOReader's loop.** Everything runs on one UIManager loop. Network or slow work goes to a child process (`ffiutil.runInSubProcess`, poll with `getNonBlockingReadSize` and `isSubProcessDone`, with a deadline, then `terminateSubProcess`), like To Do's sync.
 - **Each app works without the others**, except Crosswords, which needs Notes. Every shared call is guarded: `if PS.notify then … end`.
@@ -161,7 +161,21 @@ Each of these shipped once. The fix is in the code; the note is so a later chang
 - **A symbol missing from the Kindle's fonts** showed as a box. KOReader's UI fonts lack many symbols: use the bundled Lucide icons instead of Unicode symbols in the UI, and check any new glyph.
 - **Tests left behind** after a feature changed (a new launcher tile broke the tile-order tests). Update the expected values in the same change.
 - **Notes for coding agents on the Kindle.** AGENTS.md, CLAUDE.md and the docs, tests and tools folders ended up in the install zip when a plugin folder was copied whole. The install folder and the zip hold only what runs on the Kindle; build the zip with the one script that leaves those out.
-- **Personal data in screenshots and test fixtures** (real device names, task titles, paths). Screenshots and fixtures use made-up data; the export's check blocks real values.
+- **Personal data in screenshots and test fixtures** (real device names, task titles, paths). Screenshots and fixtures use made-up data; the privacy check (`tools/privacy_check.py`) blocks real values.
+
+## Branches, commits and pull requests
+
+This repo is public, and so is everything sent to GitHub: files, commit messages, branch names, pull requests and their comments, release notes and pictures. Deleting it later doesn't take it back (forks and caches keep it), so nothing personal goes in at all.
+
+- **One branch per task**, merged into `main` through a pull request.
+- **Turn on the privacy check once per clone**: `git config core.hooksPath .githooks`. Its hooks run `tools/privacy_check.py` on what's staged (pre-commit), on the commit message (commit-msg) and on every commit a push sends, with its author and the branch name (pre-push). GitHub's Privacy workflow checks pushes and pull requests again, a pull request's title and description too.
+- **Never get around it** (no `--no-verify`). If it flags a made-up example, add that to the allowed examples in the script; if it flags something real, change it to a made-up value.
+- **Check text before it goes up**: a pull request's title and description, a comment or release notes go through `python tools/privacy_check.py --text -` (on stdin) first.
+- **Commit by path** (`git add <files>`), never `git add -A` or `git commit -a`, and look at `git diff --cached` before committing. Files that stay on the PC are never staged: `*.local.*`, `todo.koplugin/client_id.txt`, `notes.koplugin/notes_defaults.lua`, `.env` (`.gitignore` has them, and the check blocks them).
+- **Commits are made under the account's GitHub noreply address** (`git config user.email`), never a personal one.
+- **Pictures** use made-up data only, carry no metadata (the check blocks EXIF and PNG text chunks) and are looked at by eye before committing: the check lists them.
+- **On the user's PC the check also knows the user's own values**, read from files that never go into git (`private-words.local.txt` in the main checkout: a word per line, or `re:` and a regular expression). Never copy those values anywhere else, a test or a commit message included.
+- **If something personal was pushed**, stop and tell the user before anything else; a new commit that removes it leaves it in the history.
 
 ## Testing
 
