@@ -642,6 +642,9 @@ end
 --- The app (page "settings": its settings, back from them closes the app, for
 -- the launcher's Settings list). An app already open is brought back on top.
 function Syncthing:show(page)
+    -- App lock (the launcher's): its passcode first, when this app is locked.
+    local lock = require("pluginshare").lock
+    if lock and lock.ask("syncthing", function() self:show(page) end) then return end
     local PS = require("pluginshare")
     if PS.noteRecent then pcall(PS.noteRecent, "syncthing") end
     if state.view then UIManager:close(state.view) end

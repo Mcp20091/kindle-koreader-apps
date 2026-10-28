@@ -1,0 +1,16 @@
+# The code checks that need no KOReader: every app asks App lock where it opens
+# (apps.koplugin/tests/check_app_lock.py).
+name: Checks
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: App lock in every app
+        run: cd apps.koplugin && python3 tests/check_app_lock.py

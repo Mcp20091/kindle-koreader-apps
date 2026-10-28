@@ -1,6 +1,6 @@
-2026-10-27 21:17
+2026-10-27 23:58
+Oct 27  Syncthing: App lock (Settings > Launcher > App lock) asks before it opens, from the Tools menu and gestures too
 Oct 27  Syncthing: the Kindle's program is Syncthing v2.1.7 (was v2.1.2), as released and checked
 Oct 27  Syncthing: says what it is to the launcher and the web page (its tile, gestures, its web tab, now in this folder)
 Oct 27  Syncthing: the Kindle's program (v2.1.2, 32-bit ARM, as released and checked) and its notice in git, so a branch's zip has them; the release zip and the export's zip add it once, runnable
 Oct 25  Lists with more pages end in a "More on page 2 of 3" bar (every app); Library Home: servers and folders first, with a setting
-Oct 25  ID box: a hold (a firm pen press) does what a tap does

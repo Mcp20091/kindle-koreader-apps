@@ -54,6 +54,9 @@ end
 
 --- Goes to a tile: an app open underneath is brought back (what is over it closed), else opened.
 function Switcher.go(view, tile)
+    -- (A locked app: the passcode first, then here again.)
+    local PS = require("pluginshare")
+    if PS.lock and PS.lock.ask(tile.key, function() Switcher.go(view, tile) end) then return end
     local w = not tile.pin and openWidget(view, tile)
     if w then
         local stack = UIManager._window_stack or {}

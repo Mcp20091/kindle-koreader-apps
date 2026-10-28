@@ -125,6 +125,11 @@ Each is a call on PluginShare, guarded so the app works without the launcher (`i
   item = fn(id) -> { label, icon, on, value, tap(done), hold } }`. They show under the launcher's clock
   and in the control center, wherever the user adds them: a tap does the quick thing and calls `done()`,
   a hold opens the app there. An app with nothing quick has none.
+- **App lock** (needed): at the top of its `show`, and of any function that opens it straight to a place,
+  `local lock = require("pluginshare").lock` and `if lock and lock.ask("<its tile's key>", function()
+  self:show(...) end) then return end`. Its `appInfo` entry already lists it in Settings > Launcher > App
+  lock, and the launcher locks its tile, notifications, search and quick buttons; this line is for
+  KOReader's Tools menu and gestures, which don't pass the launcher (AGENTS.md: App lock).
 - **AI**, if it asks one: `PS.ai.registerFeature` (AGENTS.md: AI only suggests).
 
 ## 6. The web page
@@ -153,6 +158,7 @@ The web page shows a tab for every app that has `web` in its entry; the web serv
 
 ## 8. Before it goes out
 
+- `python tests/check_app_lock.py` in `apps.koplugin` says it asks App lock (the Checks workflow runs it too).
 - `luajit tests/run.lua` in its folder, and every other plugin's tests still pass (the launcher's tile
   tests list the apps in order: add yours to the stand-in apps at the top of `apps.koplugin/tests/run.lua`).
 - **version.txt**: the date and time on the first line, then a line per change, newest first, at most five

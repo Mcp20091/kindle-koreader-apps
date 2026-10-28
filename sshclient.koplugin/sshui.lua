@@ -55,6 +55,9 @@ end
 --- Every PIN asked again at once (SSH's own and the hosts'): SSH's pages close.
 function UI.lock(plugin)
     M.unlocked = {}
+    -- (The launcher's App lock too, when SSH is locked there.)
+    local lock = require("pluginshare").lock
+    if lock then pcall(function() lock.get():relock() end) end
     UI.home()
     KO.toast(_("SSH locked"), 2)
 end
@@ -62,6 +65,9 @@ end
 --- Whether there's a PIN to lock with (SSH's own, or a host's).
 local function anyPin(plugin)
     if plugin.store.data.app_pin then return true end
+    local lock = require("pluginshare").lock
+    local ok, locked = pcall(function() return lock and lock.get():isLocked("ssh") end)
+    if ok and locked then return true end
     for __, h in ipairs(plugin.store.data.hosts or {}) do if h.pin then return true end end
     return false
 end
@@ -1058,6 +1064,8 @@ local function askPin(target, title, done)
     ask(title, "", function(pin)
         if M.unlock(target, pin) then
             UI.pinFails[target.id] = nil
+            -- (SSH's own, kept a moment so the launcher's App lock can take it over: withAppPin.)
+            if target.id == "app" then UI.lastPin = pin end
             return done()
         end
         f = UI.pinFails[target.id] or { n = 0 }
@@ -1067,15 +1075,48 @@ local function askPin(target, title, done)
     end, { number = true, password = true, width = 230, ok = _("Open") })
 end
 
---- SSH's own PIN (SSH settings > App PIN), as a host's: { id = "app", pin }.
+--- SSH's own PIN (SSH settings > App PIN), as a host's: { id = "app", pin }. Only without the
+-- launcher: with it, the launcher's App lock locks SSH (its PIN handed over: UI.adoptAppPin).
 function UI.appLock(plugin)
     local data = plugin and plugin.store and plugin.store.data
     return { id = "app", pin = data and data.app_pin }
 end
 
+--- SSH's own PIN handed to the launcher's App lock (one passcode for every app). With a
+-- passcode set there, SSH is ticked and its PIN goes; without, its PIN is kept until it's
+-- typed (`typed`), and then becomes the App lock passcode. True when it was handed over.
+function UI.adoptAppPin(plugin, typed)
+    local data = plugin and plugin.store and plugin.store.data
+    local lock = require("pluginshare").lock
+    if not (data and data.app_pin and lock) then return false end
+    local ok, done = pcall(function()
+        local l = lock.get()
+        if not l:isSet() then
+            if not typed then return false end
+            l:set("passcode", typed)
+        end
+        l:setLocked("ssh", true)
+        return true
+    end)
+    if not (ok and done) then return false end
+    data.app_pin = nil
+    M.unlocked.app = nil
+    plugin:saved()
+    KO.toast(_("SSH's PIN is now the App lock passcode: Settings > Launcher > App lock."), 4)
+    return true
+end
+
 --- done() once SSH's own PIN is typed (at once without one, or within 5 minutes of it).
 function UI.withAppPin(plugin, done)
-    askPin(UI.appLock(plugin or UI.plugin), _("PIN for SSH"), done)
+    plugin = plugin or UI.plugin
+    local target = UI.appLock(plugin)
+    if not M.needsPin(target) then return done() end
+    askPin(target, _("PIN for SSH"), function()
+        -- (Typed right: with the launcher, it becomes the App lock's passcode.)
+        if UI.lastPin then UI.adoptAppPin(plugin, UI.lastPin) end
+        UI.lastPin = nil
+        done()
+    end)
 end
 
 --- done() once the PINs are typed: SSH's own, then the host's.
@@ -1201,6 +1242,8 @@ function UI.refreshMain(plugin)
 end
 
 function UI.show(plugin)
+    -- (A passcode already set in the launcher's App lock: SSH's own PIN goes, SSH is ticked there.)
+    UI.adoptAppPin(plugin)
     if M.needsPin(UI.appLock(plugin)) then return UI.withAppPin(plugin, function() UI.show(plugin) end) end
     if UI.mainMenu then UI.mainMenu:onCloseAllMenus() end
     UI.plugin = plugin

@@ -208,6 +208,11 @@ Helpers more than one app needs live in the launcher (apps.koplugin) and are rea
   commands, id `"<host id>/<command id>"`, grouped by host. A tap runs the command as the app
   does (`Run.command`), a hold opens the host's page, and `item()` returns nil when it's gone.
 - Recent apps: `PS.noteRecent("ssh")`; the top page is kept in `plugin.screen`.
+- App lock: `PS.lock.ask("ssh", ...)` in `SSH:show` and the gesture's
+  `onRunSSHCommand`. SSH's own app PIN (`data.app_pin`) is only the fallback without the launcher:
+  with it, `UI.adoptAppPin` hands it over (SSH ticked when a passcode is set there; else the PIN
+  becomes the passcode the first time it's typed). Hosts' own PINs stay SSH's (`M.needsPin`).
+  ⋮ > Lock now locks both.
 - Pop-ups through `sshko.lua`, which uses `PS.popup` and falls back to
   KOReader's widgets without the launcher.
 - Undo after deleting a host, a command or a key (`PS.popup.undo`). Without it,

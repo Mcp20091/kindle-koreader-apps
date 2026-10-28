@@ -82,6 +82,9 @@ function Pangolin:onShowPangolin()
 end
 
 function Pangolin:show(page)
+    -- App lock (the launcher's): its passcode first, when this app is locked.
+    local lock = require("pluginshare").lock
+    if lock and lock.ask("pangolin", function() self:show(page) end) then return end
     return require("pgui").show(self, page)
 end
 
@@ -232,6 +235,9 @@ end
 
 --- Open Pangolin at a site's or resource's page (from a notification or search).
 function Pangolin:showItem(kind, id)
+    -- App lock (the launcher's): its passcode first, when this app is locked.
+    local lock = require("pluginshare").lock
+    if lock and lock.ask("pangolin", function() self:showItem(kind, id) end) then return end
     self:show()
     require("pgui").item(self, kind, id)
 end

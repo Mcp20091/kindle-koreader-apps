@@ -153,6 +153,17 @@ function Search.run(ui, q)
     if q == "" then return {} end
     local groups = {}
     local function add(key, name, icon, fn)
+        -- (An app locked in App lock: not searched until it's unlocked; one row to unlock it.)
+        local lock = PS0.lock
+        if lock and lock.get():needs(key) then
+            return table.insert(groups, { key = key, name = name, icon = icon, items = { { title = _("Locked"),
+                sub = _("Tap to unlock and search it too"), open = function()
+                    lock.run(key, function()
+                        local view = PS0.appsView and PS0.appsView()
+                        if view then Search.start(view, q) end
+                    end)
+                end } } })
+        end
         local ok, items = pcall(fn, q)
         if not ok then logger.warn("Apps search:", key, items) items = {} end
         if type(items) == "table" and #items > 0 then table.insert(groups, { key = key, name = name, icon = icon, items = items }) end

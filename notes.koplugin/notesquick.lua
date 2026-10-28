@@ -84,6 +84,9 @@ return function(Notes)
 
     --- Open the pad (or, open already, Done).
     function Notes:quickNote()
+        -- App lock (the launcher's): its passcode first, when this app is locked.
+        local lock = require("pluginshare").lock
+        if lock and lock.ask("notes", function() self:quickNote() end) then return end
         if self.quickEditor then
             if UIManager:isWidgetShown(self.quickEditor) then return self.quickEditor:close() end
             self.quickEditor = nil

@@ -289,6 +289,35 @@ function Quick.item(e)
     end
 end
 
+-- The app (App lock's key) an entry's button belongs to, or nil.
+local PIN_APP = { todo = "todo", todoview = "todo", note = "notes", notefolder = "notes", crossword = "notes", ha = "ha" }
+local BUILTIN_APP = { newtask = "todo", newnote = "notes" }
+local function appOf(e)
+    if e.app then return e.app end
+    if e.pin then return PIN_APP[e.pin.kind] end
+    return e.b and BUILTIN_APP[e.b]
+end
+
+--- A locked app's button (App lock): its tap, hold and controls ask the passcode first.
+local function guard(item, key)
+    local lock = PS().lock
+    if not (lock and key and lock.get():isLocked(key)) then return end
+    local function wrap(fn)
+        if type(fn) ~= "function" then return fn end
+        return function(...)
+            local args = { n = select("#", ...), ... }
+            lock.run(key, function() fn(unpack(args, 1, args.n)) end)
+        end
+    end
+    item.tap, item.hold = wrap(item.tap), wrap(item.hold)
+    if item.steps then item.steps = { minus = wrap(item.steps.minus), plus = wrap(item.steps.plus) } end
+    if item.media then
+        local m = {}
+        for k, v in pairs(item.media) do m[k] = wrap(v) end
+        item.media = m
+    end
+end
+
 --- The entries' buttons (those here), each with its entry.
 function Quick.items(list)
     local out = {}
@@ -296,6 +325,7 @@ function Quick.items(list)
         local item = Quick.item(e)
         if item then
             item.entry = e
+            guard(item, appOf(e))
             table.insert(out, item)
         end
     end
