@@ -40,11 +40,11 @@ OK_IPS = {'192.168.1.5', '192.168.1.10', '192.168.1.20', '192.168.1.42', '192.16
           '192.0.2.1', '255.255.255.255', '1.2.3.4', '10.0.0.1', '10.0.0.2', '192.168.1.2',
           '1.3.101.112', '2.5.29.17', '225.0.0.9'}  # OIDs (Ed25519 in the SSH key code, subject alternative names in
           # the web server's certificates) and FlashForge printers' discovery address (their protocol's own)
-OK_EMAILS = re.compile(r'(?i)^(pi@|user@|you@|me@|someone@|name@|root@|admin@|noreply@|.*@example\.(com|org|net)$'
+OK_EMAILS = re.compile(r'(?i)^(pi@|git@github\.com$|user@|you@|me@|someone@|name@|root@|admin@|noreply@|.*@example\.(com|org|net)$'
                        r'|.*@localhost|support@github\.com$|\d+\+[\w-]+(\[bot\])?@users\.noreply\.github\.com$)')
 # Files where a kind is expected (key handling code and its tests).
 OK_FILES = {
-    'private key': re.compile(r'sshclient\.koplugin/(sshkeys\.lua|tests/|sshko\.lua)|webpage\.koplugin/web/ssh\.js'
+    'private key': re.compile(r'sshclient\.koplugin/(sshkeys\.lua|tests/|sshko\.lua|web/ssh\.js)|webpage\.koplugin/web/ssh\.js'
                               r'|webpage\.koplugin/webssh\.lua|webpage\.koplugin/webtls\.lua'
                               r'|webpage\.koplugin/web/system\.js|tools/privacy_check\.py'),
 }
