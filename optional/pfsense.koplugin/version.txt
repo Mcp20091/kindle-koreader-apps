@@ -1,6 +1,6 @@
-2026-10-28 05:34
+2026-10-28 18:40
+Oct 28  pfSense: the web page adds a cron job only when it has a password (a cron job runs a command as root on the firewall)
 Oct 28  pfSense: Packages to install and Remove; pf tables (look up an address, empty a block list); the DHCP server's settings, address pools and options; the DNS Resolver's settings
 Oct 28  pfSense: the service watchdog, cron jobs (add, change, delete), NTP on or off with its time servers, and SSH on or off with its port
 Oct 28  pfSense: Aliases (add or remove entries, Add to an alias from a device), NAT (port forwards, outbound and 1:1 with switches), a device's Connections with Close all, and Ping
 Oct 28  pfSense: the default gateway, gateway groups and static routes; WireGuard peers on or off, OpenVPN Disconnect, OpenVPN clients and IPsec; certificates' expiry (with a notification) and ACME renew; Config history
-Oct 28  pfSense: Online and Offline (Running and Stopped) filters on Devices, Static mappings and Services

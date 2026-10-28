@@ -433,6 +433,7 @@ App.pages.pfsense = {
           if (!(await App.confirm('Delete this cron job?', c.command, 'Delete', true))) return;
           page.act('cron_delete', { id: c.id }, 'Cron job deleted');
         }))),
+        !s.locked ? h('p', { class: 'small muted' }, 'Adding a cron job here needs a password on the web page (on the Kindle: Web server > Password), since it runs a command as root on the firewall. On the Kindle it works without.') :
         page.button('Add', async () => {
           const r = await page.form('Add a cron job', [['minute', 'Minute (or @daily, @reboot…)', '0', '0'], ['hour', 'Hour', '3', '3'], ['mday', 'Day of the month', '*', '*'],
             ['month', 'Month', '*', '*'], ['wday', 'Day of the week', '*', '*'], ['who', 'User', 'root', 'root'], ['command', 'Command (full path)', '/usr/local/bin/backup.sh']]);

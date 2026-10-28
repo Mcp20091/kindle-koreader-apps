@@ -101,6 +101,9 @@ pfsapi.lua and its tests together when it changes.
 
 ## Rules
 
+- The web page adds a cron job (a command run as root on the firewall) only when its password is set
+  (`webpfsense.lua`, `NEEDS_PASSWORD`); without one, anyone on the Wi-Fi can open the page. The Kindle needs none.
+
 - Stopping a service, Reboot and Update ask first; so do installing or removing a package, emptying a pf
   table, and turning off a DHCP server, the DNS Resolver, NTP or SSH. Deleting a static mapping, host override,
   pool, custom option, cron job or time server, and no longer watching a service, have Undo (it adds it again);
