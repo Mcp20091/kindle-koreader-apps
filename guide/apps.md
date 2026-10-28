@@ -391,13 +391,13 @@ With **Sleep screen** set to **Summary**, the sleeping Kindle shows:
 - The date, "Sleeping since 3:05 PM" and the battery (with the charging sign on the charger).
 - The weather with today's high and low.
 - **NEXT**: the next event or reminder.
-- **TODAY**: today's and overdue tasks, with boxes.
+- **TODAY**: today's and overdue tasks, with boxes; an overdue one with the day it was due.
 
 With **Widgets** it shows the parts you pick (Settings > **Launcher** > **Widgets**), each in a box:
 
-- **Clock**: the time, the date and the battery.
-- **Current book**: its cover, title and how far you are.
-- **To Do today**: today's and overdue tasks.
+- **Clock and weather**: the time, the date and the battery, and beside them the weather now with today's high and low.
+- **Current book**: its cover, title and how far you are. While it's open: its chapter and the pages left in it, the page you're on, about how long the rest takes at your pace and how long you've read it (from KOReader's reading statistics).
+- **To Do today**: today's and overdue tasks; an overdue one with the day it was due.
 - **Home Assistant alerts**: whether the doors are locked and the garage shut, and the alerts you chose in Home Assistant's settings.
 - **Latest notifications**: the newest four.
 

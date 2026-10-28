@@ -168,6 +168,15 @@ check("streak broken", Model.streak({ "2026-10-18" }, "2026-10-21", "2026-10-20"
 check("streak over a month", Model.streak({ "2026-11-01", "2026-10-31" }, "2026-11-01", "2026-10-31"), 2)
 check("duration minutes", Model.duration(25 * 60), "25 min")
 check("duration hours", Model.duration(65 * 60), "1 h 5 min")
+check("book lines: all", table.concat(Model.bookLines{ chapter = "Chapter 3", chapterLeft = 12, page = 120, pages = 340, avg = 50, read = 5 * 3600 }, " | "),
+    "Chapter 3 · 12 pages left in the chapter | Page 120 of 340 · About 3 h 3 min left · 5 h read")
+check("book lines: one page left, no stats", table.concat(Model.bookLines{ chapterLeft = 1, page = 10, pages = 20 }, " | "),
+    "1 page left in the chapter | Page 10 of 20")
+check("book lines: last page, under a minute read", table.concat(Model.bookLines{ chapter = "", page = 20, pages = 20, avg = 40, read = 30 }, " | "),
+    "Page 20 of 20")
+check("book lines: a chapter's last page", table.concat(Model.bookLines{ chapter = "3. Inland", chapterLeft = 0 }, " | "),
+    "3. Inland · Last page of the chapter")
+check("book lines: nothing known", table.concat(Model.bookLines{}, " | "), "")
 -- AI (appsaiclient.lua): the requests to each service.
 do
 local json = dofile("tests/json.lua")
