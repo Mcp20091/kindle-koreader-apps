@@ -359,7 +359,7 @@ Settings > **Updates**:
 - **Select version**: the releases to pick from, the installed one and the latest marked. Picking a previous one goes back to it.
 
 While an update installs, a pop-up says how far it is: **Downloading… 40%** (or how many MB, for a branch), then **Checking the update: notes (5 of 10)** and **Installing notes (5 of 10)**, a plugin at a time. The Kindle keeps answering meanwhile, so there's no need to restart it.
-- **OPTIONAL APPS**: apps that aren't in the main install (FlashForge, for a FlashForge 3D printer; Pangolin, for a Pangolin server), listed on the page from where your updates come from (the latest release, or your branch) once the Kindle is on Wi-Fi. Each shows **Install**, or **Remove** once it's installed; installed ones are updated along with the rest. Removing one keeps it under **Undo a plugin update**, which can bring it back. KOReader restarts after each.
+- **OPTIONAL APPS**: apps that aren't in the main install (FlashForge, for a FlashForge 3D printer; Pangolin, for a Pangolin server; NextDNS, for a NextDNS profile), listed on the page from where your updates come from (the latest release, or your branch) once the Kindle is on Wi-Fi. Each shows **Install**, or **Remove** once it's installed; installed ones are updated along with the rest. Removing one keeps it under **Undo a plugin update**, which can bring it back. KOReader restarts after each.
 - **Check automatically**: on to start with. Once a day, only while the Kindle is already on Wi-Fi, a notification says when there's a newer release; tap it to see what's new and update. Until it's installed, the launcher's **Settings** tile says **Update available**.
 
 After an update, its notes show once when KOReader starts again (**What's new in …**).
