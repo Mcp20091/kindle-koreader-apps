@@ -323,10 +323,18 @@ function Screen_:render()
         end
         -- Settings to change right on the step (rows(): { { title, value, fn(refresh) } }), as the
         -- launcher's Settings pages: the name, its value at the right; a tap changes it.
+        -- (How many buttons of its own the step has, over Back and Next.)
+        local nb = (e.run and 1 or 0) + (type(e.help) == "table" and 1 or 0)
         if e.rows then
             local ok, list = pcall(e.rows)
+            list = ok and list or {}
             y = y + 4
-            for __, r in ipairs(ok and list or {}) do
+            -- (When they'd run into the step's buttons, without the grey lines, as Settings shows them.)
+            local need = 0
+            for __, r in ipairs(list) do need = need + (r.heading and 38 or r.sub and 62 or 44) end
+            local compact = y + need + 10 > bottom - 62 * nb - 12
+            for __, r in ipairs(list) do
+              if compact and r.sub then r = setmetatable({ sub = false }, { __index = r }) end
               -- ({ heading = "…" }: a grey header over the rows after it, as Settings pages have.)
               if r.heading then
                 c:text(60, y + 30, r.heading, 9.5, { bold = true, color = C.GREY })
@@ -368,8 +376,12 @@ function Screen_:render()
             end
         end
         y = y + 10
+        -- The step's own buttons sit right over Back and Next, so a long step never runs into them;
+        -- the lines under its text show only while they fit above those buttons.
+        local by = bottom - 62 * nb
+        local room = by - 12
         -- (A page to read, info = true: no Done or Not set up.)
-        if not e.info then
+        if not e.info and y + 4 <= room then
             -- (notDoneText: a word of the step's own, or a function for one that changes.)
             local notDone = type(e.notDoneText) == "function" and e.notDoneText() or e.notDoneText
             c:text(60, y, ok and (e.doneText or _("Done")) or (notDone or _("Not set up yet")), 12, { bold = true, color = ok and C.BLACK or C.GREY })
@@ -377,12 +389,12 @@ function Screen_:render()
         end
         if not ok and e.skipped then
             for __, l in ipairs(c:wrap(T(_("If you skip it: %1"), e.skipped), 11.5, c.W - 120, 4)) do
+                if y + 4 > room then break end
                 c:text(60, y, l, 11.5, { color = C.GREY })
                 y = y + 20
             end
-            y = y + 8
         end
-        y = y + 8
+        y = by
         if e.run then
             button(c, 60, y, c.W - 120, e.action or _("Set up"), not ok, function()
                 local okR, err = pcall(e.run)

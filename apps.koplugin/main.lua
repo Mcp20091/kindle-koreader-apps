@@ -301,13 +301,23 @@ do
             end
             rows[#rows + 1] = { title = _("Check automatically"), value = U.auto() and _("On") or _("Off"),
                 fn = function(refresh) U.setAuto(not U.auto()) refresh() end }
-            -- The optional apps of where updates come from, under their own header: each with
-            -- Install or Remove (KOReader restarts after), as on the Updates page.
-            if upd.optional and #upd.optional > 0 then rows[#rows + 1] = { heading = _("OPTIONAL APPS") } end
-            for __, o in ipairs(upd.optional or {}) do
-                rows[#rows + 1] = { title = o.title, sub = o.description and (#o.description > 70 and (o.description:sub(1, 67) .. "…") or o.description) or _("An optional app"),
-                    value = o.installed and _("Remove") or _("Install"),
-                    fn = function() U.optionalAction(plugin, o, upd.rel) end }
+            -- The optional apps of where updates come from: one row (how many
+            -- are installed, and which), opening the list of them, each with Install or Remove (KOReader
+            -- restarts after), as on the Updates page. One row however many there are, so the step fits.
+            if upd.optional and #upd.optional > 0 then
+                local names = {}
+                for __, o in ipairs(upd.optional) do if o.installed then names[#names + 1] = o.title end end
+                rows[#rows + 1] = { title = _("Optional apps"),
+                    sub = #names > 0 and T(_("Installed: %1"), table.concat(names, ", ")) or _("None installed. Tap to see what there is."),
+                    value = T(_("%1 of %2 installed"), #names, #upd.optional),
+                    fn = function()
+                        local items = {}
+                        for __, o in ipairs(upd.optional) do
+                            items[#items + 1] = { text = o.title .. "  \u{00B7}  " .. (o.installed and _("Remove") or _("Install")),
+                                fn = function() U.optionalAction(plugin, o, upd.rel) end }
+                        end
+                        require("appsko").list(_("Optional apps"), items)
+                    end }
             end
             return rows
         end }
