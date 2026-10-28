@@ -42,6 +42,31 @@ App.pages.pfsense = {
 
   button(text, fn) { return h('button', { class: 'btn small', onclick: fn }, text); },
 
+  // What each list is searched for (its key -> the words), while the page is open.
+  find: {},
+
+  // A list's Search box and, for one that sorts, Name or IP address and Reverse: the same sort as
+  // the Kindle's (one setting), the search on this page only.
+  tools(s, list) {
+    const page = this;
+    const sort = App.obj(App.obj(s.sort)[list]);
+    const search = h('input', { type: 'search', value: this.find[list] || '', placeholder: 'Search: a name, an address, a MAC address' });
+    search.addEventListener('change', () => { page.find[list] = search.value.trim(); page.reload(); });
+    return h('div', { class: 'row', style: 'gap:8px;flex-wrap:wrap;margin:4px 0 8px' }, search,
+      App.select([['name', 'Name'], ['ip', 'IP address']], sort.by || 'name',
+        (v) => page.act('sort', { list, by: v, reverse: !!sort.reverse })),
+      h('label', { class: 'small row', style: 'gap:6px' }, 'Reverse',
+        App.toggle(!!sort.reverse, (v) => page.act('sort', { list, by: sort.by || 'name', reverse: v }))));
+  },
+
+  // The items with the words searched for in any of their fields (a MAC typed with dashes too).
+  found(items, list) {
+    const q = (this.find[list] || '').toLowerCase();
+    if (!q) return items;
+    const q2 = /^[0-9a-f]{2}[-:]/.test(q) ? q.replace(/-/g, ':') : q;
+    return items.filter((x) => Object.values(x).some((v) => typeof v === 'string' && (v.toLowerCase().includes(q) || v.toLowerCase().includes(q2))));
+  },
+
   notAllowed(s, key, priv) {
     if (s.skipped[key] === 'missing' || s.skipped[key] === 'notfound') return h('p', { class: 'muted small' }, 'This pfSense doesn’t have it (a package it needs isn’t installed).');
     return h('p', { class: 'muted small' }, 'The API key can’t read these. Give the key’s user the ' + priv + ' privilege (or page-all) in System > User Manager.');
@@ -110,11 +135,13 @@ App.pages.pfsense = {
     const page = this;
     if (s.skipped.leases) return h('div', { class: 'card' }, h('h2', {}, 'Devices'), this.notAllowed(s, 'leases', 'api-v2-status-dhcp-server-leases-get'));
     if (!s.devices.length) return null;
-    return h('div', { class: 'card' }, h('h2', {}, 'Devices (DHCP leases)'),
-      ...s.devices.map((d) => this.row(d.name, d.line + ' · ' + d.mac,
+    const list = this.found(s.devices, 'leases');
+    return h('div', { class: 'card' }, h('h2', {}, 'Devices (DHCP leases)'), this.tools(s, 'leases'),
+      list.length ? null : h('p', { class: 'muted' }, 'Nothing has those words.'),
+      ...list.map((d) => this.row(d.name, d.line + ' · ' + d.mac,
         d.iface ? page.button('Wake', () => page.act('wake', { iface: d.iface, mac: d.mac }, 'Wake-on-LAN sent')) : null,
         this.pill(d.online, 'Online', 'Offline'))),
-      h('p', { class: 'small muted' }, 'The ARP table, VPN, logs and packages are on the Kindle.'));
+      h('p', { class: 'small muted' }, 'The ARP table, VPN, logs and packages are on the Kindle, with the same search and sort.'));
   },
 
   statics(s) {
@@ -129,9 +156,10 @@ App.pages.pfsense = {
         if (v) page.act('static_add', v, 'Static mapping added');
       }));
     if (s.skipped.statics) return h('div', { class: 'card' }, head, this.notAllowed(s, 'statics', 'api-v2-services-dhcp-server-static-mappings-get'));
-    return h('div', { class: 'card' }, head,
-      s.statics.length ? null : h('p', { class: 'muted' }, 'No static mappings yet.'),
-      ...s.statics.map((x) => this.row(x.name, [x.parent.toUpperCase(), x.ip, x.mac].filter(Boolean).join(' · '),
+    const list = this.found(s.statics, 'statics');
+    return h('div', { class: 'card' }, head, s.statics.length ? this.tools(s, 'statics') : null,
+      s.statics.length ? (list.length ? null : h('p', { class: 'muted' }, 'Nothing has those words.')) : h('p', { class: 'muted' }, 'No static mappings yet.'),
+      ...list.map((x) => this.row(x.name, [x.parent.toUpperCase(), x.ip, x.mac].filter(Boolean).join(' · '),
         page.button('Wake', () => page.act('wake', { iface: x.parent, mac: x.mac }, 'Wake-on-LAN sent')),
         page.button('Delete', async () => {
           if (!(await App.confirm('Delete ' + x.name + '?', 'Its static mapping goes; the device gets an address from the pool next time.', 'Delete', true))) return;
@@ -149,9 +177,10 @@ App.pages.pfsense = {
         if (v) page.act('override_add', v, 'Host override added');
       }));
     if (s.skipped.overrides) return h('div', { class: 'card' }, head, this.notAllowed(s, 'overrides', 'api-v2-services-dns-resolver-host-overrides-get'));
-    return h('div', { class: 'card' }, head,
-      s.overrides.length ? null : h('p', { class: 'muted' }, 'No host overrides yet.'),
-      ...s.overrides.map((o) => this.row(o.name, [o.ips, o.aliases ? 'Aliases: ' + o.aliases : '', o.descr].filter(Boolean).join(' · '),
+    const list = this.found(s.overrides, 'overrides');
+    return h('div', { class: 'card' }, head, s.overrides.length ? this.tools(s, 'overrides') : null,
+      s.overrides.length ? (list.length ? null : h('p', { class: 'muted' }, 'Nothing has those words.')) : h('p', { class: 'muted' }, 'No host overrides yet.'),
+      ...list.map((o) => this.row(o.name, [o.ips, o.aliases ? 'Aliases: ' + o.aliases : '', o.descr].filter(Boolean).join(' · '),
         page.button('Delete', async () => {
           if (!(await App.confirm('Delete ' + o.name + '?', 'The name stops resolving to ' + o.ips + '.', 'Delete', true))) return;
           page.act('override_delete', { id: o.id, host: o.host, domain: o.domain }, 'Host override deleted');

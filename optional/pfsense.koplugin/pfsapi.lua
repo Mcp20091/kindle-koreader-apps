@@ -168,10 +168,12 @@ function API:packages()
     return self:all("/system/packages")
 end
 
---- The newest lines of a log (kind: "system" or "firewall"), newest first, or nil and why.
+--- A log's lines as pfSense keeps them (kind: "system" or "firewall"), or nil and why. All of
+-- them: a log line's id is only its place in the file, which the API won't sort by ("sort_by must
+-- be a valid field"), and it doesn't say how many there are; pfSense keeps its logs short (it
+-- rotates them), and pfsmodel.newest keeps the last ones.
 function API:log(kind)
-    local d, why = self:request("GET", "/status/logs/" .. kind,
-        { limit = M.LOG_LINES, sort_by = "id", sort_order = "SORT_DESC" }, nil, 30)
+    local d, why = self:request("GET", "/status/logs/" .. kind, { limit = 0 }, nil, 40)
     if not d then return nil, why end
     return type(d) == "table" and d or {}
 end

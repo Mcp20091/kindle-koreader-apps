@@ -11,7 +11,8 @@ Your [pfSense](https://www.pfsense.org) firewall on a Kindle, over the [REST API
 - **DNS host overrides** (the DNS Resolver's): **Add**, change the host, domain, addresses, aliases or description, **Delete** (with Undo).
 - **Firewall rules**: by interface, each with a switch (applied at once).
 - **VPN**: WireGuard peers (with the WireGuard package) and OpenVPN servers with who's connected.
-- **Logs**: the system and firewall logs, newest first; firewall lines as pass or block, from and to.
+- **Logs**: the System, Firewall, DHCP, Authentication, OpenVPN and REST API logs, newest first; firewall lines as pass or block, from and to.
+- **Search and sort**: Devices, the ARP table, Static mappings and DNS overrides have **Search** (a name, an IP or MAC address, a word of the description) and sort by **Name** or **IP address**, with **Reverse**; Services, Firewall rules and the logs have Search. The sort is kept, and is the same on the web page.
 - **Packages**: installed ones, with the ones that have an update first.
 - **Update pfSense** and **Reboot** (⋮, both ask first).
 - **With the launcher**: its tile (`ShowPfSense`, line "All up · 14 devices online"), Settings, search (gateways, interfaces, services, devices, mappings, overrides, rules), a step in Set up your Kindle, quick buttons (the status, any firewall rule on or off, Wake any static mapping), Test connection (the API, then the key), the backup (the key only with Include keys and sign-ins), notifications (a gateway, interface or service gone down), and a pfSense tab on the web page.

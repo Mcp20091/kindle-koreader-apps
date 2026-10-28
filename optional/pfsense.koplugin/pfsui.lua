@@ -416,6 +416,59 @@ local function listItems(plugin, name, priv, fn)
     end
 end
 
+-- ------------------------------------------------------------------ searching and sorting lists
+
+-- What each list is searched for now (its key -> the words as typed), while KOReader runs.
+UI.find = {}
+
+local function short(s, n)
+    if #s <= n then return s end
+    return s:sub(1, n - 1) .. "…"
+end
+
+--- The row of chips over a list: Search (or the words searched, with Clear), and for a list
+-- that sorts, Name, IP address and Reverse. Returns the words searched for, in lower case.
+local function controls(plugin, key, t, sortable)
+    local q = UI.find[key]
+    local chips = {}
+    if q and q ~= "" then
+        chips[#chips + 1] = { text = T(_("“%1” · Clear"), short(q, 16)), on = true,
+            fn = function() UI.find[key] = nil UI.refreshAll() end }
+    else
+        chips[#chips + 1] = { text = _("Search"), fn = function()
+            ask(_("Search"), "", function(v)
+                v = trim(v)
+                UI.find[key] = v ~= "" and v or nil
+                UI.refreshAll()
+            end, { ok = _("Search"), okIcon = "search",
+                description = _("A name, an IP address, a MAC address or a word of the description.") })
+        end }
+    end
+    if sortable then
+        local by, reverse = plugin:sortOf(key)
+        local function sortBy(b, r)
+            plugin:setSort(key, b, r)
+            UI.refreshAll()
+        end
+        chips[#chips + 1] = { text = _("Name"), on = by == "name", fn = function() sortBy("name", reverse) end }
+        chips[#chips + 1] = { text = _("IP address"), on = by == "ip", fn = function() sortBy("ip", reverse) end }
+        chips[#chips + 1] = { text = _("Reverse"), on = reverse, fn = function() sortBy(by, not reverse) end }
+    end
+    t[#t + 1] = { chips = chips }
+    return q and q:lower() or nil
+end
+
+--- A list as it shows now: sorted as chosen (sortable lists) and searched.
+local function shown(plugin, d, key, q)
+    local list = M.SORTABLE[key] and plugin:sortedList(key) or d[key]
+    return M.filter(list, q)
+end
+
+--- What a searched list says when nothing has the words.
+local function noneFound(t, q)
+    if q then t[#t + 1] = { message = T(_("Nothing has “%1”."), q) } end
+end
+
 -- ------------------------------------------------------------------ gateways and interfaces
 
 function UI.gateways(plugin)
@@ -490,8 +543,11 @@ end
 
 function UI.services(plugin)
     listPage(plugin, _("Services"), listItems(plugin, "services", "api-v2-status-services-get", function(d, t)
-        t[#t + 1] = { band = _("SERVICES"), right = tostring(#d.services) }
-        for __, s in ipairs(d.services) do
+        local q = controls(plugin, "services", t)
+        local list = shown(plugin, d, "services", q)
+        t[#t + 1] = { band = _("SERVICES"), right = tostring(#list) }
+        if #list == 0 then noneFound(t, q) end
+        for __, s in ipairs(list) do
             t[#t + 1] = { text = s.name, sub = s.key ~= s.name and s.key or nil, icon = "cpu", chevron = true,
                 dot = s.enabled and dotOf(s.running) or nil, right = M.serviceState(s),
                 callback = function() UI.service(plugin, s.id) end }
@@ -550,9 +606,11 @@ end
 function UI.devices(plugin)
     listPage(plugin, _("Devices"), listItems(plugin, "leases", "api-v2-status-dhcp-server-leases-get", function(d, t)
         local c = M.counts(d)
+        local q = controls(plugin, "leases", t, true)
+        local list = shown(plugin, d, "leases", q)
         t[#t + 1] = { band = _("DHCP LEASES"), right = T(_("%1 online"), c.online) }
-        if #d.leases == 0 then t[#t + 1] = { message = _("No DHCP leases.") } end
-        for __, l in ipairs(d.leases) do
+        if #d.leases == 0 then t[#t + 1] = { message = _("No DHCP leases.") } elseif #list == 0 then noneFound(t, q) end
+        for __, l in ipairs(list) do
             t[#t + 1] = { text = l.name, sub = M.leaseLine(l), icon = "laptop", dot = dotOf(l.online), chevron = true,
                 callback = function() UI.device(plugin, l.id) end }
         end
@@ -593,9 +651,11 @@ end
 
 function UI.arpTable(plugin)
     listPage(plugin, _("ARP table"), listItems(plugin, "arp", "api-v2-diagnostics-arp-table-get", function(d, t)
-        t[#t + 1] = { band = _("ARP TABLE"), right = tostring(#d.arp) }
-        if #d.arp == 0 then t[#t + 1] = { message = _("The ARP table is empty.") } end
-        for __, a in ipairs(d.arp) do
+        local q = controls(plugin, "arp", t, true)
+        local list = shown(plugin, d, "arp", q)
+        t[#t + 1] = { band = _("ARP TABLE"), right = tostring(#list) }
+        if #d.arp == 0 then t[#t + 1] = { message = _("The ARP table is empty.") } elseif #list == 0 then noneFound(t, q) end
+        for __, a in ipairs(list) do
             t[#t + 1] = { text = a.name ~= a.ip and (a.name .. " · " .. a.ip) or a.ip, sub = M.arpLine(a), icon = "list",
                 chevron = true, callback = function() UI.arpEntry(plugin, a.id) end }
         end
@@ -713,9 +773,11 @@ end
 function UI.statics(plugin)
     listPage(plugin, _("Static mappings"), listItems(plugin, "statics", "api-v2-services-dhcp-server-static-mappings-get", function(d, t)
         t[#t + 1] = { tiles = { { icon = "plus", text = _("Add"), primary = true, fn = function() UI.addStatic(plugin) end } }, cols = 3 }
-        if #d.statics == 0 then t[#t + 1] = { message = _("No static mappings yet.") } end
+        local q = controls(plugin, "statics", t, true)
+        local list = shown(plugin, d, "statics", q)
+        if #d.statics == 0 then t[#t + 1] = { message = _("No static mappings yet.") } elseif #list == 0 then noneFound(t, q) end
         local by, order = {}, {}
-        for __, s in ipairs(d.statics) do
+        for __, s in ipairs(list) do
             if not by[s.parent] then by[s.parent] = {} order[#order + 1] = s.parent end
             table.insert(by[s.parent], s)
         end
@@ -814,9 +876,11 @@ end
 function UI.overrides(plugin)
     listPage(plugin, _("DNS host overrides"), listItems(plugin, "overrides", "api-v2-services-dns-resolver-host-overrides-get", function(d, t)
         t[#t + 1] = { tiles = { { icon = "plus", text = _("Add"), primary = true, fn = function() UI.addOverride(plugin) end } }, cols = 3 }
-        t[#t + 1] = { band = _("HOST OVERRIDES"), right = tostring(#d.overrides) }
-        if #d.overrides == 0 then t[#t + 1] = { message = _("No host overrides yet.") } end
-        for __, o in ipairs(d.overrides) do
+        local q = controls(plugin, "overrides", t, true)
+        local list = shown(plugin, d, "overrides", q)
+        t[#t + 1] = { band = _("HOST OVERRIDES"), right = tostring(#list) }
+        if #d.overrides == 0 then t[#t + 1] = { message = _("No host overrides yet.") } elseif #list == 0 then noneFound(t, q) end
+        for __, o in ipairs(list) do
             t[#t + 1] = { text = o.fqdn, sub = M.overrideLine(o), icon = "globe", chevron = true,
                 callback = function() UI.override(plugin, o.id) end }
         end
@@ -875,9 +939,12 @@ end
 
 function UI.rules(plugin)
     listPage(plugin, _("Firewall rules"), listItems(plugin, "rules", "api-v2-firewall-rules-get", function(d, t)
-        if #d.rules == 0 then t[#t + 1] = { message = _("No firewall rules.") } end
+        -- (no sorting: rules stay in the order pfSense matches them)
+        local q = controls(plugin, "rules", t)
+        local list = shown(plugin, d, "rules", q)
+        if #d.rules == 0 then t[#t + 1] = { message = _("No firewall rules.") } elseif #list == 0 then noneFound(t, q) end
         local by, order = {}, {}
-        for __, r in ipairs(d.rules) do
+        for __, r in ipairs(list) do
             local key = r.floating and "floating" or (r.ifaces[1] or "")
             if not by[key] then by[key] = {} order[#order + 1] = key end
             table.insert(by[key], r)
@@ -990,11 +1057,19 @@ function UI.logs(plugin)
         end }
     end
     p = page(_("Logs"), function()
-        local t = { { chips = { chip("system", _("System")), chip("firewall", _("Firewall")) } } }
+        local kinds = {}
+        for __, k in ipairs(M.LOGS) do kinds[#kinds + 1] = chip(k.id, k.name) end
+        local t = { { chips = kinds } }
+        local q = controls(plugin, "logs", t)
         if busy and not lines then t[#t + 1] = { message = _("Reading…") } return t end
         if not lines then t[#t + 1] = { message = why or _("Reading…") } return t end
         if #lines == 0 then t[#t + 1] = { message = _("The log is empty.") } return t end
+        local found = {}
         for __, s in ipairs(lines) do
+            if M.matches({ s }, q) then found[#found + 1] = s end
+        end
+        if #found == 0 then noneFound(t, q) end
+        for __, s in ipairs(found) do
             local l = M.logLine(s)
             local f = kind == "firewall" and M.filterLine(s)
             if f and f.src then

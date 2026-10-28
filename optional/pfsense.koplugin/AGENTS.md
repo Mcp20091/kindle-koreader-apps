@@ -39,6 +39,11 @@ pfsapi.lua and its tests together when it changes.
   every read; the lists (leases, arp, rules, statics, overrides, peers, ovpn) on the first read, while a page
   showing one is on top, and on ⟳ (`pfsmodel.merge` keeps them between). Packages (slow: pfSense asks its
   package server) and logs are read only when their page opens.
+- Logs (`M.LOGS`: system, firewall, dhcp, auth, openvpn, packages/restapi) come whole (`limit=0`): a log
+  line's `id` is only its place in the file and the API refuses `sort_by=id` ("must be a valid field"), so
+  `pfsmodel.newest` keeps the last 100, newest first (or as they are, if they came newest first).
+- Interfaces: some versions say `enable = false` for interfaces that are on; one that's up or has an
+  address counts as on.
 - Left out on purpose: updating a package (the API has no such call: the Packages page says to use System >
   Package Manager), firewall aliases, NAT, user management, the command prompt, halt.
 
@@ -54,7 +59,8 @@ pfsapi.lua and its tests together when it changes.
   DNS host overrides, Firewall rules, VPN, Logs, Packages, Details, Settings, setup), and reading every so
   often while a live page is on top (`UI.poll`).
 - `pfsmodel.lua`: plain Lua, tested: the lists as tables, words for states, sizes, lines, counts, attention,
-  the launcher's line, notifications between two reads (`changes`), search, log lines (`logLine`,
+  the launcher's line, notifications between two reads (`changes`), search, the lists' sort and search
+  (`sorted`, `filter`, `matches`; the sort is the reader setting `pfsense_sort`, shared with the web page), log lines (`logLine`,
   `filterLine` for pfSense's filterlog CSV).
 - `pfsapi.lua`: the requests (blocking: only in a child process). `API.new(cfg, request)`: the tests pass a
   stand-in network.
