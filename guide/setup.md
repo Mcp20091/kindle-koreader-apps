@@ -79,7 +79,7 @@ Nothing to sign up for. Without Home Assistant, the launcher's **Weather** tile 
 
 ## Updates
 
-Nothing to sign up for. Set up your Kindle has an **Updates** step right after Wi-Fi: it says where updates are (Settings > **Updates**, at the top of Settings), looks for a new version (tap it to see what's new and update) and lists the optional apps, extra apps you can add such as FlashForge, each with **Install**. **Check automatically** is there too.
+Nothing to sign up for. Set up your Kindle has an **Updates** step right after Wi-Fi: it says where updates are (Settings > **Updates**, at the top of Settings), looks for a new version (tap it to see what's new and update) and lists the optional apps (apps that aren't in the main install, such as FlashForge), each with **Install** or **Remove**. **Check automatically** is there too.
 
 ## Library
 

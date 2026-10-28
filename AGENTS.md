@@ -26,7 +26,7 @@ Then go through this list. Each line is Scribe-specific, with where it lives and
 | Layouts in units of the screen: one unit is the shorter side / 620 (3 px on the Scribe) | `apps.koplugin/appscanvas.lua` and each app's canvas | Scales by itself; look at every screen at the device's size in the emulator for anything cramped. |
 | The emulator at the Scribe's size | the Testing section, each plugin's AGENTS.md (`EMULATE_READER_W/H/DPI`) | Use the device's width, height and dpi. |
 | The guide PDF at the Scribe's page size, and written for it (the pen, its screen) | `apps.koplugin/docs/guide/build.py` (`PAGE`), `guide/` | Set `PAGE` to the device's screen; reword or drop the pen parts. |
-| Updates come from this repo | Settings > Launcher > Update from (`apps.koplugin/appsupdate.lua`, `DEFAULT_REPO`) | In a fork, set `DEFAULT_REPO` to it (or the user sets Update from), or this repo's releases overwrite their changes. |
+| Updates come from this repo | Settings > Updates > Repository (`apps.koplugin/appsupdate.lua`, `DEFAULT_REPO`) | In a fork, set `DEFAULT_REPO` to it (or the user sets Update from), or this repo's releases overwrite their changes. |
 
 The rest (the power manager, the sleep cover, lipc, the firewall, Syncthing's 32-bit ARM program) is the same on the Kindles KOReader runs on. As anywhere here, prove device behaviour with a log-only probe on the device before building on it.
 
@@ -45,7 +45,7 @@ apps.koplugin/          the launcher, and the shared pieces every app uses (thro
 homeassistant.koplugin  todo.koplugin  notes.koplugin  crosswords.koplugin (needs Notes)
 wikipedia.koplugin  syncthing.koplugin  sshclient.koplugin  webpage.koplugin (the web server)
 library.koplugin        books and folders (stands in for KOReader's file browser; the reader stays KOReader's)
-optional/               extra apps you can add, not in the main install zip: each folder and its own
+optional/               apps not everyone needs, not in the main install zip: each folder and its own
                         zip (build-zip.py). flashforge.koplugin: a FlashForge 3D printer over the Wi-Fi;
                         pangolin.koplugin: a Pangolin server's sites, resources and clients (its Integration API)
 guide/                  the user guide: one Markdown chapter per app, img/, build.py, chapters.txt

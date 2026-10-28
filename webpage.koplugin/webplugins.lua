@@ -324,14 +324,15 @@ function Web.routes(server, plugin)
     server:route("GET", "^/api/update$", function(req, res)
         local U = updater()
         if not U then return res:json({ launcher = false }) end
-        res:json({ launcher = true, repo = U.repo(), default = U.DEFAULT_REPO, installed = U.installedText(plugin), auto = U.auto() })
+        res:json({ launcher = true, repo = U.repo(), default = U.DEFAULT_REPO, installed = U.installedText(plugin), auto = U.auto(),
+            branch = U.branchName and U.branchName() or nil })
     end)
     server:route("POST", "^/api/update/list$", function(req, res)
         local U = updater()
         if not U then return res:error(404, "The launcher (apps.koplugin) isn't installed") end
         local repo = tostring(req.json().repo or ""):gsub("^%s+", ""):gsub("%s+$", ""):gsub("^https?://github%.com/", ""):gsub("/+$", "")
         if repo == "" then repo = U.DEFAULT_REPO end
-        if not repo:match("^[%w%-%._]+/[%w%-%._]+$") then return res:error(400, "Type it as owner/repo, as on GitHub.") end
+        if not repo:match("^[%w%-%._]+/[%w%-%._]+$") then return res:error(400, "Type it as owner/repository, as on GitHub (such as " .. U.DEFAULT_REPO .. ").") end
         local list = { repo = repo, pending = true }
         Web.updates = list
         U.releases(function(releases, why)

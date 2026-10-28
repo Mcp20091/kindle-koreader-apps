@@ -12,9 +12,9 @@ its run bit.
 With Check automatically on (it is to start with), once a day while the Kindle is
 already on Wi-Fi: a notification when there's a newer release, and a line on the
 launcher's Settings tile until it's installed. After an update, its notes show once
-(What's new). Install a version picks any of the repo's releases, an older one too, or
-one of its branches (GitHub's zip of its newest commit; update_source then says which, and
-the checks look for newer commits on it). The install goes a plugin at a time, KOReader's
+(What's new). Select version picks one of the repo's releases (the latest or a previous
+one); Branch picks one of its branches instead (GitHub's zip of its newest commit;
+update_source then says which, and the checks look for newer commits on it). The install goes a plugin at a time, KOReader's
 loop running between, with its progress for the pop-up (and the web page, webplugins.lua).
 ]]
 
@@ -644,15 +644,14 @@ function U.whatsNew(plugin)
     KO.message{ title = T(_("What's new in %1"), w.tag), text = notes }
 end
 
---- Install a version: the repo's releases to pick from (the one installed and the latest
--- marked), then the one picked installed (an older one too: going back).
+--- Select version: the repo's releases to pick from (the one installed and the latest
+-- marked), then the one picked installed (a previous one too: going back).
 function U.pickVersion(plugin)
-    local wait = KO.wait and KO.wait(T(_("Getting %1's releases and branches…"), U.repo()))
+    local wait = KO.wait and KO.wait(T(_("Getting %1's versions…"), U.repo()))
     U.releases(function(list, why)
-      U.branches(function(branches)
         if wait then wait:close() end
-        if not list then return KO.message(T(_("Couldn't get the releases.\n\n%1"), tostring(why))) end
-        if #list == 0 and not (branches and #branches > 0) then return KO.message(T(_("%1 has no releases with %2."), U.repo(), ASSET)) end
+        if not list then return KO.message(T(_("Couldn't get the versions.\n\n%1"), tostring(why))) end
+        if #list == 0 then return KO.message(T(_("%1 has no releases with %2."), U.repo(), ASSET)) end
         local src = settings().update_source
         local have = not (type(src) == "table" and src.branch) and U.installed(plugin) or nil
         local latest
@@ -669,24 +668,54 @@ function U.pickVersion(plugin)
                     local notes = (r.notes or ""):gsub("\r", "")
                     if #notes > 1200 then notes = notes:sub(1, 1200) .. "…" end
                     KO.confirm{ title = T(_("Install %1"), r.tag),
-                        text = (older and T(_("This goes back from %1 to an older version.\n\n"), have) or "") .. notes,
+                        text = (older and T(_("This goes back from %1 to a previous version.\n\n"), have) or "") .. notes,
                         ok = _("Install"), onOk = function() run(plugin, r) end }
                 end }
         end
-        -- The branches: the repo's code as it is on each (its newest commit).
-        for i, b in ipairs(branches or {}) do
-            local on = type(src) == "table" and src.branch == b.name
+        KO.list(_("Select version"), items)
+    end)
+end
+
+--- The branch updates come from (Settings > Updates' Branch): none (the releases), or the one
+-- installed from.
+function U.branchName()
+    local src = settings().update_source
+    return type(src) == "table" and src.branch or nil
+end
+
+--- Branch: the repo's branches to pick from, and None (the releases). The one picked is
+-- installed (its newest commit), and from then on updates come from it; None installs the
+-- latest release again.
+function U.pickBranch(plugin)
+    local wait = KO.wait and KO.wait(T(_("Getting %1's branches…"), U.repo()))
+    U.branches(function(list, why)
+        if wait then wait:close() end
+        if not list then return KO.message(T(_("Couldn't get the branches.\n\n%1"), tostring(why))) end
+        local src = settings().update_source
+        local current = U.branchName()
+        local items = { { text = _("None (releases)"), checked = current == nil, fn = function()
+            if current == nil then return end
+            local w = KO.wait and KO.wait(T(_("Checking %1…"), U.repo()))
+            U.latest(function(rel, why2)
+                if w then w:close() end
+                if not rel then return KO.message(T(_("Couldn't get the latest release.\n\n%1"), tostring(why2))) end
+                KO.confirm{ title = T(_("Install %1"), rel.tag),
+                    text = T(_("Back to the releases: %1 is installed in place of the %2 branch, and updates come from the releases again."), rel.tag, current),
+                    ok = _("Install"), onOk = function() run(plugin, rel) end }
+            end)
+        end } }
+        for i, b in ipairs(list) do
+            local on = current == b.name
             local rel = U.branchRelease(b)
-            items[#items + 1] = { text = T(_("Branch: %1"), b.name) .. (on and (" · " .. (src.sha == b.sha and _("installed") or _("newer commits"))) or ""),
+            items[#items + 1] = { text = b.name .. (on and (" · " .. (src.sha == b.sha and _("installed") or _("newer commits"))) or ""),
                 checked = on and src.sha == b.sha, separator_before = i == 1 or nil,
                 fn = function()
                     KO.confirm{ title = T(_("Install the %1 branch"), b.name),
-                        text = T(_("The code on %1 as it is now (%2), not a release: it may not be finished."), b.name, rel.tag),
+                        text = T(_("The code on %1 as it is now (%2), not a release: it may not be finished. Updates then come from this branch."), b.name, rel.tag),
                         ok = _("Install"), onOk = function() run(plugin, rel) end }
                 end }
         end
-        KO.list(_("Install a version"), items)
-      end)
+        KO.list(_("Branch"), items)
     end)
 end
 
@@ -776,71 +805,92 @@ function U.daily(plugin)
     end)
 end
 
---- Optional apps (Settings > Updates): what the repo offers, from where updates come now
--- (the branch installed from, or the latest release), each with Install, or Update and Remove.
-function U.optionalMenu(plugin)
-    local wait = KO.wait and KO.wait(T(_("Looking up %1's optional apps…"), U.repo()))
+--- What's been looked up for the Updates page and Set up's Updates step (this run): { busy,
+-- rel (where updates come from now: the latest release, or the branch's newest commit), why,
+-- optional (its optional apps) }. Looked up when they show and the Kindle is on Wi-Fi.
+U.look = {}
+
+--- Looks up the latest release (or the branch's newest commit) and its optional apps, once;
+-- `redraw()` when done. Nothing while off Wi-Fi.
+function U.lookUp(plugin, redraw)
+    local look = U.look
+    if look.busy or look.rel or look.why or not NetworkMgr:isConnected() then return end
+    look.busy = true
     local function with(rel, why)
+        look.rel, look.why = rel, why
         if not rel then
-            if wait then wait:close() end
-            return KO.message(T(_("Couldn't look up the optional apps.\n\n%1"), tostring(why)))
+            look.busy = nil
+            return redraw and redraw()
         end
         U.optionalApps(plugin, rel, function(list, why2)
-            if wait then wait:close() end
-            if not list then return KO.message(T(_("Couldn't look up the optional apps.\n\n%1"), tostring(why2))) end
-            if #list == 0 then return KO.message(T(_("%1 has no optional apps in %2."), U.repo(), rel.tag)) end
-            local items
-            local function show() KO.list(T(_("Optional apps (from %1)"), rel.tag), items) end
-            items = {}
-            for __, o in ipairs(list) do
-                local one = U.optionalRelease(rel, o)
-                items[#items + 1] = { text = o.title .. " · " .. (o.installed and _("installed") or _("not installed")), checked = o.installed,
-                    fn = function()
-                        if not o.installed then
-                            return KO.confirm{ title = T(_("Install %1"), o.title), text = (o.description or "") .. "\n\n" .. T(_("From %1. KOReader restarts after."), rel.tag),
-                                ok = _("Install"), onOk = function() run(plugin, one) end }
-                        end
-                        KO.list(o.title, {
-                            { text = T(_("Update from %1"), rel.tag), fn = function() run(plugin, one) end },
-                            { text = _("Remove"), fn = function()
-                                KO.confirm{ title = T(_("Remove %1"), o.title),
-                                    text = _("It's taken off; Undo a plugin update can bring it back. KOReader restarts after."), ok = _("Remove"),
-                                    onOk = function()
-                                        local ok, err = U.removeOptional(plugin, o.folder)
-                                        if not ok then return KO.message(tostring(err)) end
-                                        restart(plugin)
-                                    end }
-                            end },
-                        }, show)
-                    end }
-            end
-            show()
+            look.optional, look.busy = list, nil
+            if not list then look.why = why2 end
+            if redraw then redraw() end
         end)
     end
     if fromBranch() then return branchNow(function(rel, newer) with(rel, not rel and newer or nil) end) end
     U.latest(with)
 end
 
---- Settings > Updates: the release installed and a check, where updates come from, a
--- version or branch to install, the optional apps, the daily check, and Undo.
--- `refresh()` draws the page again after a change made in a box.
+--- Looked up again next time (the repository or branch changed, or something was installed).
+function U.forget() U.look = {} end
+
+--- One optional app's Install (from where updates come from now) or Remove.
+function U.optionalAction(plugin, o, rel)
+    if not o.installed then
+        return KO.confirm{ title = T(_("Install %1"), o.title), text = (o.description and (o.description .. "\n\n") or "") .. T(_("From %1. KOReader restarts after."), rel.tag),
+            ok = _("Install"), onOk = function() U.forget() run(plugin, U.optionalRelease(rel, o)) end }
+    end
+    KO.confirm{ title = T(_("Remove %1"), o.title),
+        text = _("It's taken off the Kindle; Undo a plugin update can bring it back. KOReader restarts after."), ok = _("Remove"),
+        onOk = function()
+            local ok, err = U.removeOptional(plugin, o.folder)
+            if not ok then return KO.message(tostring(err)) end
+            U.forget()
+            restart(plugin)
+        end }
+end
+
+--- Settings > Updates: the release installed and a check, the repository and branch updates
+-- come from, a version to install, the daily check and Undo, then the optional apps, each with
+-- Install or Remove. `refresh()` draws the page again after a change made in a box.
 function U.settingsRows(plugin, refresh)
-    return {
+    U.lookUp(plugin, refresh)
+    local branch = U.branchName()
+    local rows = {
         { heading = U.NAME:upper() },
         { _("Check for updates"), U.installedText(plugin) or _("Version not known"), function() U.check(plugin) end },
-        { _("Update from"), U.repo(), function()
-            KO.askText{ title = _("Update from"), text = U.repo(), hint = "owner/repo", pen = false, ok = _("Save"),
+        { _("Repository"), U.repo(), function()
+            KO.askText{ title = _("Repository"), text = U.repo(), hint = T(_("owner/repository, such as %1"), U.DEFAULT_REPO), pen = false, ok = _("Save"),
                 done = function(t)
-                    if not U.setRepo(t) then return KO.message(_("Type it as owner/repo, as on GitHub (empty: the usual one).")) end
+                    if not U.setRepo(t) then return KO.message(T(_("Type it as owner/repository, as on GitHub (such as %1). Left empty, it's that one."), U.DEFAULT_REPO)) end
+                    U.forget()
                     if refresh then refresh() end
                 end }
         end },
-        { _("Install a version"), _("Any release or branch, an older one too"), function() U.pickVersion(plugin) end },
+        { _("Branch"), branch or _("None (releases)"), function() U.pickBranch(plugin) end },
+        { note = _("Pick a test branch to try changes before they're released.") },
+        { _("Select version"), _("The latest or a previous one"), function() U.pickVersion(plugin) end },
         { _("Check automatically"), U.auto(), function() U.setAuto(not U.auto()) end },
         { _("Undo a plugin update"), "", function() require("appsundo").undoMenu(plugin) end },
         { heading = _("OPTIONAL APPS") },
-        { _("Optional apps"), _("Extra apps you can add"), function() U.optionalMenu(plugin) end },
+        { note = _("Not in the main install. Installed ones update with the rest.") },
     }
+    local look = U.look
+    if look.optional and #look.optional > 0 then
+        for __, o in ipairs(look.optional) do
+            rows[#rows + 1] = { o.title, o.installed and _("Remove") or _("Install"), function() U.optionalAction(plugin, o, look.rel) end }
+        end
+    elseif look.optional then
+        rows[#rows + 1] = { note = T(_("None in %1."), look.rel and look.rel.tag or U.repo()) }
+    elseif look.busy then
+        rows[#rows + 1] = { note = _("Looking them up…") }
+    elseif look.why then
+        rows[#rows + 1] = { _("Couldn't look them up"), _("Try again"), function() U.forget() U.lookUp(plugin, refresh) if refresh then refresh() end end }
+    else
+        rows[#rows + 1] = { note = _("Connect to Wi-Fi to see them.") }
+    end
+    return rows
 end
 
 return U

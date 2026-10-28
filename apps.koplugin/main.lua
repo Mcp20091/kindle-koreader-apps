@@ -266,30 +266,16 @@ do
         run = function() NetworkMgr:toggleWifiOn(nil, true, true) end }
     -- Updates, right after Wi-Fi: where they are (Settings > Updates), whether a newer version is
     -- out (looked up when the step shows, on Wi-Fi), and the optional apps with Install.
-    local upd = {}   -- what the step has looked up: { busy, rel, why, optional }
-    local function lookUp()
-        if upd.busy or upd.rel or upd.why or NetworkMgr:isConnected() == false then return end
-        upd.busy = true
-        local U = require("appsupdate")
-        U.latest(function(rel, why)
-            upd.rel, upd.why = rel, why
-            if not rel then
-                upd.busy = nil
-                return require("appssetup").redraw()
-            end
-            U.optionalApps(Apps.instance, rel, function(list)
-                upd.optional, upd.busy = list or {}, nil
-                require("appssetup").redraw()
-            end)
-        end)
-    end
+    -- (What's looked up is the Updates page's too: appsupdate's U.look.)
+    local function lookUp() require("appsupdate").lookUp(Apps.instance, function() require("appssetup").redraw() end) end
     local function newer()
         local U = require("appsupdate")
+        local upd = U.look
         return upd.rel ~= nil and U.newer(upd.rel.tag, U.installed(Apps.instance))
     end
     PS.registerSetup{ key = "updates", order = 12, icon = "download", title = _("Updates"),
-        text = _("New versions of these apps come from GitHub. They're in Settings > Updates, at the top of Settings: Check for updates, Install a version, and Optional apps (extra apps you can add, such as FlashForge). With Check automatically on, a notification tells you when there's a new one."),
-        done = function() return upd.rel ~= nil and not newer() end,
+        text = _("New versions of these apps come from GitHub, in Settings > Updates at the top of Settings: Check for updates, Select version, and the optional apps (such as FlashForge), which aren't in the main install. With Check automatically on, a notification tells you when there's a new one."),
+        done = function() return require("appsupdate").look.rel ~= nil and not newer() end,
         doneText = _("Up to date"),
         notDoneText = function() return newer() and _("A new version is out") or _("Not checked yet") end,
         action = _("Check for updates"), run = function() require("appsupdate").check(Apps.instance) end,
@@ -297,6 +283,7 @@ do
         rows = function()
             lookUp()
             local U = require("appsupdate")
+            local upd = U.look
             local plugin = Apps.instance
             local rows = {}
             local have = U.installedText(plugin) or _("not known")
@@ -310,21 +297,17 @@ do
                 rows[#rows + 1] = { title = _("Up to date"), value = have, fn = function() U.check(plugin) end }
             else
                 rows[#rows + 1] = { title = _("Check for updates"), sub = upd.why or _("Once the Kindle is on Wi-Fi."), value = have,
-                    fn = function(refresh) upd.why = nil lookUp() refresh() end }
+                    fn = function(refresh) U.forget() lookUp() refresh() end }
             end
             rows[#rows + 1] = { title = _("Check automatically"), value = U.auto() and _("On") or _("Off"),
                 fn = function(refresh) U.setAuto(not U.auto()) refresh() end }
-            -- The optional apps of the latest release, under their own header: each with Install
-            -- (KOReader asks to restart after).
+            -- The optional apps of where updates come from, under their own header: each with
+            -- Install or Remove (KOReader restarts after), as on the Updates page.
             if upd.optional and #upd.optional > 0 then rows[#rows + 1] = { heading = _("OPTIONAL APPS") } end
             for __, o in ipairs(upd.optional or {}) do
                 rows[#rows + 1] = { title = o.title, sub = o.description and (#o.description > 70 and (o.description:sub(1, 67) .. "…") or o.description) or _("An optional app"),
-                    value = o.installed and _("Installed") or _("Install"),
-                    fn = function()
-                        if o.installed then return U.optionalMenu(plugin) end
-                        require("appsko").confirm{ title = T(_("Install %1"), o.title), text = (o.description or "") .. "\n\n" .. T(_("From %1. KOReader asks to restart after."), upd.rel.tag),
-                            ok = _("Install"), onOk = function() U.run(plugin, U.optionalRelease(upd.rel, o)) end }
-                    end }
+                    value = o.installed and _("Remove") or _("Install"),
+                    fn = function() U.optionalAction(plugin, o, upd.rel) end }
             end
             return rows
         end }

@@ -1,6 +1,6 @@
-2026-10-27 20:18
+2026-10-27 20:30
+Oct 27  Web server: System > Updates as on the Kindle: Repository, Branch and Select version, each with Install, and the optional apps with Install or Remove
 Oct 27  Web server: each app's tab comes from the app (its routes and script in its own folder, served as /static/app/<app>/), with its tab link and Home card; a new app needs no change here
 Oct 27  Web server: a Pangolin tab when the optional Pangolin app is installed (sites, resources and clients with their switches, reset bandwidth, settings)
 Oct 27  Launcher: Settings in groups (Getting started, Settings, Accounts, Reading, Home, Writing, Tools, as the suggested groups; One list as an option): hold a row to move, group or hide it, a group's name to rename, move or delete it; hidden rows found by search (hold to show them again); Updates on its own page at the top; To Do in the suggested Tools group
 Oct 27  Updates: optional apps (FlashForge…) from the updater: listed from the release or branch updates come from, installed on request, updated with the rest once installed, removed (kept for Undo); Settings > Launcher > Optional apps on the Kindle, Optional apps under Update from GitHub on the web page; each release gets its kindle-<app>.zip
-Oct 27  Updates: progress while installing, on the Kindle and the web page (upload or download, then checking and installing a plugin at a time, KOReader answering between; the page comes back by itself after the restart); branches to install beside releases (Install a version on the Kindle, Update from GitHub on the web page), checked for newer commits after
