@@ -208,20 +208,35 @@ A book's page ends with **SESSIONS**: each time you read it, newest first, with 
 
 ## Fonts
 
-The **Fonts** tile (also in **Settings** and search) has everything about the fonts books use:
+The **Fonts** tile (also in **Settings** and search) has everything about the fonts books use, in three tabs along the top. Each tab keeps its own page.
 
-- **Get more fonts** at the top opens the **Get fonts** page, with free fonts from Google Fonts over Wi-Fi:
-  - The box at the top: type any Google Fonts family's name (such as Lora or Source Serif 4) and tap **Get**.
-  - **SUGGESTIONS**: good reading fonts, each with what it's like: Literata (made for e-books), Merriweather, Lora, EB Garamond, Crimson Pro, Source Serif 4, Alegreya, Bitter, Atkinson Hyperlegible (made for low vision) and Lexend. **Get** next to one gets it.
-  - The Kindle downloads the family's regular, bold and italic styles in the background, and says when it has them.
-- **YOUR FONTS**: every font KOReader can use, each name drawn in its own typeface. The one new books open in says **Default**, and ones you added say **Added**. Tap a font for **Set as default for new books**, or **Remove** for one you added (with **Undo**; KOReader's own fonts stay).
-- **FONT SETTINGS**: the font size for new books, the fallback font, more fallback fonts, the book's own fonts, the font weight, hinting and kerning, as in KOReader's own menus.
+- **Your fonts**: every font KOReader can use, each name drawn in its own typeface.
+  - The box at the top says which font **new books open in**, on every page. Tap it for that font's menu.
+  - In the list, that font says **✓ Default**, and fonts you added say **Added**.
+  - Tap a font for **Set as default for new books**, or **Remove** for one you added. Both come with **Undo** for a few seconds (KOReader's own fonts stay).
+- **Get more**: every family on Google Fonts (about 2,000), free over Wi-Fi.
+  - **Search** at the top: tap it and type part of a name. **✕** clears it.
+  - The chips pick what's listed: **Suggested** (good reading fonts, each with what it's like: Literata, made for e-books, Merriweather, Lora, EB Garamond, Crimson Pro, Source Serif 4, Alegreya, Bitter, Atkinson Hyperlegible, made for low vision, and Lexend), **All**, **Serif**, **Sans**, **Mono**, **Handwriting** and **Display**.
+  - Under them, the order: **Popular first**, **A–Z** or **Newest first**.
+  - Each family says its kind and its styles (**4 styles** is regular, bold, italic and bold italic). **Get** downloads it; one you have says **Installed**.
+  - A name that isn't in the list can still be got: search for it and tap **Get** on the row that says **Get it by its name from Google Fonts**.
+  - The list itself comes from Google Fonts the first time you open the tab, and again after a month. The line on the right says when (**List from Oct 28**); **⟳** gets it again now.
+- **Settings**: KOReader's font settings, in groups.
+  - **NEW BOOKS**: the font, **Font size for new books**, **Font weight** and **Use the book's own fonts**. A book you've already opened keeps its own.
+  - **FALLBACK FONTS**: **Fallback font** (for characters the book's font doesn't have) and **Use more fallback fonts**. These apply to every book, the open one too.
+  - **ADVANCED**: **Hinting** and **Kerning**.
 
-Books see added or removed fonts after KOReader restarts: a box at the top says so, with **Restart**.
+Books see added or removed fonts after KOReader restarts: a box on **Your fonts** says so, with **Restart**.
 
-![Fonts](img/apps/apps-fonts.png)
+Long lists have pages. When there are too many pages for a part each (all of Google Fonts), the bar at the bottom is one bar filled up to the page you're on; tap along it to go that far through.
 
-![Get fonts: any family by name, or a suggestion](img/apps/apps-fonts-get.png)
+![Fonts: the font new books open in, then your fonts](img/apps/apps-fonts.png)
+
+![Get more: suggestions to start with](img/apps/apps-fonts-get.png)
+
+![Get more: all of Google Fonts, popular first, with search, kinds and pages](img/apps/apps-fonts-browse.png)
+
+![Fonts' settings, in groups](img/apps/apps-fonts-settings.png)
 
 ## The Battery screen
 

@@ -71,7 +71,7 @@ center, pop-ups and Undo. It adds the title bar over books and the library, and 
 - AI for this (`PS.ai.quickPick(jobOrFeatureKey)`): the service and a model for that one job. Give every AI button in the shared boxes `aiJob = key` (a hold opens it), and call it from a hold on your own AI buttons.
 - `appshandwrite.lua` and `appspen.lua`: handwriting input for every app's text boxes (`PS.handwriting`).
 - `appsfonts.lua` (fonts: list, add, remove with Undo, default, Google Fonts in a child process; the
-  web page's Fonts tab calls it too) and `appsfontsview.lua` (the Fonts screen, mode `fonts`, and its Get fonts page, mode `fontsget`).
+  web page's Fonts tab calls it too) and `appsfontsview.lua` (the Fonts screen, mode `fonts`, in three tabs: `view.fontsTab` mine, get, settings, each with its own page), and `appsgooglefonts.lua` (every Google Fonts family to browse: its catalogue fetched in a child process and kept short in the cache, then searched in memory; the web page uses it too).
 - `appsai.lua` (AI for every app: the services, their keys in `ai_secrets.lua` and settings in
   `G_reader_settings` "apps_ai", which service does each job, each feature's instructions, Try a prompt,
   Test connection's "ai", `AI.ask` in a child process; moved once from Notes' settings and
