@@ -1,3 +1,5 @@
-2026-10-27 19:50
+2026-10-27 20:08
+Oct 27  Pangolin: the fallback icon (star) in its icons, so an icon it lacks shows as a star, not a box
+Oct 27  Pangolin: the Recent apps icon (history) in its icons, where a box showed in the title bar
 Oct 27  Export check: made-up addresses in the FlashForge and Pangolin tests from the allowed examples; Pangolin's README names its Home Assistant integration without a link to an account; the HTTPS code's OID and PEM name and FlashForge's discovery address allowed
 Oct 27  Pangolin: a new optional app for a Pangolin server over its Integration API (sites online, each public resource's health and targets, private resources, clients; resources on or off, sign-in, block access, clients blocked or archived, reset bandwidth), in optional/ with its own zip
