@@ -11,8 +11,16 @@ pfSense's screens, drawn as the other apps' pages (pfspage):
   DNS host overrides  Add; an override: its fields and aliases, Delete
   Firewall rules      by interface; a rule: Enabled
   VPN                 WireGuard peers and OpenVPN servers
+  DHCP server         each interface's: on or off, range, DNS, gateway, lease
+                      times; address pools and custom options to add or delete
+  DNS Resolver        on or off, DNSSEC, forwarding, names from DHCP and VPN
+  pf tables           the block lists; Look up an address, Empty a table
+  Service watchdog    the services pfSense restarts; add, notify, stop watching
+  Cron jobs           add, change, delete
+  NTP and SSH         the NTP server on or off and its time servers; SSH on or
+                      off and its port
   Logs                the system and firewall logs, newest first
-  Packages            installed ones and their updates
+  Packages            installed ones and their updates; Install, Remove
   Settings            how often it's read, notifications, the address and key
 While a pfSense page is on top, pfSense is read every so often (Settings >
 Read every); nothing is read once it closes.
@@ -269,6 +277,12 @@ local BROWSE = {
     { "ping", "wifi", _("Ping") },
     { "certs", "lock", _("Certificates") },
     { "history", "history", _("Config history") },
+    { "dhcp", "server", _("DHCP server") },
+    { "dnsres", "globe", _("DNS Resolver") },
+    { "tables", "grid-3x3", _("pf tables") },
+    { "watchdog", "eye", _("Service watchdog") },
+    { "cron", "calendar", _("Cron jobs") },
+    { "ntpssh", "clock", _("NTP and SSH") },
     { "logs", "scroll-text", _("Logs") },
     { "packages", "package", _("Packages") },
 }
@@ -276,7 +290,8 @@ local BROWSE = {
 -- A browse tile's second line when nothing read says more (every tile has one, so they line up).
 local BROWSE_SUB = { logs = _("System, firewall, DHCP…"), packages = _("Updates"), vpn = _("WireGuard, OpenVPN, IPsec"),
     aliases = _("Address lists"), nat = _("Port forwards"), connections = _("A device's, to close"), ping = _("From pfSense"),
-    certs = _("When they expire"), history = _("Recent changes") }
+    certs = _("When they expire"), history = _("Recent changes"), dhcp = _("Ranges, pools, options"), dnsres = _("Its settings"),
+    tables = _("Block lists"), watchdog = _("Restarts stopped ones"), cron = _("Scheduled commands"), ntpssh = _("Time servers, SSH") }
 
 --- A browse tile's second line, from what was read.
 local function browseSub(d, key, c)
@@ -310,6 +325,26 @@ local function browseSub(d, key, c)
         local soon = 0
         for __, c in ipairs(d.certs) do if M.certSoon(c) then soon = soon + 1 end end
         return soon > 0 and T(_("%1 expiring soon"), soon) or tostring(#d.certs)
+    end
+    local plugin = UI.plugin
+    if key == "watchdog" or key == "cron" then
+        local v = plugin and plugin:configData(key)
+        return v and tostring(#v)
+    end
+    if key == "ntpssh" then
+        local ssh = plugin and plugin:configData("ssh")
+        return ssh and (ssh.enabled and _("SSH on") or _("SSH off"))
+    end
+    if key == "dhcp" then
+        local v = plugin and plugin:configData("dhcp")
+        if not v then return nil end
+        local on = 0
+        for __, x in ipairs(v.servers) do if x.enabled then on = on + 1 end end
+        return T(_("%1 of %2 on"), on, #v.servers)
+    end
+    if key == "dnsres" then
+        local v = plugin and plugin:configData("dnsres")
+        return v and (v.enabled and _("On") or _("Off"))
     end
     if key == "packages" then
         local list = UI.plugin and UI.plugin:packageList()
@@ -408,7 +443,8 @@ function UI.list(plugin, key)
     local open = { gateways = UI.gateways, interfaces = UI.interfaces, services = UI.services, leases = UI.devices,
         statics = UI.statics, overrides = UI.overrides, rules = UI.rules, arp = UI.arpTable, vpn = UI.vpn,
         logs = UI.logs, packages = UI.packages, aliases = UI.aliases, nat = UI.nat, certs = UI.certs, history = UI.history,
-        connections = function(p) UI.askConnections(p) end, ping = function(p) UI.askPing(p) end }
+        connections = function(p) UI.askConnections(p) end, ping = function(p) UI.askPing(p) end,
+        dhcp = UI.dhcp, dnsres = UI.dnsResolver, tables = UI.tables, watchdog = UI.watchdog, cron = UI.cron, ntpssh = UI.ntpSsh }
     if open[key] then open[key](plugin) end
 end
 
@@ -1279,27 +1315,40 @@ end
 
 -- ------------------------------------------------------------------ packages
 
+--- Remove an installed package: asks first (what it does stops, and its settings page goes).
+local function removePackage(plugin, x)
+    KO.confirm{ title = T(_("Remove %1?"), x.short),
+        text = _("pfSense uninstalls it: what it does stops. Its settings are usually kept, for when it's installed again."),
+        ok = _("Remove"), cancel = _("Cancel"), danger = true,
+        onOk = function()
+            act(plugin, "pkg_remove", { id = x.id, name = x.name }, T(_("%1 removed"), x.short), { text = T(_("Removing %1…"), x.short) })
+        end }
+end
+
 function UI.packages(plugin)
-    local list, why
+    local why
     local p
     local function load(again)
         plugin:packages(function(l, text)
-            list, why = l, text
+            why = text
             if alive(p) then UI.refreshAll() end
         end, again)
     end
     p = page(_("Packages"), function()
         local t = {}
+        local list = plugin:packageList()
         if not list then
             t[#t + 1] = { message = why or _("Asking pfSense's package server…") }
             return t
         end
+        t[#t + 1] = { tiles = { { icon = "download", text = _("Install"), primary = true, fn = function() UI.install(plugin) end } }, cols = 3 }
         local updates = {}
         for __, x in ipairs(list) do if x.update then updates[#updates + 1] = x end end
         if #updates > 0 then
             t[#t + 1] = { band = _("UPDATES"), right = tostring(#updates) }
             for __, x in ipairs(updates) do
-                t[#t + 1] = { text = x.short, sub = T(_("%1 → %2"), x.installed, x.latest), icon = "circle-arrow-up", dot = "off" }
+                t[#t + 1] = { text = x.short, sub = T(_("%1 → %2"), x.installed, x.latest), icon = "circle-arrow-up", dot = "off",
+                    callback = function() KO.list(x.short, { { text = _("Remove"), fn = function() removePackage(plugin, x) end } }) end }
             end
             t[#t + 1] = { note = _("Update packages in pfSense's web interface: System > Package Manager. The REST API can't update them.") }
         end
@@ -1307,12 +1356,534 @@ function UI.packages(plugin)
         if #list == 0 then t[#t + 1] = { message = _("No packages installed.") } end
         for __, x in ipairs(list) do
             if not x.update then
-                t[#t + 1] = { text = x.short, sub = x.installed ~= "" and x.installed or nil, icon = "package", right = _("Up to date") }
+                t[#t + 1] = { text = x.short, sub = x.installed ~= "" and x.installed or nil, icon = "package", right = _("Up to date"),
+                    callback = function() KO.list(x.short, { { text = _("Remove"), fn = function() removePackage(plugin, x) end } }) end }
             end
         end
+        t[#t + 1] = { note = _("Tap a package to remove it.") }
         return t
-    end, { on_refresh = function() list, why = nil, nil UI.refreshAll() load(true) end })
+    end, { on_refresh = function() why = nil UI.refreshAll() load(true) end })
     load()
+end
+
+--- The packages there are to install, with Search; one tapped asks first, then installs.
+function UI.install(plugin)
+    local list, why
+    local p
+    local function load(again)
+        list, why = nil, nil
+        plugin:available(function(l, text)
+            list, why = l, text
+            if alive(p) then UI.refreshAll() end
+        end, again)
+    end
+    p = page(_("Install a package"), function()
+        local t = {}
+        if not list then
+            t[#t + 1] = { message = why or _("Asking pfSense's package server…") }
+            return t
+        end
+        local q = controls(plugin, "available", t)
+        local found = M.filter(list, q)
+        t[#t + 1] = { band = _("AVAILABLE"), right = tostring(#found) }
+        if #list == 0 then t[#t + 1] = { message = _("Nothing more to install.") } elseif #found == 0 then noneFound(t, q) end
+        for __, x in ipairs(found) do
+            t[#t + 1] = { text = x.short, sub = x.descr ~= "" and x.descr or x.version, icon = "package", right = x.version,
+                callback = function()
+                    KO.confirm{ title = T(_("Install %1?"), x.short),
+                        text = T(_("pfSense downloads it and sets it up, which can take a few minutes. %1"), x.descr),
+                        ok = _("Install"), cancel = _("Cancel"),
+                        onOk = function()
+                            act(plugin, "pkg_install", { name = x.name }, T(_("%1 installed"), x.short), { text = T(_("Installing %1…"), x.short) })
+                            if alive(p) then p:onClose() end
+                        end }
+                end }
+        end
+        return t
+    end, { on_refresh = function() load(true) UI.refreshAll() end })
+    load()
+end
+
+-- ------------------------------------------------------------------ pf tables
+
+--- pf's tables (the block lists pfBlockerNG or Snort fill, and the aliases'), with Look up an address.
+function UI.tables(plugin)
+    local list, why
+    local p
+    local function load()
+        list, why = nil, nil
+        plugin:tables(function(l, text)
+            list, why = l, text
+            if alive(p) then UI.refreshAll() end
+        end)
+    end
+    p = page(_("pf tables"), function()
+        local t = {}
+        t[#t + 1] = { tiles = { { icon = "search", text = _("Look up"), sub = _("An address"), primary = true, fn = function() UI.askLookup(plugin) end } }, cols = 3 }
+        if not list then
+            t[#t + 1] = { message = why or _("Reading the tables…") }
+            return t
+        end
+        local q = controls(plugin, "tables", t)
+        local found = M.filter(list, q)
+        t[#t + 1] = { band = _("TABLES"), right = tostring(#found) }
+        if #list == 0 then t[#t + 1] = { message = _("No tables.") } elseif #found == 0 then noneFound(t, q) end
+        for __, x in ipairs(found) do
+            t[#t + 1] = { text = x.name, icon = "grid-3x3", chevron = true,
+                right = x.count == 1 and _("1 entry") or T(_("%1 entries"), x.count),
+                callback = function() UI.table(plugin, x.name) end }
+        end
+        t[#t + 1] = { note = _("The tables pf blocks or passes by: pfBlockerNG's and Snort's block lists, and the aliases' addresses.") }
+        return t
+    end, { on_refresh = function() load() UI.refreshAll() end })
+    load()
+end
+
+--- Empty a table: asks first (the API can't take out one address, only all of them).
+local function flushTable(plugin, name, done)
+    KO.confirm{ title = T(_("Empty %1?"), name),
+        text = _("Every address in it goes now, so none of them is blocked (or passed) by it until it's filled again: pfBlockerNG and Snort fill theirs as they update. The REST API can't take out one address on its own."),
+        ok = _("Empty"), cancel = _("Cancel"), danger = true,
+        onOk = function()
+            plugin:act("table_flush", { name = name }, function(ok, text)
+                if ok then KO.toast(T(_("%1 emptied"), name)) else KO.message(text, _("pfSense")) end
+                if done then done(ok) end
+            end, { text = _("Emptying…") })
+        end }
+end
+
+function UI.table(plugin, name)
+    local tbl, why
+    local p
+    local function load()
+        tbl, why = nil, nil
+        plugin:table(name, function(x, text)
+            tbl, why = x, text
+            if alive(p) then UI.refreshAll() end
+        end)
+    end
+    p = page(name, function()
+        local t = {}
+        if not tbl then
+            t[#t + 1] = { message = why or _("Reading…") }
+            return t
+        end
+        t[#t + 1] = { tiles = { { icon = "trash-2", text = _("Empty"), fn = function()
+            flushTable(plugin, name, function(ok) if ok then load() end end)
+        end } }, cols = 3 }
+        local q = controls(plugin, "table", t)
+        local found = {}
+        for __, e in ipairs(tbl.entries) do if M.matches({ e }, q) then found[#found + 1] = e end end
+        t[#t + 1] = { band = _("ENTRIES"), right = tostring(tbl.count) }
+        if tbl.count == 0 then t[#t + 1] = { message = _("It's empty.") } elseif #found == 0 then noneFound(t, q) end
+        for __, e in ipairs(found) do t[#t + 1] = { text = e, icon = "shield" } end
+        if tbl.count > #tbl.entries then
+            t[#t + 1] = { note = T(_("The first %1 of %2. Look up finds an address in all of them."), #tbl.entries, tbl.count) }
+        end
+        return t
+    end, { on_refresh = function() load() UI.refreshAll() end })
+    load()
+end
+
+--- Look up an address in every table: the ones it's in (itself, or a network it's in), each with Empty.
+function UI.lookup(plugin, ip)
+    plugin:lookup(ip, function(hits, why)
+        if not hits then return KO.message(why, _("Look up")) end
+        page(T(_("%1 in pf tables"), ip), function()
+            local t = {}
+            t[#t + 1] = { band = _("IN"), right = tostring(#hits) }
+            if #hits == 0 then t[#t + 1] = { message = T(_("%1 isn't in any table."), ip) } end
+            for __, h in ipairs(hits) do
+                t[#t + 1] = { text = h.name, sub = table.concat(h.entries, ", "), icon = "grid-3x3", chevron = true,
+                    callback = function()
+                        KO.list(h.name, {
+                            { text = _("Show the table"), fn = function() UI.table(plugin, h.name) end },
+                            { text = _("Empty the table"), fn = function() flushTable(plugin, h.name) end },
+                        })
+                    end }
+            end
+            if #hits > 0 then
+                t[#t + 1] = { note = _("The REST API can only empty a whole table, not take one address out. For a block list, an alias or rule that lets it through (or pfBlockerNG's own whitelist) keeps it out for good.") }
+            end
+            return t
+        end)
+    end)
+end
+
+function UI.askLookup(plugin)
+    ask(_("Look up"), "", function(v)
+        v = trim(v)
+        if not M.isIPv4(v) then return KO.toast(_("Enter an IP address, such as 192.168.1.20")) end
+        UI.lookup(plugin, v)
+    end, { ok = _("Look up"), okIcon = "search", description = _("An IP address: the pf tables it's in (itself, or a network it's in).") })
+end
+
+-- ------------------------------------------------------------------ service settings (read when their page opens)
+
+--- A settings page: what was read of name (pfsmodel.config) through fn(value, t), read when it opens and on ⟳.
+local function configPage(plugin, name, title, fn)
+    local p = page(title, function()
+        local v = plugin:configData(name)
+        local t = {}
+        if not v then
+            t[#t + 1] = { message = plugin:configWhy(name) or _("Reading…") }
+            return t
+        end
+        return fn(v, t)
+    end, { on_refresh = function() plugin:config(name, nil, true) end })
+    plugin:config(name, function() if alive(p) then UI.refreshAll() end end, true)
+    return p
+end
+
+--- A setting's switch that asks first when turned off (o: { title, text, ok }), else just does it.
+local function offAsks(on, o, go)
+    if not on then
+        return KO.confirm{ title = o.title, text = o.text, ok = o.ok or _("Turn off"), cancel = _("Cancel"), danger = true, onOk = go }
+    end
+    go()
+end
+
+function UI.watchdog(plugin)
+    configPage(plugin, "watchdog", _("Service watchdog"), function(list, t)
+        t[#t + 1] = { tiles = { { icon = "plus", text = _("Add"), primary = true, fn = function() UI.addWatchdog(plugin) end } }, cols = 3 }
+        t[#t + 1] = { band = _("WATCHED SERVICES"), right = tostring(#list) }
+        if #list == 0 then t[#t + 1] = { message = _("No services watched.") } end
+        for __, w in ipairs(list) do
+            t[#t + 1] = { toggle = w.notify, text = w.title, sub = w.title ~= w.name and w.name or nil,
+                callback = function()
+                    act(plugin, "watchdog_notify", { id = w.id, name = w.name, on = not w.notify },
+                        w.notify and _("Notifications off") or _("Notifications on"))
+                end,
+                hold_callback = function()
+                    KO.list(w.title, { { text = _("Stop watching"), fn = function()
+                        plugin:act("watchdog_delete", { id = w.id, name = w.name }, function(ok, text)
+                            if not ok then return KO.message(text, _("pfSense")) end
+                            KO.undo(T(_("%1 not watched"), w.title), function()
+                                act(plugin, "watchdog_add", { name = w.name, description = w.descr, notify = w.notify }, T(_("%1 watched again"), w.title))
+                            end)
+                        end)
+                    end } })
+                end }
+        end
+        t[#t + 1] = { note = _("pfSense starts a watched service again when it stops (the Service Watchdog package). The switch: a notification from pfSense when it does. Hold one to stop watching it.") }
+        return t
+    end)
+end
+
+--- Watch a service: one of the services read, not yet watched.
+function UI.addWatchdog(plugin)
+    local d = plugin:data()
+    local watched = {}
+    for __, w in ipairs(plugin:configData("watchdog") or {}) do watched[w.name] = true end
+    local options = {}
+    for __, s in ipairs(d and d.services or {}) do
+        if not watched[s.key] then
+            options[#options + 1] = { text = s.name ~= s.key and T("%1 · %2", s.name, s.key) or s.name, fn = function()
+                act(plugin, "watchdog_add", { name = s.key, description = s.name, notify = true }, T(_("%1 watched"), s.name))
+            end }
+        end
+    end
+    if #options == 0 then return KO.toast(_("Every service is watched already"), 3) end
+    KO.list(_("Watch a service"), options)
+end
+
+function UI.cron(plugin)
+    configPage(plugin, "cron", _("Cron jobs"), function(list, t)
+        t[#t + 1] = { tiles = { { icon = "plus", text = _("Add"), primary = true, fn = function() UI.addCron(plugin) end } }, cols = 3 }
+        local q = controls(plugin, "cron", t)
+        local found = M.filter(list, q)
+        t[#t + 1] = { band = _("CRON JOBS"), right = tostring(#found) }
+        if #list == 0 then t[#t + 1] = { message = _("No cron jobs.") } elseif #found == 0 then noneFound(t, q) end
+        for __, c in ipairs(found) do
+            t[#t + 1] = { text = c.name, sub = M.cronLine(c), icon = "calendar", chevron = true, callback = function() UI.cronJob(plugin, c.sig) end }
+        end
+        t[#t + 1] = { note = _("What pfSense runs on a schedule (the Cron package). A change is applied at once.") }
+        return t
+    end)
+end
+
+--- A cron job by what it is (its id is its place in the list).
+local function cronBySig(list, sig)
+    for __, c in ipairs(list or {}) do
+        local same = true
+        for f, v in pairs(sig) do if c.sig[f] ~= v then same = false end end
+        if same then return c end
+    end
+end
+
+function UI.cronJob(plugin, sig)
+    local p
+    p = configPage(plugin, "cron", _("Cron job"), function(list, t)
+        local c = cronBySig(list, sig)
+        if not c then
+            t[#t + 1] = { message = _("It isn't in pfSense any more.") }
+            return t
+        end
+        local function edit(field, title, description)
+            return function()
+                ask(title, c[field], function(v)
+                    v = trim(v)
+                    if v == "" then return end
+                    local now = {}
+                    for f, x in pairs(c.sig) do now[f] = x end
+                    now[field] = v
+                    plugin:act("cron_edit", { id = c.id, sig = c.sig, fields = { [field] = v } }, function(ok, text)
+                        if not ok then return KO.message(text, _("pfSense")) end
+                        -- (the page follows the job as it is now)
+                        sig = now
+                        KO.toast(_("Saved"))
+                    end, { text = _("Saving…") })
+                end, { description = description })
+            end
+        end
+        t[#t + 1] = { band = _("CRON JOB") }
+        row(t, _("Runs"), M.cronWhen(c))
+        row(t, _("Command"), c.command, edit("command", _("Command"), _("With its full path, such as /usr/local/bin/backup.sh.")))
+        row(t, _("Minute"), c.minute, edit("minute", _("Minute"), _("0 to 59, */5 (every 5), or @daily, @hourly, @reboot…")))
+        row(t, _("Hour"), c.hour, edit("hour", _("Hour"), _("0 to 23, or * for every hour.")))
+        row(t, _("Day of the month"), c.mday, edit("mday", _("Day of the month"), _("1 to 31, or * for every day.")))
+        row(t, _("Month"), c.month, edit("month", _("Month"), _("1 to 12, or * for every month.")))
+        row(t, _("Day of the week"), c.wday, edit("wday", _("Day of the week"), _("0 to 7 (0 and 7 are Sunday), or * for every day.")))
+        row(t, _("User"), c.who, edit("who", _("User"), _("Who it runs as, such as root.")))
+        t[#t + 1] = { gap = 8 }
+        t[#t + 1] = { tiles = { { icon = "trash-2", text = _("Delete"), fn = function()
+            local was = {}
+            for f, x in pairs(c.sig) do was[f] = x end
+            plugin:act("cron_delete", { id = c.id, sig = c.sig }, function(ok, text)
+                if not ok then return KO.message(text, _("pfSense")) end
+                KO.undo(_("Cron job deleted"), function() act(plugin, "cron_add", was, _("Cron job put back")) end)
+            end, { text = _("Deleting…") })
+            if alive(p) then p:onClose() end
+        end } }, cols = 3 }
+        return t
+    end)
+end
+
+--- Adding a cron job: when (five fields as one line, or @daily…), then the command.
+function UI.addCron(plugin)
+    ask(_("When"), "0 3 * * *", function(v)
+        local parts = {}
+        for x in trim(v):gmatch("%S+") do parts[#parts + 1] = x end
+        if #parts == 0 or (#parts ~= 5 and not (#parts == 1 and parts[1]:find("^@"))) then
+            return KO.toast(_("Enter five fields, such as 0 3 * * *, or @daily"), 3)
+        end
+        local f = { minute = parts[1], hour = parts[2] or "*", mday = parts[3] or "*", month = parts[4] or "*", wday = parts[5] or "*", who = "root" }
+        ask(_("Command"), "", function(cmd)
+            cmd = trim(cmd)
+            if cmd == "" then return end
+            f.command = cmd
+            act(plugin, "cron_add", f, _("Cron job added"), { text = _("Saving…") })
+        end, { ok = _("Add"), okIcon = "plus", description = _("With its full path, such as /usr/local/bin/backup.sh. It runs as root.") })
+    end, { ok = _("Next"), okIcon = "chevron-right",
+        description = _("Minute, hour, day of the month, month and day of the week, such as 0 3 * * * (every day at 03:00); or @daily, @hourly, @reboot.") })
+end
+
+function UI.ntpSsh(plugin)
+    local p = page(_("NTP and SSH"), function()
+        local t = {}
+        local ssh, ntp = plugin:configData("ssh"), plugin:configData("ntp")
+        t[#t + 1] = { band = _("SSH") }
+        if ssh then
+            t[#t + 1] = { toggle = ssh.enabled, text = _("SSH server"), sub = T(_("Port %1 · applied at once"), ssh.port), callback = function()
+                offAsks(not ssh.enabled, { title = _("Turn SSH off?"),
+                    text = _("pfSense stops taking SSH connections, and ones open now may be cut off (the SSH app on this Kindle too). The REST API keeps working.") },
+                    function() act(plugin, "ssh_set", { enable = not ssh.enabled }, ssh.enabled and _("SSH off") or _("SSH on")) end)
+            end }
+            row(t, _("Port"), ssh.port, function()
+                ask(_("Port"), ssh.port, function(v)
+                    local n = tonumber(trim(v))
+                    if not n or n < 1 or n > 65535 then return KO.toast(_("Enter a port from 1 to 65535")) end
+                    act(plugin, "ssh_set", { port = tostring(math.floor(n)) }, _("Saved"), { text = _("Saving…") })
+                end, { description = _("The port pfSense's SSH server listens on (22 to start with).") })
+            end)
+        else
+            t[#t + 1] = { note = plugin:configWhy("ssh") or _("Reading…") }
+        end
+        t[#t + 1] = { band = _("NTP (TIME)") }
+        if ntp then
+            t[#t + 1] = { toggle = ntp.enabled, text = _("NTP server"), sub = _("pfSense gives the time to the network"), callback = function()
+                offAsks(not ntp.enabled, { title = _("Turn the NTP server off?"),
+                    text = _("Devices that ask pfSense for the time stop getting it. pfSense still keeps its own clock right.") },
+                    function() act(plugin, "ntp_enabled", { on = not ntp.enabled }, ntp.enabled and _("NTP off") or _("NTP on")) end)
+            end }
+            if #ntp.ifaces > 0 then row(t, _("Listens on"), table.concat(ntp.ifaces, ", "):upper()) end
+            t[#t + 1] = { band = _("TIME SERVERS"), right = tostring(#ntp.servers) }
+            t[#t + 1] = { tiles = { { icon = "plus", text = _("Add"), primary = true, fn = function() UI.addTimeServer(plugin) end } }, cols = 3 }
+            if #ntp.servers == 0 then t[#t + 1] = { message = _("No time servers.") } end
+            for __, x in ipairs(ntp.servers) do
+                t[#t + 1] = { text = x.server, sub = M.timeServerLine(x), icon = "clock", chevron = true, callback = function()
+                    KO.list(x.server, { { text = _("Delete"), fn = function()
+                        plugin:act("ntp_delete", { id = x.id, server = x.server }, function(ok, text)
+                            if not ok then return KO.message(text, _("pfSense")) end
+                            KO.undo(_("Time server deleted"), function()
+                                act(plugin, "ntp_add", { server = x.server, type = x.type }, _("Time server put back"))
+                            end)
+                        end, { text = _("Deleting…") })
+                    end } })
+                end }
+            end
+            t[#t + 1] = { note = _("Where pfSense gets the time from. A change restarts NTP.") }
+        else
+            t[#t + 1] = { note = plugin:configWhy("ntp") or _("Reading…") }
+        end
+        return t
+    end, { on_refresh = function() plugin:config("ssh", nil, true) plugin:config("ntp", nil, true) end })
+    plugin:config("ssh", function() if alive(p) then UI.refreshAll() end end, true)
+    plugin:config("ntp", function() if alive(p) then UI.refreshAll() end end, true)
+end
+
+function UI.addTimeServer(plugin)
+    ask(_("Time server"), "", function(v)
+        v = trim(v)
+        if v == "" then return end
+        KO.choose(_("Type"), { { label = _("Server"), value = "server" }, { label = _("Pool"), value = "pool" }, { label = _("Peer"), value = "peer" } },
+            v:find("pool") and "pool" or "server", function(kind)
+                act(plugin, "ntp_add", { server = v, type = kind }, _("Time server added"), { text = _("Saving…") })
+            end)
+    end, { ok = _("Next"), okIcon = "chevron-right", description = _("A name or address, such as 0.pool.ntp.org.") })
+end
+
+-- DHCP server
+
+--- A DHCP server's field changed (API names: range_from, dnsserver…), checked as the web page's are.
+local function setDhcp(plugin, s, field, value)
+    local v, why = plugin:dhcpValue(field, value)
+    if v == nil then return KO.toast(why, 3) end
+    act(plugin, "dhcp_set", { iface = s.id, fields = { [field] = v } }, _("Saved"), { text = _("Saving…") })
+end
+
+function UI.dhcp(plugin)
+    configPage(plugin, "dhcp", _("DHCP server"), function(v, t)
+        local d = plugin:data()
+        if #v.servers == 0 then t[#t + 1] = { message = _("No DHCP servers.") } end
+        for __, s in ipairs(v.servers) do
+            t[#t + 1] = { text = ifaceName(d, s.id), sub = s.enabled and M.rangeText(s) or _("Off"), icon = "server",
+                dot = dotOf(s.enabled), chevron = true, callback = function() UI.dhcpServer(plugin, s.id) end }
+        end
+        t[#t + 1] = { note = _("Each interface's DHCP server: its range, pools and options. Static mappings have their own page.") }
+        return t
+    end)
+end
+
+function UI.dhcpServer(plugin, iface)
+    local d0 = plugin:data()
+    configPage(plugin, "dhcp", T(_("DHCP on %1"), ifaceName(d0, iface)), function(v, t)
+        local s
+        for __, x in ipairs(v.servers) do if x.id == iface then s = x end end
+        if not s then
+            t[#t + 1] = { message = _("It isn't in pfSense any more.") }
+            return t
+        end
+        local function edit(field, title, value, description)
+            return function()
+                ask(title, value, function(x) setDhcp(plugin, s, field, trim(x)) end, { description = description })
+            end
+        end
+        t[#t + 1] = { band = _("SERVER") }
+        t[#t + 1] = { toggle = s.enabled, text = _("DHCP server"), sub = _("Applied at once"), callback = function()
+            offAsks(not s.enabled, { title = _("Turn this DHCP server off?"),
+                text = _("Devices on this network stop getting addresses as their leases run out, and new ones get none (the Kindle too if it's on it).") },
+                function() setDhcp(plugin, s, "enable", not s.enabled) end)
+        end }
+        row(t, _("Range from"), s.from, edit("range_from", _("Range from"), s.from, _("The first address it gives, such as 192.168.1.10.")))
+        row(t, _("Range to"), s.to, edit("range_to", _("Range to"), s.to, _("The last address it gives, such as 192.168.1.42.")))
+        row(t, _("DNS servers"), #s.dns > 0 and table.concat(s.dns, ", ") or _("pfSense's"),
+            edit("dnsserver", _("DNS servers"), table.concat(s.dns, ", "), _("Several with commas; empty: pfSense's own.")))
+        row(t, _("Gateway"), s.gateway ~= "" and s.gateway or _("The interface's address"),
+            edit("gateway", _("Gateway"), s.gateway, _("Empty: the interface's address; none: no gateway.")))
+        row(t, _("Domain"), s.domain ~= "" and s.domain or _("pfSense's"), edit("domain", _("Domain"), s.domain, _("Such as home.example.com; empty: pfSense's own.")))
+        row(t, _("Lease time"), M.duration(s.lease),
+            edit("defaultleasetime", _("Lease time"), s.lease and tostring(s.lease) or "", _("In seconds, such as 7200 (2 h); empty: pfSense's default.")))
+        row(t, _("Longest lease"), M.duration(s.maxLease),
+            edit("maxleasetime", _("Longest lease"), s.maxLease and tostring(s.maxLease) or "", _("In seconds, such as 86400 (1 day); empty: pfSense's default.")))
+        t[#t + 1] = { band = _("ADDRESS POOLS"), right = tostring(#s.pools) }
+        t[#t + 1] = { tiles = { { icon = "plus", text = _("Add a pool"), fn = function()
+            ask(_("Pool from"), "", function(from)
+                from = trim(from)
+                if not M.isIPv4(from) then return KO.toast(_("Enter an IP address, such as 192.168.1.20")) end
+                ask(_("Pool to"), "", function(to)
+                    to = trim(to)
+                    if not M.isIPv4(to) then return KO.toast(_("Enter an IP address, such as 192.168.1.20")) end
+                    act(plugin, "pool_add", { parent = s.id, from = from, to = to }, _("Pool added"), { text = _("Saving…") })
+                end, { ok = _("Add"), okIcon = "plus", description = _("The pool's last address.") })
+            end, { ok = _("Next"), okIcon = "chevron-right", description = _("Another range of addresses on this network: its first address.") })
+        end } }, cols = 3 }
+        for __, x in ipairs(s.pools) do
+            t[#t + 1] = { text = x.name, sub = x.domain ~= "" and x.domain or nil, icon = "list", chevron = true, callback = function()
+                KO.list(x.name, { { text = _("Delete"), fn = function()
+                    plugin:act("pool_delete", { parent = x.parent, id = x.id, from = x.from, to = x.to }, function(ok, text)
+                        if not ok then return KO.message(text, _("pfSense")) end
+                        KO.undo(_("Pool deleted"), function()
+                            act(plugin, "pool_add", { parent = x.parent, from = x.from, to = x.to }, _("Pool put back"))
+                        end)
+                    end, { text = _("Deleting…") })
+                end } })
+            end }
+        end
+        t[#t + 1] = { band = _("CUSTOM OPTIONS"), right = tostring(#s.options) }
+        t[#t + 1] = { tiles = { { icon = "plus", text = _("Add an option"), fn = function() UI.addOption(plugin, s.id) end } }, cols = 3 }
+        for __, o in ipairs(s.options) do
+            t[#t + 1] = { text = T(_("Option %1"), o.number), sub = T("%1 · %2", o.type, o.value), icon = "sliders-horizontal", chevron = true,
+                callback = function()
+                    KO.list(T(_("Option %1"), o.number), { { text = _("Delete"), fn = function()
+                        plugin:act("option_delete", { parent = o.parent, id = o.id, number = o.number, value = o.value }, function(ok, text)
+                            if not ok then return KO.message(text, _("pfSense")) end
+                            KO.undo(_("Option deleted"), function()
+                                act(plugin, "option_add", { parent = o.parent, number = o.number, type = o.type, value = o.value }, _("Option put back"))
+                            end)
+                        end, { text = _("Deleting…") })
+                    end } })
+                end }
+        end
+        return t
+    end)
+end
+
+-- The custom options' types, as the API names them.
+local OPTION_TYPES = { "text", "string", "boolean", "unsigned integer 8", "unsigned integer 16", "unsigned integer 32",
+    "signed integer 8", "signed integer 16", "signed integer 32", "ip-address" }
+
+function UI.addOption(plugin, parent)
+    ask(_("Option number"), "", function(v)
+        local n = tonumber(trim(v))
+        if not n or n < 1 or n > 254 then return KO.toast(_("Enter the option's number (1 to 254)")) end
+        local options = {}
+        for __, x in ipairs(OPTION_TYPES) do options[#options + 1] = { label = x, value = x } end
+        KO.choose(_("Type"), options, "text", function(kind)
+            ask(_("Value"), "", function(value)
+                act(plugin, "option_add", { parent = parent, number = math.floor(n), type = kind, value = trim(value) }, _("Option added"),
+                    { text = _("Saving…") })
+            end, { ok = _("Add"), okIcon = "plus" })
+        end)
+    end, { ok = _("Next"), okIcon = "chevron-right", description = _("A DHCP option's number, such as 66 (a TFTP server) or 252 (a proxy's settings).") })
+end
+
+-- DNS Resolver
+
+function UI.dnsResolver(plugin)
+    configPage(plugin, "dnsres", _("DNS Resolver"), function(c, t)
+        local function switch(field, on, text, sub, asks)
+            t[#t + 1] = { toggle = on, text = text, sub = sub, callback = function()
+                local function go() act(plugin, "dnsres_set", { fields = { [field] = not on } }, on and _("Turned off") or _("Turned on"),
+                    { text = _("Applying…") }) end
+                if asks then return offAsks(not on, asks, go) end
+                go()
+            end }
+        end
+        t[#t + 1] = { band = _("DNS RESOLVER") }
+        switch("enable", c.enabled, _("DNS Resolver"), T(_("Port %1 · applied at once"), c.port),
+            { title = _("Turn the DNS Resolver off?"),
+              text = _("Devices that use pfSense for names (most on your network, maybe this Kindle) can't look any up until it's on again.") })
+        switch("dnssec", c.dnssec, _("DNSSEC"), _("Checks the answers are signed"))
+        switch("forwarding", c.forwarding, _("Forwarding mode"), _("Asks pfSense's DNS servers (System > General) instead of the root servers"))
+        t[#t + 1] = { band = _("NAMES FROM DHCP AND VPN") }
+        switch("regdhcp", c.regdhcp, _("DHCP leases"), _("Devices' names from their leases"))
+        switch("regdhcpstatic", c.regdhcpstatic, _("DHCP static mappings"), _("Their hostnames"))
+        switch("regovpnclients", c.regovpnclients, _("OpenVPN clients"), _("Their names"))
+        if #c.ifaces > 0 then row(t, _("Listens on"), table.concat(c.ifaces, ", "):upper()) end
+        t[#t + 1] = { note = _("Host overrides have their own page (DNS overrides).") }
+        return t
+    end)
 end
 
 -- ------------------------------------------------------------------ aliases
@@ -1815,6 +2386,8 @@ function UI.help()
     local text = _([[Shows your pfSense firewall on the Kindle: its health (CPU, memory, disk, temperature), gateways, interfaces and services, the devices on your network (DHCP leases and the ARP table), DHCP static mappings, DNS host overrides, firewall rules, VPN, the logs and packages with updates.
 
 You can start, stop or restart a service, wake a device (Wake-on-LAN), add, change or delete static mappings and host overrides, turn firewall rules on or off, reboot pfSense or start its update.
+
+It also has the DHCP server's and DNS Resolver's settings, pf's tables (look an address up, empty a block list), the service watchdog, cron jobs, NTP and SSH, and installs or removes packages. Turning a server off, removing a package and emptying a table ask first; deleting something has Undo.
 
 It talks to the REST API package (pfSense-pkg-RESTAPI) with an API key. Install the package, allow API keys in System > REST API > Settings (Authentication methods), and make a key in System > REST API > Keys. The key can do what its user is allowed to: page-all for everything, or the API privileges for what you want.
 

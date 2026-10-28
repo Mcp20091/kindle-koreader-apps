@@ -447,5 +447,130 @@ eq(one(401, '{"unauth"}'):ping(), true, "ping: unauthorized is an answer")
 eq(select(2, one(404, "<html>"):ping()), "notapi", "ping: not the API")
 eq(select(2, one(200, "<html><body>pfSense"):ping()), "notapi", "ping: the login page")
 
+-- the second batch: packages, pf tables, service settings (as words)
+eq(M.available({ name = "pfSense-pkg-Cron", version = "0.3.8", installed = false }).short, "Cron", "a package to install: its short name")
+eq(M.package({ id = 4, name = "pfSense-pkg-nmap" }).id, 4, "an installed package keeps its place (to remove it)")
+eq(API.inEntry("192.168.1.42", "192.168.1.42"), true, "a table entry: the address itself")
+eq(API.inEntry("192.168.1.0/24", "192.168.1.42"), true, "a table entry: a network it's in")
+eq(API.inEntry("10.0.0.0/24", "192.168.1.42"), false, "a table entry: another network")
+eq(API.inEntry("10.0.0.0/8", "10.0.0.2"), true, "a table entry: a /8")
+local cron = M.config("cron", { { id = 0, minute = "15", hour = "3", mday = "*", month = "*", wday = "*", who = "root",
+    command = "/usr/local/bin/backup.sh --all" } })
+eq(cron[1].name, "backup.sh", "a cron job's name: its program")
+eq(M.cronLine(cron[1]), "Daily at 03:15 · root", "a cron job's time in words")
+eq(M.cronWhen({ minute = "@reboot" }), "At startup", "cron's @reboot")
+eq(M.cronWhen({ minute = "*/5", hour = "*", mday = "*", month = "*", wday = "*" }), "Every 5 min", "every few minutes")
+eq(M.cronWhen({ minute = "0", hour = "*/6", mday = "*", month = "*", wday = "*" }), "0 */6 * * *", "anything else: its fields")
+eq(M.duration(7200), "2 h", "a lease time in hours")
+eq(M.duration(86400), "1 day", "a day")
+eq(M.duration(nil), "Default", "pfSense's default")
+local dh = M.config("dhcp", { servers = { { id = "opt1", enable = false }, { id = "lan", enable = true, range_from = "192.168.1.10",
+    range_to = "192.168.1.42", dnsserver = { "192.168.1.1" } } },
+    pools = { { parent_id = "lan", id = 0, range_from = "10.0.0.1", range_to = "10.0.0.2" } },
+    options = { { parent_id = "lan", id = 0, number = 66, type = "text", value = "192.168.1.5" } } })
+eq(dh.servers[1].id, "lan", "DHCP servers: LAN first")
+eq(M.rangeText(dh.servers[1]), "192.168.1.10 – 192.168.1.42", "a DHCP range")
+eq(dh.servers[1].pools[1].name, "10.0.0.1 – 10.0.0.2", "a pool under its server")
+eq(dh.servers[1].options[1].number, 66, "an option under its server")
+eq(#dh.servers[2].pools, 0, "the other server has none")
+local ntp = M.config("ntp", { settings = { enable = true, interface = { "lan" } }, servers = { { id = 0, timeserver = "0.pool.ntp.org", type = "pool" } } })
+eq(ntp.enabled and ntp.servers[1].server, "0.pool.ntp.org", "NTP and its time servers")
+eq(M.timeServerLine(ntp.servers[1]), "Pool", "a time server's type")
+eq(M.config("ssh", { enable = false }).port, "22", "SSH's port when it doesn't say")
+eq(M.config("dnsres", { enable = true, regdhcp = true }).regdhcp, true, "the DNS Resolver's settings")
+local wd = M.config("watchdog", { { id = 0, name = "unbound", description = "DNS Resolver", notify = true }, { id = 1, name = "dpinger" } })
+eq(wd[1].title .. "," .. wd[2].title, "DNS Resolver,dpinger", "watched services by name")
+
+-- the second batch: the API (a stand-in network)
+ANSWERS['{"pkg"}'] = { code = 200, data = { id = 2, name = "pfSense-pkg-nmap" } }
+ANSWERS['{"tables"}'] = { code = 200, data = { { name = "pfB_PRI1_v4", entries = { "192.168.1.0/24", "10.0.0.1" } },
+    { name = "snort2c", entries = { "10.0.0.2" } } } }
+ANSWERS['{"table"}'] = { code = 200, data = { name = "snort2c", entries = { "10.0.0.2", "10.0.0.1" } } }
+ANSWERS['{"cron"}'] = { code = 200, data = { id = 1, minute = "15", hour = "3", mday = "*", month = "*", wday = "*", who = "root", command = "/root/a.sh" } }
+ANSWERS['{"ts"}'] = { code = 200, data = { id = 0, timeserver = "0.pool.ntp.org" } }
+ANSWERS['{"ntp"}'] = { code = 200, data = { enable = true, serverauthkey = "SECRET" } }
+ANSWERS['{"dhcps"}'] = { code = 200, data = { { id = "lan", enable = true, staticmap = { { mac = "aa:bb:cc:dd:ee:01" } } } } }
+ANSWERS['{"pool"}'] = { code = 200, data = { parent_id = "lan", id = 0, range_from = "10.0.0.1", range_to = "10.0.0.2" } }
+ANSWERS['{"wd"}'] = { code = 200, data = { id = 0, name = "unbound" } }
+local api2 = API.new({ url = "192.168.1.1", key = "k" }, net({
+    { "/system/package%?id=2", 200, '{"pkg"}', method = "GET" },
+    { "/system/package%?id=2", 200, '{"ok"}', method = "DELETE" },
+    { "/system/package$", 200, '{"ok"}', method = "POST" },
+    { "/diagnostics/tables", 200, '{"tables"}' },
+    { "/diagnostics/table%?id=snort2c", 200, '{"table"}', method = "GET" },
+    { "/diagnostics/table%?id=snort2c", 200, '{"ok"}', method = "DELETE" },
+    { "/diagnostics/table%?id=pfB", 200, '{"table"}', method = "GET" },
+    { "/services/cron/job%?id=1", 200, '{"cron"}', method = "GET" },
+    { "/services/cron/job", 200, '{"ok"}' },
+    { "/services/ntp/time_server%?id=0", 200, '{"ts"}', method = "GET" },
+    { "/services/ntp/time_servers", 200, '{"empty"}' },
+    { "/services/ntp/time_server", 200, '{"ok"}' },
+    { "/services/ntp/settings", 200, '{"ntp"}' },
+    { "/status/services", 200, '{"services"}' },
+    { "/status/service$", 200, '{"ok"}', method = "POST" },
+    { "/services/dhcp_servers", 200, '{"dhcps"}' },
+    { "/services/dhcp_server/address_pools", 200, '{"empty"}' },
+    { "/services/dhcp_server/custom_options", 200, '{"empty"}' },
+    { "/services/dhcp_server/address_pool%?id=0&parent_id=lan", 200, '{"pool"}', method = "GET" },
+    { "/services/dhcp_server/address_pool", 200, '{"ok"}', method = "DELETE" },
+    { "/services/dhcp_server%?id=lan", 200, '{"dhcps"}', method = "GET" },
+    { "/services/dhcp_server$", 200, '{"ok"}', method = "PATCH" },
+    { "/services/dhcp_server/apply", 200, '{"ok"}' },
+    { "/services/dns_resolver/", 200, '{"ok"}' },
+    { "/services/service_watchdog%?id=0", 200, '{"wd"}', method = "GET" },
+    { "/services/service_watchdog", 200, '{"ok"}' },
+    { "/services/ssh", 200, '{"ok"}' },
+}))
+sent = {}
+eq(api2:removePackage(2, "pfSense-pkg-nmap"), true, "a package removed")
+eq(sent[2].method .. " " .. sent[2].url, "DELETE https://192.168.1.1/api/v2/system/package?id=2", "by its place, after it was checked")
+eq(select(2, api2:removePackage(2, "pfSense-pkg-Cron")), "changed", "another package at that place: not removed")
+sent = {}
+eq(api2:installPackage("pfSense-pkg-Cron"), true, "a package installed")
+eq(sent[1].body, "{name=pfSense-pkg-Cron}", "by its name")
+local tl = api2:tables()
+eq(tl and tl[1].count, 2, "a table's entries are counted")
+eq(tl and tl[1].entries, nil, "but stay in the child")
+local hits = api2:lookup("192.168.1.42")
+eq(hits and #hits, 1, "an address found in one table")
+eq(hits and hits[1].entries[1], "192.168.1.0/24", "by the network it's in")
+local one1 = api2:table("snort2c", 1)
+eq(one1 and one1.count .. "/" .. #one1.entries, "2/1", "a table's first entries, and how many")
+sent = {}
+eq(api2:flushTable("snort2c"), true, "a table emptied")
+eq(sent[2].method, "DELETE", "after it was checked")
+eq(select(2, api2:flushTable("pfB_PRI1_v4")), "changed", "the API answering with another table: not emptied")
+local csig = { minute = "15", hour = "3", mday = "*", month = "*", wday = "*", who = "root", command = "/root/a.sh" }
+sent = {}
+eq(api2:editCron(1, csig, { hour = "4" }), true, "a cron job changed")
+eq(sent[2].body, "{hour=4,id=1}", "only what changed")
+csig.command = "/root/b.sh"
+eq(select(2, api2:deleteCron(1, csig)), "changed", "another cron job at that place: not deleted")
+sent = {}
+eq(api2:deleteTimeServer(0, "0.pool.ntp.org"), true, "a time server deleted")
+eq(sent[2].method, "DELETE", "after it was checked")
+eq(sent[#sent].body, "{action=restart,id=3}", "then ntpd restarted")
+local n2 = api2:config("ntp")
+eq(n2 and n2.settings.enable, true, "NTP's settings read")
+eq(n2 and n2.settings.serverauthkey, nil, "its authentication key stays in the child")
+local d2 = api2:config("dhcp")
+eq(d2 and d2.servers[1].id, "lan", "the DHCP servers read")
+eq(d2 and d2.servers[1].staticmap, nil, "without their static mappings")
+sent = {}
+eq(api2:setDhcp("lan", { range_to = "192.168.1.50" }), true, "a DHCP server changed")
+eq(sent[2].body, "{id=lan,range_to=192.168.1.50}", "its field")
+eq(sent[3].url, "https://192.168.1.1/api/v2/services/dhcp_server/apply", "then DHCP applied")
+eq(select(2, api2:deletePool("lan", 0, "10.0.0.1", "10.0.0.0")), "changed", "another pool at that place: not deleted")
+sent = {}
+eq(api2:deletePool("lan", 0, "10.0.0.1", "10.0.0.2"), true, "a pool deleted")
+eq(sent[3].url, "https://192.168.1.1/api/v2/services/dhcp_server/apply", "then DHCP applied")
+sent = {}
+eq(api2:setDnsResolver({ dnssec = false }), true, "the DNS Resolver changed")
+eq(sent[2].url, "https://192.168.1.1/api/v2/services/dns_resolver/apply", "then applied")
+eq(select(2, api2:deleteWatchdog(0, "ntpd")), "changed", "another watched service at that place: not removed")
+sent = {}
+eq(api2:setSsh({ enable = false }), true, "SSH off")
+eq(sent[1].body, "{enable=false}", "only enable sent")
+
 print(string.format("%d passed, %d failed", passed, failed))
 os.exit(failed == 0 and 0 or 1)

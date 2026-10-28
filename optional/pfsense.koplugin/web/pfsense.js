@@ -1,6 +1,8 @@
 // pfSense (the optional pfSense plugin): the firewall's health, gateways, interfaces and services (start,
 // stop, restart); devices (Wake), DHCP static mappings and DNS host overrides (add, delete), firewall rules on
 // or off, reboot and update; and its settings. The page reads the state again every 60 seconds while it's open.
+// Read only when asked (each card's Read): the DHCP server's and DNS Resolver's settings, pf tables, SSH, NTP,
+// the service watchdog, cron jobs and packages (install, remove).
 App.pages.pfsense = {
   timer: null,
 
@@ -16,7 +18,8 @@ App.pages.pfsense = {
         App.link('pfSense REST API package', 'https://pfrest.org'), '.')),
       ...[this.status(s), this.gateways(s), this.services(s), this.devices(s), this.statics(s), this.overrides(s),
         this.aliases(s), this.nat(s), this.vpn(s), this.certs(s),
-        this.rules(s), this.more(s), this.settings(s)].filter(Boolean));
+        this.rules(s), this.dhcp(s), this.dnsres(s), this.tables(s), this.system2(s), this.packages(s),
+        this.more(s), this.settings(s)].filter(Boolean));
     if (s.configured) {
       this.timer = setTimeout(() => {
         if (main.isConnected && location.hash.startsWith('#pfsense') && !document.querySelector('.modal')) this.reload();
@@ -265,6 +268,176 @@ App.pages.pfsense = {
     if (!s.summary || !s.certs.length) return null;
     return h('div', { class: 'card' }, h('h2', {}, 'Certificates'),
       ...s.certs.map((c) => this.row(c.name, c.line, this.pill(!c.soon, 'OK', 'Soon'))));
+  },
+
+  // A card read only when asked (packages, pf tables, the settings): Read (or Read again) in its head, and
+  // why it couldn't be read. got: what was read (undefined until then).
+  lazy(title, what, got, why, ...body) {
+    const page = this;
+    return h('div', { class: 'card' },
+      h('div', { class: 'spread' }, h('h2', {}, title),
+        page.button(got === undefined ? 'Read' : 'Read again', () => page.act('read', { what }, 'Reading…'))),
+      why ? h('p', { class: 'muted small' }, why) : null,
+      got === undefined ? (why ? null : h('p', { class: 'muted small' }, 'Read from pfSense when you ask.')) : null,
+      ...(got === undefined ? [] : body.filter(Boolean)));
+  },
+
+  cfg(s, name) { const c = App.obj(App.obj(s.config)[name]); return { value: c.value, why: c.why }; },
+
+  packages(s) {
+    if (!s.summary) return null;
+    const page = this;
+    const p = App.obj(s.packages);
+    const av = App.obj(s.available);
+    const list = p.list === undefined ? undefined : App.arr(p.list);
+    const install = h('div', { class: 'row', style: 'gap:8px;flex-wrap:wrap;margin:8px 0' },
+      av.list === undefined
+        ? page.button('Packages to install', () => page.act('read', { what: 'available' }, 'Asking pfSense’s package server…'))
+        : App.select([['', 'Install a package…'], ...App.arr(av.list).map((x) => [x.name, x.short + ' ' + x.version])], '', async (v) => {
+          if (!v) return;
+          const x = App.arr(av.list).find((y) => y.name === v);
+          if (!(await App.confirm('Install ' + x.short + '?', 'pfSense downloads it and sets it up, which can take a few minutes. ' + (x.descr || ''), 'Install', false))) { page.reload(); return; }
+          page.act('pkg_install', { name: v }, 'Installing ' + x.short + '…');
+        }),
+      av.why ? h('span', { class: 'muted small' }, av.why) : null);
+    return this.lazy('Packages', 'packages', list, p.why, install,
+      ...(list || []).map((x) => this.row(x.short, x.update ? x.installed + ' → ' + x.latest + ' (update in pfSense’s web interface)' : x.installed,
+        page.button('Remove', async () => {
+          if (!(await App.confirm('Remove ' + x.short + '?', 'pfSense uninstalls it: what it does stops. Its settings are usually kept, for when it’s installed again.', 'Remove', true))) return;
+          page.act('pkg_remove', { name: x.name }, 'Removing ' + x.short + '…');
+        }),
+        x.update ? this.pill(false, '', 'Update') : null)));
+  },
+
+  tables(s) {
+    if (!s.summary) return null;
+    const page = this;
+    const t = App.obj(s.tables);
+    const lk = App.obj(s.lookup);
+    const flush = async (name) => {
+      if (!(await App.confirm('Empty ' + name + '?', 'Every address in it goes now, so none of them is blocked (or passed) by it until it’s filled again: pfBlockerNG and Snort fill theirs as they update. The REST API can’t take out one address on its own.', 'Empty', true))) return;
+      page.act('table_flush', { name }, name + ' emptied');
+    };
+    const ip = h('input', { type: 'text', placeholder: '192.168.1.20', value: lk.ip || '' });
+    const look = h('div', { class: 'row', style: 'gap:8px;margin:8px 0' }, ip, page.button('Look up', () => page.act('lookup', { ip: ip.value.trim() }, 'Looking…')));
+    const found = lk.ip ? (lk.why ? h('p', { class: 'muted small' }, lk.why)
+      : (App.arr(lk.hits).length ? h('div', {}, ...App.arr(lk.hits).map((x) => this.row(x.name, lk.ip + ' as ' + App.arr(x.entries).join(', '), page.button('Empty', () => flush(x.name)))))
+        : h('p', { class: 'muted small' }, lk.ip + ' isn’t in any table.'))) : null;
+    const list = t.list === undefined ? undefined : App.arr(t.list);
+    return this.lazy('pf tables', 'tables', list, t.why, look, found,
+      ...(list || []).map((x) => this.row(x.name, x.count + (x.count === 1 ? ' entry' : ' entries'), page.button('Empty', () => flush(x.name)))),
+      h('p', { class: 'small muted' }, 'The block lists pfBlockerNG or Snort fill, and the aliases’ addresses. The REST API can only empty a whole table.'));
+  },
+
+  dhcp(s) {
+    if (!s.summary) return null;
+    const page = this;
+    const c = this.cfg(s, 'dhcp');
+    const v = App.obj(c.value);
+    const set = (iface, field, value, done) => page.act('dhcp_set', { iface, field, value }, done || 'Saved');
+    const edit = (srv, field, label, value) => page.button(label, async () => {
+      const r = await page.form(label, [['v', label, '', value]], 'Save');
+      if (r) set(srv.id, field, r.v);
+    });
+    return this.lazy('DHCP server', 'dhcp', c.value, c.why, ...App.arr(v.servers).map((x) => h('div', {},
+      h('h3', {}, x.id.toUpperCase()),
+      App.setting('DHCP server', App.toggle(!!x.enabled, async (on) => {
+        if (!on && !(await App.confirm('Turn this DHCP server off?', 'Devices on this network stop getting addresses as their leases run out, and new ones get none.', 'Turn off', true))) { page.reload(); return; }
+        set(x.id, 'enable', on, on ? 'DHCP on' : 'DHCP off');
+      }), 'Applied at once.'),
+      this.row('Range', (x.from || '–') + ' – ' + (x.to || '–'), edit(x, 'range_from', 'From', x.from), edit(x, 'range_to', 'To', x.to)),
+      this.row('DNS servers', App.arr(x.dns).join(', ') || 'pfSense’s', edit(x, 'dnsserver', 'Change', App.arr(x.dns).join(', '))),
+      this.row('Gateway', x.gateway || 'The interface’s address', edit(x, 'gateway', 'Change', x.gateway)),
+      this.row('Domain', x.domain || 'pfSense’s', edit(x, 'domain', 'Change', x.domain)),
+      this.row('Lease time (seconds)', x.lease ? String(x.lease) : 'Default', edit(x, 'defaultleasetime', 'Change', x.lease ? String(x.lease) : '')),
+      this.row('Longest lease (seconds)', x.maxLease ? String(x.maxLease) : 'Default', edit(x, 'maxleasetime', 'Change', x.maxLease ? String(x.maxLease) : '')),
+      ...App.arr(x.pools).map((p) => this.row('Pool', p.name, page.button('Delete', async () => {
+        if (!(await App.confirm('Delete the pool ' + p.name + '?', 'Its addresses aren’t given out any more.', 'Delete', true))) return;
+        page.act('pool_delete', { parent: p.parent, id: p.id }, 'Pool deleted');
+      }))),
+      ...App.arr(x.options).map((o) => this.row('Option ' + o.number, o.type + ' · ' + o.value, page.button('Delete', async () => {
+        if (!(await App.confirm('Delete option ' + o.number + '?', 'Devices don’t get it any more.', 'Delete', true))) return;
+        page.act('option_delete', { parent: o.parent, id: o.id }, 'Option deleted');
+      }))),
+      h('div', { class: 'row', style: 'gap:8px;margin-top:6px' },
+        page.button('Add a pool', async () => {
+          const r = await page.form('Add a pool on ' + x.id.toUpperCase(), [['from', 'From', '192.168.1.42'], ['to', 'To', '192.168.1.50']]);
+          if (r) page.act('pool_add', { parent: x.id, from: r.from, to: r.to }, 'Pool added');
+        }),
+        page.button('Add an option', async () => {
+          const r = await page.form('Add a DHCP option on ' + x.id.toUpperCase(), [['number', 'Number', '66'], ['type', 'Type (text, string, boolean, ip-address, unsigned integer 8…)', 'text', 'text'], ['value', 'Value', '']]);
+          if (r) page.act('option_add', { parent: x.id, number: r.number, type: r.type, value: r.value }, 'Option added');
+        })))));
+  },
+
+  dnsres(s) {
+    if (!s.summary) return null;
+    const page = this;
+    const c = this.cfg(s, 'dnsres');
+    const v = App.obj(c.value);
+    const sw = (field, label, hint, asks) => App.setting(label, App.toggle(!!v[field === 'enable' ? 'enabled' : field], async (on) => {
+      if (!on && asks && !(await App.confirm(asks[0], asks[1], 'Turn off', true))) { page.reload(); return; }
+      page.act('dnsres_set', { field, value: on }, on ? 'Turned on' : 'Turned off');
+    }), hint);
+    return this.lazy('DNS Resolver', 'dnsres', c.value, c.why,
+      sw('enable', 'DNS Resolver', 'Port ' + (v.port || '53') + '. Applied at once.', ['Turn the DNS Resolver off?', 'Devices that use pfSense for names (most on your network, maybe the Kindle) can’t look any up until it’s on again.']),
+      sw('dnssec', 'DNSSEC', 'Checks the answers are signed.'),
+      sw('forwarding', 'Forwarding mode', 'Asks pfSense’s DNS servers (System > General) instead of the root servers.'),
+      sw('regdhcp', 'Names from DHCP leases'), sw('regdhcpstatic', 'Names from DHCP static mappings'), sw('regovpnclients', 'Names of OpenVPN clients'));
+  },
+
+  system2(s) {
+    if (!s.summary) return null;
+    const page = this;
+    const ssh = this.cfg(s, 'ssh');
+    const ntp = this.cfg(s, 'ntp');
+    const wd = this.cfg(s, 'watchdog');
+    const cron = this.cfg(s, 'cron');
+    const sv = App.obj(ssh.value);
+    const nv = App.obj(ntp.value);
+    return h('div', {},
+      this.lazy('SSH', 'ssh', ssh.value, ssh.why,
+        App.setting('SSH server', App.toggle(!!sv.enabled, async (on) => {
+          if (!on && !(await App.confirm('Turn SSH off?', 'pfSense stops taking SSH connections, and ones open now may be cut off. The REST API keeps working.', 'Turn off', true))) { page.reload(); return; }
+          page.act('ssh_set', { enable: on }, on ? 'SSH on' : 'SSH off');
+        }), 'Applied at once.'),
+        this.row('Port', sv.port, page.button('Change', async () => {
+          const r = await page.form('SSH port', [['port', 'Port', '22', sv.port]], 'Save');
+          if (r) page.act('ssh_set', { port: r.port }, 'Saved');
+        }))),
+      this.lazy('NTP (time)', 'ntp', ntp.value, ntp.why,
+        App.setting('NTP server', App.toggle(!!nv.enabled, async (on) => {
+          if (!on && !(await App.confirm('Turn the NTP server off?', 'Devices that ask pfSense for the time stop getting it.', 'Turn off', true))) { page.reload(); return; }
+          page.act('ntp_enabled', { on }, on ? 'NTP on' : 'NTP off');
+        }), 'pfSense gives the time to the network.'),
+        ...App.arr(nv.servers).map((x) => this.row(x.server, x.type, page.button('Delete', async () => {
+          if (!(await App.confirm('Delete ' + x.server + '?', 'pfSense stops getting the time from it (NTP restarts).', 'Delete', true))) return;
+          page.act('ntp_delete', { id: x.id }, 'Time server deleted');
+        }))),
+        page.button('Add a time server', async () => {
+          const r = await page.form('Add a time server', [['server', 'Name or address', '0.pool.ntp.org'], ['type', 'Type (server, pool or peer)', 'pool', 'pool']]);
+          if (r) page.act('ntp_add', r, 'Time server added');
+        })),
+      this.lazy('Service watchdog', 'watchdog', wd.value, wd.why,
+        ...App.arr(wd.value).map((w) => this.row(w.title, w.title !== w.name ? w.name : '',
+          h('label', { class: 'small row', style: 'gap:6px' }, 'Notify', App.toggle(!!w.notify, (on) => page.act('watchdog_notify', { id: w.id, on }, on ? 'Notifications on' : 'Notifications off'))),
+          page.button('Stop watching', () => page.act('watchdog_delete', { id: w.id }, w.title + ' not watched')))),
+        App.select([['', 'Watch a service…'], ...s.services.filter((x) => !App.arr(wd.value).some((w) => w.name === x.key)).map((x) => [x.key, x.name])], '', (v) => {
+          if (!v) return;
+          const x = s.services.find((y) => y.key === v);
+          page.act('watchdog_add', { name: v, description: x ? x.name : v, notify: true }, 'Watched');
+        }),
+        h('p', { class: 'small muted' }, 'pfSense starts a watched service again when it stops (the Service Watchdog package).')),
+      this.lazy('Cron jobs', 'cron', cron.value, cron.why,
+        ...App.arr(cron.value).map((c) => this.row(c.command, [c.minute, c.hour, c.mday, c.month, c.wday].join(' ') + ' · ' + c.who, page.button('Delete', async () => {
+          if (!(await App.confirm('Delete this cron job?', c.command, 'Delete', true))) return;
+          page.act('cron_delete', { id: c.id }, 'Cron job deleted');
+        }))),
+        page.button('Add', async () => {
+          const r = await page.form('Add a cron job', [['minute', 'Minute (or @daily, @reboot…)', '0', '0'], ['hour', 'Hour', '3', '3'], ['mday', 'Day of the month', '*', '*'],
+            ['month', 'Month', '*', '*'], ['wday', 'Day of the week', '*', '*'], ['who', 'User', 'root', 'root'], ['command', 'Command (full path)', '/usr/local/bin/backup.sh']]);
+          if (r) page.act('cron_add', r, 'Cron job added');
+        })));
   },
 
   more(s) {

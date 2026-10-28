@@ -28,7 +28,7 @@ function Web.routes(server)
     end)
 
     -- { name, args }: service, rule_enabled, wake, static_add, static_delete, override_add,
-    -- override_delete, reboot, update, refresh, settings (see PfSense:webAct).
+    -- override_delete, reboot, update, refresh, read, lookup, settings, and the rest PfSense:webAct lists.
     server:route("POST", "^/api/pfsense/act$", function(req, res)
         local p = pfsense()
         if not p then return res:error(404, "pfSense isn't installed") end

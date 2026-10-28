@@ -268,9 +268,165 @@ function M.ovpn(s)
 end
 
 function M.package(p)
-    return { name = str(p.name), short = str(p.shortname) ~= "" and str(p.shortname) or str(p.name):gsub("^pfSense%-pkg%-", ""),
+    return { id = num(p.id), name = str(p.name), short = str(p.shortname) ~= "" and str(p.shortname) or str(p.name):gsub("^pfSense%-pkg%-", ""),
         descr = str(p.descr), installed = str(p.installed_version), latest = str(p.latest_version),
         update = p.update_available == true }
+end
+
+--- A package pfSense's package server has (one to install).
+function M.available(p)
+    return { name = str(p.name), short = str(p.shortname) ~= "" and str(p.shortname) or str(p.name):gsub("^pfSense%-pkg%-", ""),
+        descr = str(p.descr), version = str(p.version), installed = p.installed == true }
+end
+
+-- ------------------------------------------------------------------ service settings
+
+local function bool(v) return v == true end
+
+function M.watchdog(w)
+    local t = { id = num(w.id), name = str(w.name), descr = str(w.description), notify = bool(w.notify) }
+    t.title = t.descr ~= "" and t.descr or t.name
+    return t
+end
+
+-- The words for cron's special times.
+local CRON_EVENTS = { ["@reboot"] = _("At startup"), ["@yearly"] = _("Yearly"), ["@annually"] = _("Yearly"),
+    ["@monthly"] = _("Monthly"), ["@weekly"] = _("Weekly"), ["@daily"] = _("Daily"), ["@midnight"] = _("Daily"),
+    ["@hourly"] = _("Hourly") }
+
+function M.cron(c)
+    local t = { id = num(c.id), minute = str(c.minute), hour = str(c.hour), mday = str(c.mday), month = str(c.month),
+        wday = str(c.wday), who = str(c.who), command = str(c.command) }
+    t.sig = { minute = t.minute, hour = t.hour, mday = t.mday, month = t.month, wday = t.wday, who = t.who, command = t.command }
+    -- (its name: the command's program, without its folder)
+    local prog = t.command:match("^%s*(%S+)") or ""
+    t.name = prog:match("([^/]+)$") or prog
+    if t.name == "" then t.name = _("Cron job") end
+    return t
+end
+
+--- When a cron job runs, in words: "Daily", "At 03:15", "Every 5 min", or its five fields ("0 */6 * * *").
+function M.cronWhen(c)
+    if CRON_EVENTS[c.minute] then return CRON_EVENTS[c.minute] end
+    local every = c.minute:match("^%*/(%d+)$")
+    local rest = c.hour .. c.mday .. c.month .. c.wday
+    if every and rest == "****" then return T(_("Every %1 min"), every) end
+    if c.minute:match("^%d+$") and c.hour == "*" and c.mday .. c.month .. c.wday == "***" then
+        return T(_("Hourly at :%1"), string.format("%02d", tonumber(c.minute)))
+    end
+    if c.minute:match("^%d+$") and c.hour:match("^%d+$") and c.mday .. c.month .. c.wday == "***" then
+        return T(_("Daily at %1"), string.format("%02d:%02d", tonumber(c.hour), tonumber(c.minute)))
+    end
+    return table.concat({ c.minute, c.hour, c.mday, c.month, c.wday }, " ")
+end
+
+--- A cron job's second line: "Daily at 03:15 · root".
+function M.cronLine(c)
+    return c.who ~= "" and (M.cronWhen(c) .. " · " .. c.who) or M.cronWhen(c)
+end
+
+function M.timeServer(x)
+    local t = { id = num(x.id), server = str(x.timeserver), type = str(x.type), prefer = bool(x.prefer), noselect = bool(x.noselect) }
+    t.name = t.server
+    return t
+end
+
+local NTP_TYPES = { server = _("Server"), pool = _("Pool"), peer = _("Peer") }
+function M.timeServerLine(x)
+    local parts = { NTP_TYPES[x.type] or x.type }
+    if x.prefer then parts[#parts + 1] = _("Preferred") end
+    if x.noselect then parts[#parts + 1] = _("Not used") end
+    return table.concat(parts, " · ")
+end
+
+function M.dhcpServer(x)
+    local t = { id = str(x.id) ~= "" and str(x.id) or str(x.interface), enabled = bool(x.enable), from = str(x.range_from),
+        to = str(x.range_to), domain = str(x.domain), gateway = str(x.gateway), dns = strings(x.dnsserver),
+        ntp = strings(x.ntpserver), search = strings(x.domainsearchlist), lease = tonumber(x.defaultleasetime),
+        maxLease = tonumber(x.maxleasetime), denyUnknown = str(x.denyunknown), staticArp = bool(x.staticarp) }
+    t.key = t.id
+    return t
+end
+
+function M.pool(x)
+    local t = { parent = str(x.parent_id), id = num(x.id), from = str(x.range_from), to = str(x.range_to), domain = str(x.domain) }
+    t.name = T("%1 – %2", t.from, t.to)
+    return t
+end
+
+function M.option(x)
+    return { parent = str(x.parent_id), id = num(x.id), number = tonumber(x.number) or 0, type = str(x.type), value = str(x.value) }
+end
+
+--- A DHCP server's range in words: "192.168.1.10 – 192.168.1.42".
+function M.rangeText(s)
+    if s.from == "" and s.to == "" then return _("No range") end
+    return T("%1 – %2", s.from, s.to)
+end
+
+--- "1 day", "2 h", "45 min" from seconds (nil: pfSense's own default).
+function M.duration(secs)
+    if not secs or secs <= 0 then return _("Default") end
+    if secs % 86400 == 0 then return secs == 86400 and _("1 day") or T(_("%1 days"), math.floor(secs / 86400)) end
+    if secs % 3600 == 0 then return T(_("%1 h"), math.floor(secs / 3600)) end
+    if secs % 60 == 0 then return T(_("%1 min"), math.floor(secs / 60)) end
+    return T(_("%1 s"), secs)
+end
+
+--- A settings page's read (pfsapi's API:config), as the pages show it.
+function M.config(name, raw)
+    raw = list(raw)
+    if name == "watchdog" then
+        local out = {}
+        for __, x in ipairs(raw) do out[#out + 1] = M.watchdog(x) end
+        table.sort(out, function(a, b) return a.title:lower() < b.title:lower() end)
+        return out
+    end
+    if name == "cron" then
+        local out = {}
+        for __, x in ipairs(raw) do out[#out + 1] = M.cron(x) end
+        return out
+    end
+    if name == "ssh" then
+        return { enabled = bool(raw.enable), port = str(raw.port) ~= "" and str(raw.port) or "22", keyOnly = str(raw.sshdkeyonly) }
+    end
+    if name == "ntp" then
+        local s = list(raw.settings)
+        local out = { enabled = bool(s.enable), ifaces = strings(s.interface), servers = {} }
+        for __, x in ipairs(list(raw.servers)) do out.servers[#out.servers + 1] = M.timeServer(x) end
+        return out
+    end
+    if name == "dhcp" then
+        local out = { servers = {} }
+        local by = {}
+        for __, x in ipairs(list(raw.servers)) do
+            local srv = M.dhcpServer(x)
+            srv.pools, srv.options = {}, {}
+            out.servers[#out.servers + 1] = srv
+            by[srv.id] = srv
+        end
+        for __, x in ipairs(list(raw.pools)) do
+            local p = M.pool(x)
+            if by[p.parent] then table.insert(by[p.parent].pools, p) end
+        end
+        for __, x in ipairs(list(raw.options)) do
+            local o = M.option(x)
+            if by[o.parent] then table.insert(by[o.parent].options, o) end
+        end
+        -- (LAN first, then the others by name)
+        table.sort(out.servers, function(a, b)
+            if a.id == "lan" or b.id == "lan" then return a.id == "lan" end
+            return a.id < b.id
+        end)
+        return out
+    end
+    if name == "dnsres" then
+        return { enabled = bool(raw.enable), port = str(raw.port) ~= "" and str(raw.port) or "53", dnssec = bool(raw.dnssec),
+            forwarding = bool(raw.forwarding), regdhcp = bool(raw.regdhcp), regdhcpstatic = bool(raw.regdhcpstatic),
+            regovpnclients = bool(raw.regovpnclients), ssl = bool(raw.enablessl), ifaces = strings(raw.active_interface),
+            outgoing = strings(raw.outgoing_interface) }
+    end
+    return raw
 end
 
 local MONTHS = { Jan = 1, Feb = 2, Mar = 3, Apr = 4, May = 5, Jun = 6, Jul = 7, Aug = 8, Sep = 9, Oct = 10, Nov = 11, Dec = 12 }

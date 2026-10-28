@@ -21,12 +21,20 @@ Your [pfSense](https://www.pfsense.org) firewall on a Kindle, over the [REST API
 - **Logs**: the System, Firewall, DHCP, Authentication, OpenVPN and REST API logs, newest first; firewall lines as pass or block, from and to.
 - **Online or offline**: Devices and Static mappings show only the online (or offline) ones with a tap, Services only the running (or stopped) ones.
 - **Search and sort**: Devices, the ARP table, Static mappings and DNS overrides have **Search** (a name, an IP or MAC address, a word of the description) and sort by **Name** or **IP address**, with **Reverse**; Services, Firewall rules and the logs have Search. The sort is kept, and is the same on the web page.
-- **Packages**: installed ones, with the ones that have an update first.
+- **Packages**: installed ones, with the ones that have an update first; **Install** one from the list pfSense's package server has, **Remove** one (both ask first). Updating a package isn't something the REST API can do: that's still pfSense's web interface.
+- **DHCP server**: each interface's server on or off (asks first when off), its range, DNS servers, gateway, domain and lease times; address pools and custom options to add or delete (with Undo).
+- **DNS Resolver**: on or off (asks first when off), DNSSEC, forwarding mode, and the names it takes from DHCP leases, static mappings and OpenVPN clients.
+- **pf tables**: the block lists pfBlockerNG or Snort fill, and the aliases' tables; **Look up** an address (the tables it's in, or a network it's in), and **Empty** a table (asks first). The REST API can't take one address out of a table, only all of them.
+- **Service watchdog**: the services pfSense starts again when they stop; watch another, a switch for its notifications, stop watching (with Undo).
+- **Cron jobs**: add, change when it runs or what, delete (with Undo).
+- **NTP and SSH**: the NTP server on or off and its time servers (add, delete with Undo); the SSH server on or off and its port.
 - **Update pfSense** and **Reboot** (⋮, both ask first).
 - **With the launcher**: its tile (`ShowPfSense`, line "All up · 14 devices online"), Settings, search (gateways, interfaces, services, devices, mappings, overrides, rules), a step in Set up your Kindle, quick buttons (the status, any firewall rule on or off, Wake any static mapping), Test connection (the API, then the key), the backup (the key only with Include keys and sign-ins), notifications (a gateway, interface or service gone down), and a pfSense tab on the web page.
 - **Gesture**: **pfSense** (opens it).
 
-Lists the key's user can't read are left out and say which privilege they need. Nothing runs in the background: pfSense is read while the app is open (every minute; Settings > Read every), and when the launcher's tile or a quick button shows it.
+Lists the key's user can't read are left out and say which privilege they need. Nothing runs in the background: pfSense is read while the app is open (every minute; Settings > Read every), and when the launcher's tile or a quick button shows it. The settings pages (DHCP server, DNS Resolver, pf tables, watchdog, cron, NTP and SSH) and packages are read when their page opens; on the web page, with each card's **Read**.
+
+The service watchdog and cron jobs need their pfSense packages (Service Watchdog, Cron); the page says so when one isn't installed.
 
 ## What you need
 
