@@ -886,31 +886,36 @@ function View:pager(c, cx, y)
 end
 
 local HELP = [[
-THE LAUNCHER
-• Tap a tile to open it. Hold a tile to move, hide or remove it, or to put it in a group (a tile that opens its own page).
-• Under the clock: the weather, what is next and the tasks due; then buttons for Wi-Fi, the light, night mode and a refresh.
+THE HOME SCREEN
+• Tap a tile to open it. Hold it to move it, put it in a group, hide it or edit the home screen.
+• Under the clock: the weather, what's next and the tasks due, then your quick buttons. Tap a button to do it; hold it for more. More shows the rest.
 • Hold a recent book to mark it finished, take it out of the history or open its folder.
-• Swipe left or right to turn the page.
-• Swipe diagonally to refresh the screen.
-• At the top right: refresh (the lines again and a full screen refresh), the bell (notifications from every app; the count is how many are new) and ⋮ (the light, night mode, screen refresh, this help, and Settings: the launcher's tiles and shortcuts, its layout and the sleep screen).
+• The magnifying glass searches books, notebooks, tasks, devices, apps and settings.
 • To leave, open Library or a book, or tap Exit KOReader.
-• In any app, tap the time and battery at the top for the control center (Wi-Fi, light, night mode, Keep awake…). ⋮ > Recent apps shows what you opened lately. Swipe in from the left edge to go back.
-• The magnifying glass searches books, notebooks, tasks and devices.
-• In a book or the library, tap the top for the same bar as the apps: back, the house (the launcher), the time, refresh, the bell and ⋮ (KOReader's menu and the book's contents, bookmarks and search). Launcher settings > Title bar in books turns it off.
 
-HOME ASSISTANT, TO DO AND THE OTHER APPS
-• The same bar at the top of each: ‹ goes back (from an app's first screen, to the launcher), the house goes to the launcher; at the right the app's own buttons, the time and battery, refresh, the bell and ⋮ (Settings is its last item).
-• Swipe left or right to turn the page.
-• Hold an item for more options.
-• ⋮ has the light, night mode, screen refresh, Add to launcher and Settings.
-• On the dashboard: tap the time or the status line to close it, the weather for the forecast, ⚙ for the settings.
+THE BAR AT THE TOP OF EVERY APP
+• At the left: the arrow goes back, the house goes to the launcher, and the clock with an arrow shows Recent apps.
+• Tap the time and battery for the control center: Wi-Fi, the light, night mode, Keep awake and all your quick buttons.
+• At the right: the round arrow refreshes, the bell has notifications from every app, and the three dots have the app's extras, Recent apps, Light, Night mode, Refresh screen and Settings.
+• In a book or the library, tap the top of the page for the same bar.
 
-YOUR KOREADER GESTURES
-• The two-finger swipes, edge swipes and multiswipes set in KOReader also work here, for the light, warmth, night mode, refresh, Wi-Fi and these apps.
-• Gestures for folders and books only work in the library or a book.]]
+SETTINGS AND UPDATES
+• Settings, last in the three dots, has every app's settings, in groups. Hold a row to move it or hide it.
+• Settings > Updates checks for a new version, installs another one, and adds optional apps: extra apps you can add, such as FlashForge and Pangolin.
+• Settings > Set up your Kindle goes through the setup again.
 
+GESTURES
+• Swipe in from the left edge to go back.
+• Swipe left or right to turn the page. Swipe diagonally for a full refresh.
+• Your KOReader gestures for the light, night mode, a refresh, Wi-Fi and the apps work here too.
+• Hold anything that has no menu of its own and it works like a tap.]]
+
+--- ⋮ > Help: how the launcher and the apps' bar work, in pages; User guide opens the guide's page.
 function View:showHelp()
-    UIManager:show(require("ui/widget/textviewer"):new{ title = _("Help"), text = _(HELP) })
+    require("appspopup").read{ title = _("Help"), text = _(HELP), buttons = {
+        { icon = "book-open", text = _("User guide"), fn = function() require("appssetup").showGuide() end },
+        { icon = "check", text = _("Done"), primary = true },
+    } }
 end
 
 function View:leaveGroup()
