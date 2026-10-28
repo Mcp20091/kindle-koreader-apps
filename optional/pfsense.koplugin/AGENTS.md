@@ -44,8 +44,18 @@ pfsapi.lua and its tests together when it changes.
   `pfsmodel.newest` keeps the last 100, newest first (or as they are, if they came newest first).
 - Interfaces: some versions say `enable = false` for interfaces that are on; one that's up or has an
   address counts as on.
-- Left out on purpose: updating a package (the API has no such call: the Packages page says to use System >
-  Package Manager), firewall aliases, NAT, user management, the command prompt, halt.
+- Aliases (`PATCH /firewall/alias` with the whole `address` and `detail` lists), NAT rules (`PATCH` with `disabled`),
+  static routes and the default gateway (then `POST /routing/apply`), WireGuard peers (`enabled`, then
+  `/vpn/wireguard/apply`): each checked first as above (an alias by its name, a NAT rule by `API.NAT[kind].sig`, a
+  route by network and gateway, a peer by its public key, an OpenVPN connection by its name and address).
+- Firewall states (a device's connections) are read and closed by query, never all of them:
+  `source__startswith=<ip>:` and `destination__startswith=<ip>:` (the colon keeps .5 from matching .50).
+- Certificates come with their private key (`prv`) and certificate (`crt`): `API.LISTS.certs.keep` keeps only
+  the name and dates, in the child process, so neither reaches the plugin, the web page or a log.
+- Read only when asked: packages, logs, a device's connections, ping, config history.
+- Not yet (the user's later list): installing and removing packages, pf tables, service watchdog, cron, NTP,
+  SSH, DHCP server and DNS Resolver settings. Left out on purpose: updating a package (the API has no such
+  call), user management, the command prompt, halt.
 
 ## Files
 

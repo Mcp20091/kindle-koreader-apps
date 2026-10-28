@@ -131,9 +131,38 @@ API.LISTS = {
     overrides = { "/services/dns_resolver/host_overrides", "api-v2-services-dns-resolver-host-overrides-get" },
     peers = { "/status/wireguard/peers", "api-v2-status-wireguard-peers-get" },
     ovpn = { "/status/openvpn/servers", "api-v2-status-openvpn-servers-get" },
+    aliases = { "/firewall/aliases", "api-v2-firewall-aliases-get" },
+    forwards = { "/firewall/nat/port_forwards", "api-v2-firewall-nat-port-forwards-get" },
+    outbound = { "/firewall/nat/outbound/mappings", "api-v2-firewall-nat-outbound-mappings-get" },
+    onetoone = { "/firewall/nat/one_to_one/mappings", "api-v2-firewall-nat-one-to-one-mappings-get" },
+    gwconfig = { "/routing/gateways", "api-v2-routing-gateways-get" },
+    gwgroups = { "/routing/gateway/groups", "api-v2-routing-gateway-groups-get" },
+    routes = { "/routing/static_routes", "api-v2-routing-static-routes-get" },
+    wgpeers = { "/vpn/wireguard/peers", "api-v2-vpn-wireguard-peers-get" },
+    ovpnconns = { "/status/openvpn/server/connections", "api-v2-status-openvpn-server-connections-get" },
+    ovpnclients = { "/status/openvpn/clients", "api-v2-status-openvpn-clients-get" },
+    ipsec = { "/status/ipsec/sas", "api-v2-status-ipsec-sas-get" },
+    -- (each certificate's name and dates only: its private key and certificate stay in the child)
+    certs = { "/system/certificates", "api-v2-system-certificates-get", keep = { "id", "descr", "refid", "type",
+        "valid_from", "valid_until", "valid_days_left" } },
+    acme = { "/services/acme/certificates", "api-v2-services-acme-certificates-get", keep = { "id", "name",
+        "descr", "status", "renewafter" } },
 }
 API.STATUS = { "gateways", "interfaces", "services" }
-API.MORE = { "leases", "arp", "rules", "statics", "overrides", "peers", "ovpn" }
+API.MORE = { "leases", "arp", "rules", "statics", "overrides", "peers", "ovpn", "aliases", "forwards", "outbound",
+    "onetoone", "gwconfig", "gwgroups", "routes", "wgpeers", "ovpnconns", "ovpnclients", "ipsec", "certs", "acme" }
+
+--- Only the fields in keep of each item (a list's private keys never leave the child process).
+local function only(list, keep)
+    if not keep then return list end
+    local out = {}
+    for k, x in ipairs(list) do
+        local t = {}
+        if type(x) == "table" then for __, f in ipairs(keep) do t[f] = x[f] end end
+        out[k] = t
+    end
+    return out
+end
 
 --- What the app shows: { system, version, <lists>, skipped }, or nil and why (only when the
 -- system's status can't be read). parts: { status = true, lists = true } (both by default).
@@ -146,13 +175,17 @@ function API:readAll(parts)
     if not out.system then return nil, why == "forbidden" and "forbidden:api-v2-status-system-get" or why end
     out.version = self:request("GET", "/system/version") or nil
     out.hostname = self:request("GET", "/system/hostname") or nil
+    if parts.lists then
+        out.defaultgw = self:request("GET", "/routing/gateway/default") or nil
+        out.natmode = self:request("GET", "/firewall/nat/outbound/mode") or nil
+    end
     local names = {}
     if parts.status then for __, n in ipairs(API.STATUS) do names[#names + 1] = n end end
     if parts.lists then for __, n in ipairs(API.MORE) do names[#names + 1] = n end end
     for __, name in ipairs(names) do
         local t, w = self:all(API.LISTS[name][1])
         if t then
-            out[name] = t
+            out[name] = only(t, API.LISTS[name].keep)
         elseif w == "forbidden" or w == "notfound" or w == "missing" then
             out.skipped[name] = w
         else
@@ -302,6 +335,142 @@ function API:deleteArp(id, ip)
     if not e then return nil, why == "notfound" and "changed" or why end
     if type(e) ~= "table" or M.str(e.ip_address) ~= ip then return nil, "changed" end
     return self:request("DELETE", "/diagnostics/arp_table/entry", { id = id })
+end
+
+-- ------------------------------------------------------------------ aliases, NAT, states, ping
+
+--- A firewall alias's entries changed: its addresses (and each one's description) as a whole,
+-- checked by its name (unique), then the firewall applied.
+function API:setAlias(id, name, addresses, details)
+    local a, why = self:request("GET", "/firewall/alias", { id = id })
+    if not a then return nil, why == "notfound" and "changed" or why end
+    if type(a) ~= "table" or M.str(a.name) ~= name then return nil, "changed" end
+    local ok
+    ok, why = self:request("PATCH", "/firewall/alias", nil, { id = id, address = addresses, detail = details })
+    if not ok then return nil, why end
+    return self:request("POST", "/firewall/apply", nil, {}, 40)
+end
+
+-- A NAT rule's paths, and what tells it apart (its id is its place in the list).
+API.NAT = {
+    forward = { path = "/firewall/nat/port_forward", sig = { "interface", "target", "local_port", "destination_port", "descr" } },
+    outbound = { path = "/firewall/nat/outbound/mapping", sig = { "interface", "source", "target", "descr" } },
+    onetoone = { path = "/firewall/nat/one_to_one/mapping", sig = { "interface", "external", "source", "descr" } },
+}
+
+--- A NAT rule (kind: forward, outbound or onetoone) on or off, checked by its fields
+-- (sig: what was read), then the firewall applied.
+function API:setNat(kind, id, sig, on)
+    local k = API.NAT[kind]
+    if not k then return nil, "Unknown kind" end
+    local r, why = self:request("GET", k.path, { id = id })
+    if not r then return nil, why == "notfound" and "changed" or why end
+    if type(r) ~= "table" then return nil, "changed" end
+    for __, f in ipairs(k.sig) do
+        if M.str(r[f]) ~= M.str(sig[f]) then return nil, "changed" end
+    end
+    local ok
+    ok, why = self:request("PATCH", k.path, nil, { id = id, disabled = not on })
+    if not ok then return nil, why end
+    return self:request("POST", "/firewall/apply", nil, {}, 40)
+end
+
+--- A device's connections (the firewall states from or to an address): the list, at most 200 each way.
+function API:states(ip)
+    local out, seen = {}, {}
+    for __, field in ipairs({ "source__startswith", "destination__startswith" }) do
+        local d, why = self:request("GET", "/firewall/states", { limit = 200, [field] = ip .. ":" }, nil, 30)
+        if not d then return nil, why end
+        for __, x in ipairs(type(d) == "table" and d or {}) do
+            local key = M.str(x.interface) .. M.str(x.source) .. M.str(x.destination) .. M.str(x.protocol)
+            if not seen[key] then seen[key] = true out[#out + 1] = x end
+        end
+    end
+    return out
+end
+
+--- A device's connections closed (the firewall states from and to an address): it has to connect again.
+function API:killStates(ip)
+    for __, field in ipairs({ "source__startswith", "destination__startswith" }) do
+        local ok, why = self:request("DELETE", "/firewall/states", { limit = 0, [field] = ip .. ":" }, nil, 30)
+        -- (none to close is fine)
+        if not ok and why ~= "notfound" then return nil, why end
+    end
+    return true
+end
+
+--- A ping from pfSense: { output, ok }, or nil and why.
+function API:pingHost(host, count)
+    local d, why = self:request("POST", "/diagnostics/ping", nil, { host = host, count = count or 3 }, 40)
+    if not d then return nil, why end
+    if type(d) ~= "table" then d = {} end
+    return { output = M.str(d.output), ok = tonumber(d.result_code) == 0 }
+end
+
+-- ------------------------------------------------------------------ routing
+
+--- The default gateway (family: "inet" or "inet6"; name: a gateway or group, "" for automatic), applied.
+function API:setDefaultGateway(family, name)
+    local body = family == "inet6" and { defaultgw6 = name } or { defaultgw4 = name }
+    local ok, why = self:request("PATCH", "/routing/gateway/default", nil, body)
+    if not ok then return nil, why end
+    return self:request("POST", "/routing/apply", nil, {}, 40)
+end
+
+--- A static route on or off (checked by its network and gateway), applied.
+function API:setRoute(id, network, gateway, on)
+    local r, why = self:request("GET", "/routing/static_route", { id = id })
+    if not r then return nil, why == "notfound" and "changed" or why end
+    if type(r) ~= "table" or M.str(r.network) ~= network or M.str(r.gateway) ~= gateway then return nil, "changed" end
+    local ok
+    ok, why = self:request("PATCH", "/routing/static_route", nil, { id = id, disabled = not on })
+    if not ok then return nil, why end
+    return self:request("POST", "/routing/apply", nil, {}, 40)
+end
+
+-- ------------------------------------------------------------------ VPN
+
+--- A WireGuard peer on or off (checked by its public key), then WireGuard applied.
+function API:setWgPeer(id, key, on)
+    local r, why = self:request("GET", "/vpn/wireguard/peer", { id = id })
+    if not r then return nil, why == "notfound" and "changed" or why end
+    if type(r) ~= "table" or M.str(r.publickey) ~= key then return nil, "changed" end
+    local ok
+    ok, why = self:request("PATCH", "/vpn/wireguard/peer", nil, { id = id, enabled = on })
+    if not ok then return nil, why end
+    return self:request("POST", "/vpn/wireguard/apply", nil, {}, 40)
+end
+
+--- An OpenVPN server's connection closed (checked by its name and address in the list now).
+function API:killOvpn(parent, id, name, remote)
+    local list, why = self:all("/status/openvpn/server/connections")
+    if not list then return nil, why end
+    for __, c in ipairs(list) do
+        if tonumber(c.parent_id) == parent and tonumber(c.id) == id then
+            if M.str(c.common_name) ~= name or M.str(c.remote_host) ~= remote then return nil, "changed" end
+            return self:request("DELETE", "/status/openvpn/server/connection", { parent_id = parent, id = id })
+        end
+    end
+    return nil, "changed"
+end
+
+-- ------------------------------------------------------------------ certificates and history
+
+--- An ACME certificate's renewal started (by its name: the ACME package renews it in the background).
+function API:renewAcme(name)
+    return self:request("POST", "/services/acme/certificate/renew", nil, { certificate = name }, 40)
+end
+
+--- The configuration's history, newest first: { { time, description, version } }, or nil and why.
+function API:history()
+    local list, why = self:all("/diagnostics/config_history/revisions")
+    if not list then return nil, why end
+    local out = {}
+    for __, x in ipairs(list) do
+        out[#out + 1] = { time = tonumber(x.time), description = M.str(x.description), version = M.str(x.version) }
+    end
+    table.sort(out, function(a, b) return (a.time or 0) > (b.time or 0) end)
+    return out
 end
 
 function API:reboot()

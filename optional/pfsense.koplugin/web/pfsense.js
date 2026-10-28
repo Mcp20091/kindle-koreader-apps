@@ -8,12 +8,14 @@ App.pages.pfsense = {
     clearTimeout(this.timer);
     const s = await App.api('/api/pfsense');
     if (!s.installed) { main.append(h('div', { class: 'empty' }, 'pfSense isn’t installed on this Kindle. It’s an optional app: Settings > Updates > Optional apps on the Kindle, or System > Update from GitHub here.')); return; }
-    ['gateways', 'interfaces', 'services', 'devices', 'rules', 'statics', 'overrides'].forEach((k) => { s[k] = App.arr(s[k]); });
+    ['gateways', 'interfaces', 'services', 'devices', 'rules', 'statics', 'overrides', 'aliases', 'nat', 'routes', 'wgpeers',
+      'certs', 'gwchoices'].forEach((k) => { s[k] = App.arr(s[k]); });
     s.skipped = App.obj(s.skipped);
     main.append(
       h('div', {}, h('h1', {}, 'pfSense'), h('p', { class: 'sub' }, 'Your firewall, over the ',
         App.link('pfSense REST API package', 'https://pfrest.org'), '.')),
       ...[this.status(s), this.gateways(s), this.services(s), this.devices(s), this.statics(s), this.overrides(s),
+        this.aliases(s), this.nat(s), this.vpn(s), this.certs(s),
         this.rules(s), this.more(s), this.settings(s)].filter(Boolean));
     if (s.configured) {
       this.timer = setTimeout(() => {
@@ -59,8 +61,19 @@ App.pages.pfsense = {
         App.toggle(!!sort.reverse, (v) => page.act('sort', { list, by: sort.by || 'name', reverse: v }))));
   },
 
-  // The items with the words searched for in any of their fields (a MAC typed with dashes too).
+  // Which items show: all, only online ones, or only offline ones (devices and static mappings).
+  only: {},
+
+  onlineFilter(list) {
+    const page = this;
+    return App.select([['', 'All'], ['on', 'Online'], ['off', 'Offline']], this.only[list] || '', (v) => { page.only[list] = v; page.reload(); });
+  },
+
+  // The items with the words searched for in any of their fields (a MAC typed with dashes too),
+  // and only the online (or offline) ones when chosen.
   found(items, list) {
+    const only = this.only[list];
+    if (only) items = items.filter((x) => !!x.online === (only === 'on'));
     const q = (this.find[list] || '').toLowerCase();
     if (!q) return items;
     const q2 = /^[0-9a-f]{2}[-:]/.test(q) ? q.replace(/-/g, ':') : q;
@@ -111,9 +124,21 @@ App.pages.pfsense = {
 
   gateways(s) {
     if (!s.summary) return null;
+    const page = this;
+    const dg = App.obj(s.defaultgw);
+    const choose = (family) => App.select([['', 'Automatic'], ...s.gwchoices.filter((g) => g.family === family)
+      .map((g) => [g.name, g.group ? g.name + ' (group)' : g.name])], dg[family] || '', async (v) => {
+      if (!(await App.confirm('Change the default gateway?', 'Traffic to the internet goes out through ' + (v || 'the one pfSense picks') + ' from now on.', 'Change', false))) { page.reload(); return; }
+      page.act('default_gw', { family, name: v }, 'Default gateway changed');
+    });
     return h('div', { class: 'card' }, h('h2', {}, 'Gateways and interfaces'),
+      s.defaultgw ? App.setting('Default gateway (IPv4)', choose('inet')) : null,
+      s.defaultgw ? App.setting('Default gateway (IPv6)', choose('inet6')) : null,
       ...s.gateways.map((g) => this.row(g.name, g.line, this.pill(g.state !== 'down', 'Up', 'Down'))),
-      ...s.interfaces.map((i) => this.row(i.name, i.line, i.enabled ? this.pill(i.up, 'Up', 'Down') : h('span', { class: 'pill' }, 'Disabled'))));
+      ...s.interfaces.map((i) => this.row(i.name, i.line, i.enabled ? this.pill(i.up, 'Up', 'Down') : h('span', { class: 'pill' }, 'Disabled'))),
+      s.routes.length ? h('h3', {}, 'Static routes') : null,
+      ...s.routes.map((r) => this.row(r.name, r.line, h('label', { class: 'small row', style: 'gap:6px' }, 'Enabled',
+        App.toggle(!!r.on, (v) => page.act('route_enabled', { id: r.id, on: v }, v ? 'Route on' : 'Route off'))))));
   },
 
   services(s) {
@@ -136,12 +161,16 @@ App.pages.pfsense = {
     if (s.skipped.leases) return h('div', { class: 'card' }, h('h2', {}, 'Devices'), this.notAllowed(s, 'leases', 'api-v2-status-dhcp-server-leases-get'));
     if (!s.devices.length) return null;
     const list = this.found(s.devices, 'leases');
-    return h('div', { class: 'card' }, h('h2', {}, 'Devices (DHCP leases)'), this.tools(s, 'leases'),
-      list.length ? null : h('p', { class: 'muted' }, 'Nothing has those words.'),
+    return h('div', { class: 'card' }, h('h2', {}, 'Devices (DHCP leases)'), this.tools(s, 'leases'), this.onlineFilter('leases'),
+      list.length ? null : h('p', { class: 'muted' }, 'None like that now.'),
       ...list.map((d) => this.row(d.name, d.line + ' · ' + d.mac,
         d.iface ? page.button('Wake', () => page.act('wake', { iface: d.iface, mac: d.mac }, 'Wake-on-LAN sent')) : null,
+        page.button('Close connections', async () => {
+          if (!(await App.confirm('Close ' + d.name + '’s connections?', 'Everything it has open is cut off now, so a block (a rule or an alias) works at once. It can connect again where it’s allowed to.', 'Close all', true))) return;
+          page.act('kill_states', { ip: d.ip }, 'Connections closed');
+        }),
         this.pill(d.online, 'Online', 'Offline'))),
-      h('p', { class: 'small muted' }, 'The ARP table, VPN, logs and packages are on the Kindle, with the same search and sort.'));
+      h('p', { class: 'small muted' }, 'A device’s connections, Ping, the ARP table, logs, config history and packages are on the Kindle.'));
   },
 
   statics(s) {
@@ -156,8 +185,11 @@ App.pages.pfsense = {
         if (v) page.act('static_add', v, 'Static mapping added');
       }));
     if (s.skipped.statics) return h('div', { class: 'card' }, head, this.notAllowed(s, 'statics', 'api-v2-services-dhcp-server-static-mappings-get'));
+    const online = {};
+    s.devices.forEach((d) => { online[d.mac] = d.online; });
+    s.statics.forEach((x) => { x.online = !!online[x.mac]; });
     const list = this.found(s.statics, 'statics');
-    return h('div', { class: 'card' }, head, s.statics.length ? this.tools(s, 'statics') : null,
+    return h('div', { class: 'card' }, head, s.statics.length ? this.tools(s, 'statics') : null, s.statics.length ? this.onlineFilter('statics') : null,
       s.statics.length ? (list.length ? null : h('p', { class: 'muted' }, 'Nothing has those words.')) : h('p', { class: 'muted' }, 'No static mappings yet.'),
       ...list.map((x) => this.row(x.name, [x.parent.toUpperCase(), x.ip, x.mac].filter(Boolean).join(' · '),
         page.button('Wake', () => page.act('wake', { iface: x.parent, mac: x.mac }, 'Wake-on-LAN sent')),
@@ -196,6 +228,43 @@ App.pages.pfsense = {
       ...s.rules.map((r) => this.row(r.name, r.line,
         h('label', { class: 'small row', style: 'gap:6px', title: 'Applied at once' }, 'Enabled',
           App.toggle(!!r.on, (v) => page.act('rule_enabled', { id: r.id, tracker: r.tracker, on: v }, v ? 'Rule on' : 'Rule off'))))));
+  },
+
+  aliases(s) {
+    if (!s.summary || !s.aliases.length) return null;
+    const page = this;
+    return h('div', { class: 'card' }, h('h2', {}, 'Aliases'),
+      h('p', { class: 'small muted' }, 'The lists of addresses, networks or ports that firewall rules use. A change is applied at once.'),
+      ...s.aliases.map((a) => this.row(a.name, a.line + (a.entries ? ' · ' + a.entries : ''),
+        page.button('Edit', async () => {
+          const v = await page.form('Edit ' + a.name, [['addresses', 'Entries (commas between)', '192.168.1.20, 192.168.1.42', a.entries]], 'Save');
+          if (v) page.act('alias_set', { id: a.id, name: a.name, addresses: v.addresses }, 'Alias saved');
+        }))));
+  },
+
+  nat(s) {
+    if (!s.summary || (!s.nat.length && !s.natmode)) return null;
+    const page = this;
+    const names = { forward: 'Port forward', outbound: 'Outbound', onetoone: '1:1' };
+    return h('div', { class: 'card' }, h('h2', {}, 'NAT'),
+      s.natmode ? App.setting('Outbound NAT mode', h('span', {}, s.natmode)) : null,
+      ...s.nat.map((r) => this.row(r.name, names[r.kind] + ' · ' + r.line, h('label', { class: 'small row', style: 'gap:6px', title: 'Applied at once' }, 'Enabled',
+        App.toggle(!!r.on, (v) => page.act('nat_enabled', { kind: r.kind, id: r.id, on: v }, v ? 'Turned on' : 'Turned off'))))));
+  },
+
+  vpn(s) {
+    if (!s.summary || !s.wgpeers.length) return null;
+    const page = this;
+    return h('div', { class: 'card' }, h('h2', {}, 'WireGuard peers'),
+      ...s.wgpeers.map((w) => this.row(w.name, w.line, h('label', { class: 'small row', style: 'gap:6px' }, 'Enabled',
+        App.toggle(!!w.on, (v) => page.act('wg_enabled', { key: w.key, on: v }, v ? 'Peer on' : 'Peer off'))))),
+      h('p', { class: 'small muted' }, 'OpenVPN and IPsec status, and disconnecting an OpenVPN client, are on the Kindle.'));
+  },
+
+  certs(s) {
+    if (!s.summary || !s.certs.length) return null;
+    return h('div', { class: 'card' }, h('h2', {}, 'Certificates'),
+      ...s.certs.map((c) => this.row(c.name, c.line, this.pill(!c.soon, 'OK', 'Soon'))));
   },
 
   more(s) {

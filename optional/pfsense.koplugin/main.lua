@@ -273,6 +273,42 @@ end
 
 function PfSense:packageList() return state.packages and state.packages.list end
 
+--- Something read only when asked (in a child): done(result) or done(nil, text). fn(api) -> result or nil, why.
+function PfSense:ask(fn, priv, done, opts)
+    if not self:configured() or not NetworkMgr:isConnected() then return done(nil, self:whyText("offline")) end
+    local api = self:api()
+    require("pfsbg").run(function()
+        local r, why = fn(api)
+        if not r then return { why = why } end
+        return { r = r }
+    end, function(r, why)
+        if r and r.r then return done(r.r) end
+        done(nil, self:whyText((r and r.why) or why, priv))
+    end, { limit = 50, text = opts and opts.text })
+end
+
+--- A device's connections (firewall states from or to ip): done(list of pfsmodel.state) or done(nil, text).
+function PfSense:states(ip, done)
+    self:ask(function(api)
+        local list, why = api:states(ip)
+        if not list then return nil, why end
+        local out = {}
+        for k, x in ipairs(list) do out[k] = M.state(x) end
+        return out
+    end, "api-v2-firewall-states-get", done)
+end
+
+--- A ping from pfSense to host: done({ output, ok }) or done(nil, text).
+function PfSense:ping(host, done)
+    self:ask(function(api) return api:pingHost(host, 3) end, "api-v2-diagnostics-ping-post", done,
+        { text = T(_("Pinging %1 from pfSense…"), host) })
+end
+
+--- The configuration's history, newest first: done(list) or done(nil, text).
+function PfSense:history(done)
+    self:ask(function(api) return api:history() end, "api-v2-diagnostics-config-history-revisions-get", done)
+end
+
 --- The newest lines of a log (kind: an id of pfsmodel.LOGS, such as "system"), newest first:
 -- done(lines) or done(nil, text).
 function PfSense:log(kind, done)
@@ -393,6 +429,40 @@ local ACTIONS = {
         priv = function() return "api-v2-diagnostics-reboot-post" end },
     update = { run = function(api) return api:update() end, quiet = true,
         priv = function() return "api-v2-system-update-post" end },
+    -- An alias's entries as a whole ({ id, name, addresses, details }).
+    alias_set = { run = function(api, a) return api:setAlias(a.id, a.name, a.addresses, a.details) end, lists = true,
+        priv = function() return "api-v2-firewall-alias-patch" end,
+        apply = function(d, a)
+            local x = M.find(d, "alias", a.id)
+            if not x or x.name ~= a.name then return end
+            x.entries = {}
+            for k, addr in ipairs(a.addresses) do x.entries[k] = { address = addr, detail = a.details[k] or "" } end
+        end },
+    -- A NAT rule on or off ({ kind = forward | outbound | onetoone, id, sig, on }).
+    nat_enabled = { run = function(api, a) return api:setNat(a.kind, a.id, a.sig, a.on) end,
+        priv = function(a) return ({ forward = "api-v2-firewall-nat-port-forward-patch",
+            outbound = "api-v2-firewall-nat-outbound-mapping-patch", onetoone = "api-v2-firewall-nat-one-to-one-mapping-patch" })[a.kind] end,
+        apply = function(d, a) local r = M.find(d, a.kind, a.id) if r then r.disabled = not a.on end end },
+    kill_states = { run = function(api, a) return api:killStates(a.ip) end,
+        priv = function() return "api-v2-firewall-states-delete" end },
+    default_gw = { run = function(api, a) return api:setDefaultGateway(a.family, a.name) end, lists = true,
+        priv = function() return "api-v2-routing-gateway-default-patch" end,
+        apply = function(d, a) if d.defaultgw then d.defaultgw[a.family] = a.name end end },
+    route_enabled = { run = function(api, a) return api:setRoute(a.id, a.network, a.gateway, a.on) end,
+        priv = function() return "api-v2-routing-static-route-patch" end,
+        apply = function(d, a) local r = M.find(d, "route", a.id) if r then r.disabled = not a.on end end },
+    wg_enabled = { run = function(api, a) return api:setWgPeer(a.num, a.key, a.on) end,
+        priv = function() return "api-v2-vpn-wireguard-peer-patch" end,
+        apply = function(d, a) local r = M.find(d, "wgpeer", a.key) if r then r.enabled = a.on end end },
+    ovpn_kill = { run = function(api, a) return api:killOvpn(a.parent, a.id, a.name, a.remote) end, lists = true,
+        priv = function() return "api-v2-status-openvpn-server-connection-delete" end,
+        apply = function(d, a)
+            for k, c in ipairs(d.ovpnconns or {}) do
+                if c.parent == a.parent and c.id == a.id then table.remove(d.ovpnconns, k) break end
+            end
+        end },
+    acme_renew = { run = function(api, a) return api:renewAcme(a.name) end, lists = true,
+        priv = function() return "api-v2-services-acme-certificate-renew-post" end },
 }
 PfSense.ACTIONS = ACTIONS
 
@@ -550,6 +620,14 @@ function PfSense:shareWithApps()
                 for __, s in ipairs(d and d.statics or {}) do
                     table.insert(out, { id = "wake:" .. s.parent .. ":" .. s.mac, name = T(_("Wake %1"), s.name), icon = "zap", group = _("Wake-on-LAN") })
                 end
+                for __, r in ipairs(d and d.forwards or {}) do
+                    if r.descr ~= "" then
+                        table.insert(out, { id = "forward:" .. r.descr, name = r.name, icon = "network", group = _("Port forwards") })
+                    end
+                end
+                for __, w in ipairs(d and d.wgpeers or {}) do
+                    table.insert(out, { id = "wg:" .. w.key, name = w.name, icon = "key-round", group = _("WireGuard peers") })
+                end
                 return out
             end,
             item = function(id)
@@ -604,6 +682,34 @@ function PfSense:quickItem(id)
                 end)
             end,
             hold = function() if s then self:showItem("static", s.key) else self:show() end end }
+    end
+    -- (a port forward by its description, a WireGuard peer by its public key: their ids move)
+    local descr = id:match("^forward:(.+)$")
+    local key = id:match("^wg:(.+)$")
+    if descr or key then
+        local r
+        for __, x in ipairs(d and (descr and d.forwards or d.wgpeers) or {}) do
+            if (descr and x.descr == descr) or (key and x.key == key) then r = x end
+        end
+        local on = r and (descr and not r.disabled or (key and r.enabled)) or false
+        return { label = r and r.name or (descr or _("WireGuard peer")), icon = descr and "network" or "key-round", on = on,
+            value = r and (descr and M.natLine(r) or r.tun) or nil,
+            tap = function(done)
+                if not r then
+                    ko.toast(_("Not read yet"))
+                    return done and done()
+                end
+                local name, args
+                if descr then name, args = "nat_enabled", { kind = "forward", id = r.id, sig = r.sig, on = r.disabled }
+                else name, args = "wg_enabled", { num = r.num, key = r.key, on = not r.enabled } end
+                self:act(name, args, function(ok, text)
+                    if not ok then ko.toast(text, 4) end
+                    if done then done() end
+                end)
+            end,
+            hold = function()
+                if r and descr then self:showItem("forward", r.id) else self:show() end
+            end }
     end
 end
 
@@ -666,6 +772,38 @@ function PfSense:webState()
             table.insert(out.overrides, { id = o.id, host = o.host, domain = o.domain, ips = table.concat(o.ips, ", "),
                 aliases = table.concat(o.aliases, ", "), descr = o.descr, name = o.fqdn })
         end
+        -- aliases, NAT, routing, VPN switches and certificates (names and dates only)
+        out.aliases, out.nat, out.routes, out.wgpeers, out.certs, out.gwchoices = {}, {}, {}, {}, {}, {}
+        for __, a in ipairs(d.aliases or {}) do
+            local entries = {}
+            for __, e in ipairs(a.entries) do entries[#entries + 1] = e.address end
+            table.insert(out.aliases, { id = a.id, name = a.name, type = a.type, line = M.aliasLine(a), entries = table.concat(entries, ", ") })
+        end
+        for __, kind in ipairs({ "forward", "outbound", "onetoone" }) do
+            for __, r in ipairs(d[M.KINDS[kind]] or {}) do
+                table.insert(out.nat, { kind = kind, id = r.id, name = r.name, on = not r.disabled, line = M.natLine(r) })
+            end
+        end
+        out.natmode = d.natmode and M.natMode(d.natmode) or nil
+        for __, r in ipairs(d.routes or {}) do
+            table.insert(out.routes, { id = r.id, name = r.name, on = not r.disabled, line = M.routeLine(r) })
+        end
+        local status = {}
+        for __, p in ipairs(d.peers or {}) do status[p.id] = p end
+        for __, w in ipairs(d.wgpeers or {}) do
+            table.insert(out.wgpeers, { key = w.key, name = w.name, on = w.enabled,
+                line = status[w.key] and M.peerLine(status[w.key]) or w.tun })
+        end
+        for __, c in ipairs(d.certs or {}) do
+            table.insert(out.certs, { name = c.name, line = M.certLine(c), soon = M.certSoon(c) })
+        end
+        out.defaultgw = d.defaultgw
+        for __, g in ipairs(d.gwconfig or {}) do
+            if not g.disabled then table.insert(out.gwchoices, { name = g.name, family = g.family ~= "" and g.family or "inet" }) end
+        end
+        for __, g in ipairs(d.gwgroups or {}) do
+            table.insert(out.gwchoices, { name = g.name, family = g.family ~= "" and g.family or "inet", group = true })
+        end
     end
     return out
 end
@@ -673,7 +811,9 @@ end
 --- The web page's actions: service { name, action }, rule_enabled { id, tracker, on },
 -- wake { iface, mac }, static_add { parent, mac, ip, hostname, descr }, static_delete
 -- { parent, id, mac }, override_add { host, domain, ips, descr, aliases }, override_delete
--- { id, host, domain }, reboot, update, sort { list, by, reverse }, refresh (started in the background: the page reads
+-- { id, host, domain }, reboot, update, nat_enabled { kind, id, on }, wg_enabled { key, on }, route_enabled
+-- { id, on }, default_gw { family, name }, kill_states { ip }, alias_set { id, name, addresses },
+-- sort { list, by, reverse }, refresh (started in the background: the page reads
 -- the state again after); settings { url, key, interval, notify }. Returns true, or false and why.
 function PfSense:webAct(name, args)
     args = type(args) == "table" and args or {}
@@ -734,6 +874,35 @@ function PfSense:webAct(name, args)
         if not a.id then return false, "Which one?" end
     elseif name == "reboot" or name == "update" then
         a = {}
+    elseif name == "nat_enabled" then
+        local kind = M.str(args.kind)
+        local d = state.data
+        local r = d and M.find(d, kind, tonumber(args.id))
+        if not r then return false, "Which one?" end
+        a = { kind = kind, id = r.id, sig = r.sig, on = args.on == true }
+    elseif name == "wg_enabled" then
+        local d = state.data
+        local r = d and M.find(d, "wgpeer", M.str(args.key))
+        if not r then return false, "Which one?" end
+        a = { num = r.num, key = r.key, on = args.on == true }
+    elseif name == "route_enabled" then
+        local d = state.data
+        local r = d and M.find(d, "route", tonumber(args.id))
+        if not r then return false, "Which one?" end
+        a = { id = r.id, network = r.network, gateway = r.gateway, on = args.on == true }
+    elseif name == "default_gw" then
+        a = { family = args.family == "inet6" and "inet6" or "inet", name = M.str(args.name) }
+    elseif name == "kill_states" then
+        if not M.isIPv4(args.ip) then return false, _("Enter an IP address, such as 192.168.1.20.") end
+        a = { ip = M.str(args.ip) }
+    elseif name == "alias_set" then
+        local d = state.data
+        local x = d and M.find(d, "alias", tonumber(args.id))
+        if not x or x.name ~= M.str(args.name) then return false, "Which one?" end
+        a = { id = x.id, name = x.name, addresses = M.strings(args.addresses), details = {} }
+        local old = {}
+        for __, e in ipairs(x.entries) do old[e.address] = e.detail end
+        for k, addr in ipairs(a.addresses) do a.details[k] = old[addr] or "" end
     else
         return false, "Unknown action"
     end
