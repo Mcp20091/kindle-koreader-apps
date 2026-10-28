@@ -161,4 +161,4 @@ The web page shows a tab for every app that has `web` in its entry; the web serv
 - Try it in the emulator, and on a Kindle what only a Kindle does (the power manager, the sleep cover,
   lipc, the firewall).
 - A test release first (`bash tools/test-release.sh`, from a branch: a pre-release that only shows in
-  Settings > Updates > Select version), then the release.
+  Settings > Updates > Select version, with Show test versions on), then the release.

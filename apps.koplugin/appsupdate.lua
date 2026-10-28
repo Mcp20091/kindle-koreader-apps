@@ -13,8 +13,10 @@ With Check automatically on (it is to start with), once a day while the Kindle i
 already on Wi-Fi: a notification when there's a newer release, and a line on the
 launcher's Settings tile until it's installed. After an update, its notes show once
 (What's new). Select version picks one of the repo's releases (the latest or a previous
-one); Branch picks one of its branches instead (GitHub's zip of its newest commit;
-update_source then says which, and the checks look for newer commits on it). The install goes a plugin at a time, KOReader's
+one); its test versions (pre-releases, tools/test-release.sh) only with Show test versions
+on (update_tests), turned on past a warning. A Kindle installed from a branch (an option of
+before) has Back to the releases; update_source says which branch, and until then the checks
+look for newer commits on it. The install goes a plugin at a time, KOReader's
 loop running between, with its progress for the pop-up (and the web page, webplugins.lua).
 ]]
 
@@ -59,6 +61,14 @@ function U.auto() return settings().update_auto ~= false end
 function U.setAuto(on)
     local s = settings()
     if on then s.update_auto = nil else s.update_auto = false end
+    G_reader_settings:saveSetting("apps", s)
+end
+
+--- Whether Select version offers test versions (off to start with).
+function U.tests() return settings().update_tests == true end
+function U.setTests(on)
+    local s = settings()
+    s.update_tests = on and true or nil
     G_reader_settings:saveSetting("apps", s)
 end
 
@@ -645,7 +655,8 @@ function U.whatsNew(plugin)
 end
 
 --- Select version: the repo's releases to pick from (the one installed and the latest
--- marked), then the one picked installed (a previous one too: going back).
+-- marked; test versions only with Show test versions on, or the one installed), then the
+-- one picked installed (a previous one too: going back).
 function U.pickVersion(plugin)
     local wait = KO.wait and KO.wait(T(_("Getting %1's versions…"), U.repo()))
     U.releases(function(list, why)
@@ -658,6 +669,7 @@ function U.pickVersion(plugin)
         for __, r in ipairs(list) do if not r.pre then latest = latest or r.tag end end
         local items = {}
         for __, r in ipairs(list) do
+          if not r.pre or U.tests() or r.tag == have then
             local marks = {}
             if r.tag == have then marks[#marks + 1] = _("installed") end
             if r.tag == latest then marks[#marks + 1] = _("latest") end
@@ -671,6 +683,7 @@ function U.pickVersion(plugin)
                         text = (older and T(_("This goes back from %1 to a previous version.\n\n"), have) or "") .. notes,
                         ok = _("Install"), onOk = function() run(plugin, r) end }
                 end }
+          end
         end
         KO.list(_("Select version"), items)
     end)
@@ -683,40 +696,34 @@ function U.branchName()
     return type(src) == "table" and src.branch or nil
 end
 
---- Branch: the repo's branches to pick from, and None (the releases). The one picked is
--- installed (its newest commit), and from then on updates come from it; None installs the
--- latest release again.
-function U.pickBranch(plugin)
-    local wait = KO.wait and KO.wait(T(_("Getting %1's branches…"), U.repo()))
-    U.branches(function(list, why)
-        if wait then wait:close() end
-        if not list then return KO.message(T(_("Couldn't get the branches.\n\n%1"), tostring(why))) end
-        local src = settings().update_source
-        local current = U.branchName()
-        local items = { { text = _("None (releases)"), checked = current == nil, fn = function()
-            if current == nil then return end
-            local w = KO.wait and KO.wait(T(_("Checking %1…"), U.repo()))
-            U.latest(function(rel, why2)
-                if w then w:close() end
-                if not rel then return KO.message(T(_("Couldn't get the latest release.\n\n%1"), tostring(why2))) end
-                KO.confirm{ title = T(_("Install %1"), rel.tag),
-                    text = T(_("Back to the releases: %1 is installed in place of the %2 branch, and updates come from the releases again."), rel.tag, current),
-                    ok = _("Install"), onOk = function() run(plugin, rel) end }
-            end)
-        end } }
-        for i, b in ipairs(list) do
-            local on = current == b.name
-            local rel = U.branchRelease(b)
-            items[#items + 1] = { text = b.name .. (on and (" · " .. (src.sha == b.sha and _("installed") or _("newer commits"))) or ""),
-                checked = on and src.sha == b.sha, separator_before = i == 1 or nil,
-                fn = function()
-                    KO.confirm{ title = T(_("Install the %1 branch"), b.name),
-                        text = T(_("The code on %1 as it is now (%2), not a release: it may not be finished. Updates then come from this branch."), b.name, rel.tag),
-                        ok = _("Install"), onOk = function() run(plugin, rel) end }
-                end }
-        end
-        KO.list(_("Branch"), items)
+--- Installed from a branch: the latest release installed in its place, and updates from the
+-- releases again (Settings > Updates' Back to the releases).
+function U.leaveBranch(plugin)
+    local current = U.branchName()
+    if not current then return end
+    local w = KO.wait and KO.wait(T(_("Checking %1…"), U.repo()))
+    U.latest(function(rel, why)
+        if w then w:close() end
+        if not rel then return KO.message(T(_("Couldn't get the latest release.\n\n%1"), tostring(why))) end
+        KO.confirm{ title = T(_("Install %1"), rel.tag),
+            text = T(_("Back to the releases: %1 is installed in place of the %2 branch, and updates come from the releases again."), rel.tag, current),
+            ok = _("Install"), onOk = function() run(plugin, rel) end }
     end)
+end
+
+--- Show test versions: on only past a warning (a test version may not be finished).
+function U.toggleTests(refresh)
+    if U.tests() then
+        U.setTests(false)
+        if refresh then refresh() end
+        return
+    end
+    KO.confirm{ title = _("Show test versions"),
+        text = _("Test versions are for trying changes before they're released. They may have bugs or be unfinished, and aren't offered as updates: you pick one in Select version. Select version or Undo a plugin update takes you back to a release."),
+        ok = _("Show them"), onOk = function()
+            U.setTests(true)
+            if refresh then refresh() end
+        end }
 end
 
 --- Shows the release and offers Update.
@@ -851,9 +858,10 @@ function U.optionalAction(plugin, o, rel)
         end }
 end
 
---- Settings > Updates: the release installed and a check, the repository and branch updates
--- come from, a version to install, the daily check and Undo, then the optional apps, each with
--- Install or Remove. `refresh()` draws the page again after a change made in a box.
+--- Settings > Updates: the release installed and a check, the repository updates come from,
+-- a version to install (and whether test versions are offered), the daily check and Undo, then
+-- the optional apps, each with Install or Remove. `refresh()` draws the page again after a
+-- change made in a box.
 function U.settingsRows(plugin, refresh)
     U.lookUp(plugin, refresh)
     local branch = U.branchName()
@@ -868,14 +876,18 @@ function U.settingsRows(plugin, refresh)
                     if refresh then refresh() end
                 end }
         end },
-        { _("Branch"), branch or _("None (releases)"), function() U.pickBranch(plugin) end },
-        { note = _("Pick a test branch to try changes before they're released.") },
         { _("Select version"), _("The latest or a previous one"), function() U.pickVersion(plugin) end },
+        { _("Show test versions"), U.tests(), function() U.toggleTests(refresh) end },
+        { note = _("Versions for trying changes before they're released, in Select version.") },
         { _("Check automatically"), U.auto(), function() U.setAuto(not U.auto()) end },
         { _("Undo a plugin update"), "", function() require("appsundo").undoMenu(plugin) end },
         { heading = _("OPTIONAL APPS") },
         { note = _("Not in the main install. Installed ones update with the rest.") },
     }
+    -- (Installed from a branch, as could be done before: the way back to the releases.)
+    if branch then
+        table.insert(rows, 3, { _("Back to the releases"), T(_("On the %1 branch"), branch), function() U.leaveBranch(plugin) end })
+    end
     local look = U.look
     if look.optional and #look.optional > 0 then
         for __, o in ipairs(look.optional) do

@@ -314,9 +314,9 @@ function Web.routes(server, plugin)
     end)
 
     -- Updates from GitHub, as the launcher's Settings > Updates has them (appsupdate.lua, the
-    -- launcher's: without it, the page says so). The repo typed: its releases and branches
-    -- looked up in a child process (POST, then the page asks GET until they're in); one
-    -- picked: downloaded and installed with the same progress as a zip.
+    -- launcher's: without it, the page says so). The repo typed: its releases looked up in a
+    -- child process (POST, then the page asks GET until they're in); one picked: downloaded and
+    -- installed with the same progress as a zip. Test versions show only with Show test versions on.
     local function updater()
         local ok, U = pcall(require, "appsupdate")
         return ok and U or nil
@@ -325,7 +325,14 @@ function Web.routes(server, plugin)
         local U = updater()
         if not U then return res:json({ launcher = false }) end
         res:json({ launcher = true, repo = U.repo(), default = U.DEFAULT_REPO, installed = U.installedText(plugin), auto = U.auto(),
-            branch = U.branchName and U.branchName() or nil })
+            branch = U.branchName and U.branchName() or nil, tests = U.tests and U.tests() or false })
+    end)
+    -- Show test versions ({ on }), as on the Kindle (the page warns before turning it on).
+    server:route("POST", "^/api/update/tests$", function(req, res)
+        local U = updater()
+        if not (U and U.setTests) then return res:error(404, "The launcher (apps.koplugin) isn't installed") end
+        U.setTests(req.json().on == true)
+        res:json({ tests = U.tests() })
     end)
     server:route("POST", "^/api/update/list$", function(req, res)
         local U = updater()
@@ -336,31 +343,26 @@ function Web.routes(server, plugin)
         local list = { repo = repo, pending = true }
         Web.updates = list
         U.releases(function(releases, why)
-            U.branches(function(branches, bwhy)
-                if Web.updates ~= list then return end
-                list.pending = nil
-                list.releases, list.branches = releases or {}, branches or {}
-                if not releases and not branches then list.error = tostring(why or bwhy) end
-            end, repo)
+            if Web.updates ~= list then return end
+            list.pending = nil
+            list.releases = releases or {}
+            if not releases then list.error = tostring(why) end
         end, repo)
         res:json(list)
     end)
     server:route("GET", "^/api/update/list$", function(req, res)
         local list = Web.updates or { pending = false }
         res:json({ repo = list.repo, pending = list.pending or false, error = list.error,
-            releases = list.releases, branches = list.branches })
+            releases = list.releases })
     end)
-    -- { tag } or { branch } from the list just looked up, as something to install, or nil and why.
+    -- { tag } from the list just looked up, as something to install, or nil and why.
     local function picked(U, b)
         local list = Web.updates
         if not (list and list.releases) then return nil, "Look the repo up first." end
         for __, r in ipairs(list.releases) do if b.tag and r.tag == b.tag then return r end end
-        for __, br in ipairs(list.branches or {}) do
-            if b.branch and br.name == b.branch then return U.branchRelease(br, list.repo) end
-        end
         return nil, "That isn't in the list any more: look the repo up again."
     end
-    -- The optional apps of the release or branch picked ({ tag } or { branch }): looked up,
+    -- The optional apps of the release picked ({ tag }): looked up,
     -- then the page asks GET until they're in ({ pending, apps = { folder, title, description,
     -- installed } }). The main install updates the installed ones with the rest.
     server:route("POST", "^/api/update/optional$", function(req, res)
@@ -400,7 +402,7 @@ function Web.routes(server, plugin)
         if restarts then say(string.format("Removed %s. KOReader is restarting…", short(folder))) end
         res:json({ ok = true, restart = restarts })
     end)
-    -- { tag } or { branch }, from the list just looked up (with { optional = folder }: only that
+    -- { tag }, from the list just looked up (with { optional = folder }: only that
     -- optional app from it): installed, then KOReader restarts.
     server:route("POST", "^/api/update/install$", function(req, res)
         local U = updater()

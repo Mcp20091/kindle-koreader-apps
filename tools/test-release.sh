@@ -1,6 +1,6 @@
 #!/bin/bash
 # A test release from the branch you're on: a pre-release that only shows up in Settings > Updates >
-# Select version (marked "test"), never as the latest, and main isn't touched.
+# Select version (marked "test", with Show test versions on), never as the latest, and main isn't touched.
 #
 #   bash tools/test-release.sh [notes.md]      from a checkout of the branch (not main)
 #
@@ -99,4 +99,4 @@ want="kindle-plugins.zip"
 for d in optional/*.koplugin; do [ -d "$d" ] && want="$want kindle-$(basename "$d" .koplugin).zip"; done
 for a in $want; do echo "$assets" | grep -qx "$a" || die "the release is missing $a"; done
 echo "released: $tag (pre-release): $(echo $assets | tr '\n' ' ')"
-echo "On the Kindle: Settings > Updates > Select version > $tag (test)"
+echo "On the Kindle: Settings > Updates > Show test versions on, then Select version > $tag (test)"
