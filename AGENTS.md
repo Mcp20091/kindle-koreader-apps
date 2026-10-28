@@ -50,7 +50,8 @@ library.koplugin        books and folders (stands in for KOReader's file browser
 optional/               apps not everyone needs, not in the main install zip: each folder and its own
                         zip (build-zip.py). flashforge.koplugin: a FlashForge 3D printer over the Wi-Fi;
                         pangolin.koplugin: a Pangolin server's sites, resources and clients (its Integration API);
-                        nextdns.koplugin: a NextDNS profile (its API: blocked queries, the log, lists, switches)
+                        nextdns.koplugin: a NextDNS profile (its API: blocked queries, the log, lists, switches);
+                        pfsense.koplugin: a pfSense firewall (its REST API package)
 guide/                  the user guide: one Markdown chapter per app, img/, build.py, chapters.txt
 Kindle Apps Guide.pdf   the guide, built from guide/
 ```

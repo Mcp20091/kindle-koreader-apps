@@ -23,6 +23,7 @@ package.loaded["pluginshare"] = { appInfo = {
     flashforge = { name = "FlashForge", order = 80, group = "optional", tiles = { tile("flashforge", { group = "tools" }) } },
     pangolin = { name = "Pangolin", order = 85, group = "optional", tiles = { tile("pangolin", { group = "tools" }) } },
     nextdns = { name = "NextDNS", icon = "ban", dir = "/plugins/nextdns.koplugin", order = 87, group = "optional", tiles = { tile("nextdns", { group = "tools" }) } },
+    pfsense = { name = "pfSense", order = 88, group = "optional", tiles = { tile("pfsense", { group = "tools" }) } },
     webpage = { name = "Web server", order = 90, group = "tools", tiles = { tile("web", { switches = true }) } },
 } }
 
@@ -70,17 +71,17 @@ do
     check("quick: another app's button", Model.quickKey({ app = "homeassistant", id = "light.kitchen" }), "a:homeassistant:light.kitchen")
     check("quick: groups don't go in groups", (function() Model.quickPut(q, "g:g1", "g:g1") return #q end)(), 4)
 end
-check("all tiles", keys(Model.tiles(nil, nil, all)), "reading,library,readingtime,weather,ha,dashboard,todo,notes,crosswords,wikipedia,syncthing,ssh,flashforge,pangolin,nextdns,web,fonts,settings,wifi,light,night,exit")
+check("all tiles", keys(Model.tiles(nil, nil, all)), "reading,library,readingtime,weather,ha,dashboard,todo,notes,crosswords,wikipedia,syncthing,ssh,flashforge,pangolin,nextdns,pfsense,web,fonts,settings,wifi,light,night,exit")
 check("missing plugins left out", keys(Model.tiles(nil, nil, none)), "reading,library,weather,fonts,settings,wifi,night,exit")
-check("saved order first", keys(Model.tiles({ "todo", "ha" }, nil, all)), "todo,ha,reading,library,readingtime,weather,dashboard,notes,crosswords,wikipedia,syncthing,ssh,flashforge,pangolin,nextdns,web,fonts,settings,wifi,light,night,exit")
-check("hidden left out", keys(Model.tiles(nil, { library = true, wifi = true }, all)), "reading,readingtime,weather,ha,dashboard,todo,notes,crosswords,wikipedia,syncthing,ssh,flashforge,pangolin,nextdns,web,fonts,settings,light,night,exit")
-check("hidden kept when asked", #Model.tiles(nil, { library = true }, all, true), 26)
+check("saved order first", keys(Model.tiles({ "todo", "ha" }, nil, all)), "todo,ha,reading,library,readingtime,weather,dashboard,notes,crosswords,wikipedia,syncthing,ssh,flashforge,pangolin,nextdns,pfsense,web,fonts,settings,wifi,light,night,exit")
+check("hidden left out", keys(Model.tiles(nil, { library = true, wifi = true }, all)), "reading,readingtime,weather,ha,dashboard,todo,notes,crosswords,wikipedia,syncthing,ssh,flashforge,pangolin,nextdns,pfsense,web,fonts,settings,light,night,exit")
+check("hidden kept when asked", #Model.tiles(nil, { library = true }, all, true), 27)
 check("off by default: hidden to start with", Model.isHidden(nil, { key = "restart", offByDefault = true }), true)
 check("off by default: shown when set so", Model.isHidden({ restart = false }, { key = "restart", offByDefault = true }), false)
 check("a usual tile shown", Model.isHidden({}, { key = "exit" }), false)
 local tiles = Model.tiles(nil, nil, all)
-check("move later", table.concat(Model.move(tiles, "reading", 1), ","), "library,reading,readingtime,weather,ha,dashboard,todo,notes,crosswords,wikipedia,syncthing,ssh,flashforge,pangolin,nextdns,web,fonts,settings,wifi,light,night,exit")
-check("move past the start stays", table.concat(Model.move(tiles, "reading", -1), ","), "reading,library,readingtime,weather,ha,dashboard,todo,notes,crosswords,wikipedia,syncthing,ssh,flashforge,pangolin,nextdns,web,fonts,settings,wifi,light,night,exit")
+check("move later", table.concat(Model.move(tiles, "reading", 1), ","), "library,reading,readingtime,weather,ha,dashboard,todo,notes,crosswords,wikipedia,syncthing,ssh,flashforge,pangolin,nextdns,pfsense,web,fonts,settings,wifi,light,night,exit")
+check("move past the start stays", table.concat(Model.move(tiles, "reading", -1), ","), "reading,library,readingtime,weather,ha,dashboard,todo,notes,crosswords,wikipedia,syncthing,ssh,flashforge,pangolin,nextdns,pfsense,web,fonts,settings,wifi,light,night,exit")
 -- Pins: tiles of their own after the apps, keyed by what they open; not twice; removed by key.
 local pins = {}
 local added
@@ -92,7 +93,7 @@ pins = Model.addPin(pins, { kind = "ha", name = "Kitchen", route = { kind = "roo
 pins = Model.addPin(pins, { kind = "todo", name = "Groceries", id = "L9" })
 pins = Model.addPin(pins, { kind = "note", name = "Ideas", id = "nb1" })
 check("pins after the apps", keys(Model.tiles(nil, nil, all, false, pins)),
-    "reading,library,readingtime,weather,ha,dashboard,todo,notes,crosswords,wikipedia,syncthing,ssh,flashforge,pangolin,nextdns,web,fonts,settings,wifi,light,night,exit,pin:ha:security:,pin:ha:room:Kitchen,pin:todo:L9,pin:note:nb1")
+    "reading,library,readingtime,weather,ha,dashboard,todo,notes,crosswords,wikipedia,syncthing,ssh,flashforge,pangolin,nextdns,pfsense,web,fonts,settings,wifi,light,night,exit,pin:ha:security:,pin:ha:room:Kitchen,pin:todo:L9,pin:note:nb1")
 check("pins of missing plugins left out", keys(Model.tiles(nil, nil, function(p) return p == "todo" end, false, pins)),
     "reading,library,weather,todo,fonts,settings,wifi,night,exit,pin:todo:L9")
 check("pins in the saved order", keys(Model.tiles({ "pin:todo:L9", "reading" }, nil, none, false, pins)), "reading,library,weather,fonts,settings,wifi,night,exit")
@@ -114,7 +115,7 @@ do
     check("a quick button turned off keeps its tile", keys(Model.page(Model.tiles(nil, nil, function() return true end), nil, nil, nil, { night = true })):find("wifi") ~= nil, true)
     local all = Model.tiles(nil, nil, function() return true end, false, nil, { { id = "g1", name = "Smart home" } })
     local main = Model.page(all, { { id = "g1", name = "Smart home" } }, { ha = "g1", dashboard = "g1" }, nil, { wifi = true, light = true, night = true })
-    check("main page: grouped and quick-button tiles left off", keys(main), "reading,library,readingtime,weather,todo,notes,crosswords,wikipedia,syncthing,ssh,flashforge,pangolin,nextdns,web,fonts,settings,exit,group:g1")
+    check("main page: grouped and quick-button tiles left off", keys(main), "reading,library,readingtime,weather,todo,notes,crosswords,wikipedia,syncthing,ssh,flashforge,pangolin,nextdns,pfsense,web,fonts,settings,exit,group:g1")
     check("a group's page", keys(Model.page(all, { { id = "g1" } }, { ha = "g1", dashboard = "g1" }, "g1", { wifi = true })), "ha,dashboard")
     check("a gone group's tiles come back", #Model.page(all, {}, { ha = "g9" }, nil, nil), #all)
     check("move among a page", table.concat(Model.moveAmong({ "a", "b", "c", "d" }, { "a", "c", "d" }, "c", -1), ","), "c,b,a,d")
@@ -123,7 +124,7 @@ end
 -- What the apps say about themselves (appsinfo.lua): nothing in the launcher names them.
 do
     local Info = require("appsinfo")
-    check("apps in their order", table.concat(Info.order(), ","), "homeassistant,todo,notes,crosswords,library,wikipedia,syncthing,sshclient,flashforge,pangolin,nextdns,webpage")
+    check("apps in their order", table.concat(Info.order(), ","), "homeassistant,todo,notes,crosswords,library,wikipedia,syncthing,sshclient,flashforge,pangolin,nextdns,pfsense,webpage")
     check("a tile gets its app's plugin", Info.tile("ssh").plugin, "sshclient")
     check("a tile keeps its own icon", Info.tile("crosswords").icon .. "," .. Info.tile("ha").icon, "grid-3x3,house")
     check("a tile goes in its app's group", Info.tile("dashboard").group, "home")
@@ -136,16 +137,16 @@ do
     check("the apps' folders, for their icons", table.concat(Info.dirs(), ","), "/plugins/nextdns.koplugin")
     local labels = {}
     for __, a in ipairs(Info.labelApps()) do labels[#labels + 1] = a.key end
-    check("Button labels: each app's first tile, not a switch", table.concat(labels, ","), "ha,todo,notes,crosswords,wikipedia,syncthing,ssh,flashforge,pangolin,nextdns")
+    check("Button labels: each app's first tile, not a switch", table.concat(labels, ","), "ha,todo,notes,crosswords,wikipedia,syncthing,ssh,flashforge,pangolin,nextdns,pfsense")
     -- A new app: its tile, group and gestures with no change to the launcher.
     local PS = package.loaded["pluginshare"]
     PS.appInfo.printer3 = { name = "Printer", icon = "printer", order = 88, group = "tools", tiles = { tile("printer3", { event = "ShowPrinter" }) } }
-    check("a new app's tile in its place", keys(Model.tiles(nil, nil, all)):find("nextdns,printer3,web", 1, true) ~= nil, true)
+    check("a new app's tile in its place", keys(Model.tiles(nil, nil, all)):find("nextdns,printer3,pfsense,web", 1, true) ~= nil, true)
     local tools
     for __, sg in ipairs(Model.suggestions(Model.tiles(nil, nil, all), {}, {})) do
         if sg.group.key == "tools" then tools = keys(sg.tiles) end
     end
-    check("a new app in its suggested group", tools, "todo,syncthing,ssh,flashforge,pangolin,nextdns,printer3,web")
+    check("a new app in its suggested group", tools, "todo,syncthing,ssh,flashforge,pangolin,nextdns,printer3,pfsense,web")
     check("a new app's gestures", table.concat(Info.gestures(), " "):find("^printer3_", 1, true) ~= nil, true)
     PS.appInfo.printer3 = nil
     -- An app's tile hidden while it says so (Home Assistant's Dashboard, not set up).
