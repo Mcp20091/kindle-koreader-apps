@@ -8,8 +8,9 @@ notifications, launcher, guide) are in the top-level AGENTS.md; this file covers
 A pfSense firewall on the Kindle, over the **REST API package** (pfSense-pkg-RESTAPI, "pfrest", v2) with an
 API key: the system's health, gateways, interfaces, services (start, stop, restart), DHCP leases and the ARP
 table (Wake-on-LAN), DHCP static mappings and DNS Resolver host overrides (add, change, delete), firewall rules
-on or off, WireGuard and OpenVPN status, the system and firewall logs, packages with updates, reboot and
-pfSense's own update. An **optional** app: it lives in `optional/`, isn't in the main install zip, and has its
+on or off, WireGuard and OpenVPN status, the system and firewall logs, packages with updates (install, remove),
+reboot and pfSense's own update; the DHCP server's and DNS Resolver's settings, pf tables, the service watchdog,
+cron jobs, NTP and SSH. An **optional** app: it lives in `optional/`, isn't in the main install zip, and has its
 own (`optional/build-zip.py`; the release makes `kindle-pfsense.zip`). The launcher shows its tile only when
 it's installed, from what it says about itself (`PS.appInfo.pfsense` in `shareWithApps`: its tile, Settings
 group, web tab; see MAKING-AN-APP.md).
@@ -52,10 +53,25 @@ pfsapi.lua and its tests together when it changes.
   `source__startswith=<ip>:` and `destination__startswith=<ip>:` (the colon keeps .5 from matching .50).
 - Certificates come with their private key (`prv`) and certificate (`crt`): `API.LISTS.certs.keep` keeps only
   the name and dates, in the child process, so neither reaches the plugin, the web page or a log.
-- Read only when asked: packages, logs, a device's connections, ping, config history.
-- Not yet (the user's later list): installing and removing packages, pf tables, service watchdog, cron, NTP,
-  SSH, DHCP server and DNS Resolver settings. Left out on purpose: updating a package (the API has no such
-  call), user management, the command prompt, halt.
+- Read only when asked: packages, logs, a device's connections, ping, config history, pf tables, and the
+  settings pages (`API:config(name)`, `API.CONFIG`: watchdog, cron, ntp, ssh, dhcp, dnsres; main.lua keeps each
+  in `state.config`, read again when its page opens and after each change there).
+- Packages: `GET /system/package/available` (what can be installed), `POST /system/package {name}` (slow:
+  pfSense downloads it; 300 s), `DELETE /system/package?id=` (its place in the installed list, checked by its
+  name first).
+- pf tables: `GET /diagnostics/tables` (the entries stay in the child: a block list can have thousands; the
+  plugin gets each table's name and count, or for a lookup the matching entries, `API.inEntry` taking a
+  network as containing its addresses). `GET /diagnostics/table?id=<name>` (the first 500), `DELETE` the same
+  **empties the whole table**: the API has no call that takes out one entry (and the command prompt is left
+  out), so the pages say so.
+- Settings pages: service watchdogs (checked by the service's name), cron jobs (by all their fields: minute…
+  command, `API.CRON`), NTP's settings (its `serverauthkey` stays in the child) and time servers (by the
+  server; ntpd restarted after, since the list doesn't apply by itself), SSH (`PATCH /services/ssh`), the DHCP
+  servers (`/services/dhcp_servers`, each one's id its interface; their static mappings stay in the child),
+  address pools (by their range) and custom options (by number and value) with `parent_id`, then
+  `/services/dhcp_server/apply`; the DNS Resolver's settings (`PATCH`, then `/services/dns_resolver/apply`).
+- Left out on purpose: updating a package (the API has no such call), user management, the command prompt,
+  halt.
 
 ## Files
 
@@ -66,8 +82,9 @@ pfsapi.lua and its tests together when it changes.
   (`shareWithApps`), quick buttons (status, a rule on or off by tracker, Wake a static mapping), search, and
   the web page's `webState()` / `webAct(name, args)`.
 - `pfsui.lua`: the screens (main page, Gateways, Interfaces, Services, Devices, ARP table, Static mappings,
-  DNS host overrides, Firewall rules, VPN, Logs, Packages, Details, Settings, setup), and reading every so
-  often while a live page is on top (`UI.poll`).
+  DNS host overrides, Firewall rules, VPN, Logs, Packages and Install, DHCP server, DNS Resolver, pf tables,
+  Service watchdog, Cron jobs, NTP and SSH, Details, Settings, setup), and reading every so often while a live
+  page is on top (`UI.poll`).
 - `pfsmodel.lua`: plain Lua, tested: the lists as tables, words for states, sizes, lines, counts, attention,
   the launcher's line, notifications between two reads (`changes`), search, the lists' sort and search
   (`sorted`, `filter`, `matches`; the sort is the reader setting `pfsense_sort`, shared with the web page), log lines (`logLine`,
@@ -84,8 +101,13 @@ pfsapi.lua and its tests together when it changes.
 
 ## Rules
 
-- Stopping a service, Reboot and Update ask first; deleting a static mapping or host override has Undo (it
-  adds it again); everything else just does it.
+- The web page adds a cron job (a command run as root on the firewall) only when its password is set
+  (`webpfsense.lua`, `NEEDS_PASSWORD`); without one, anyone on the Wi-Fi can open the page. The Kindle needs none.
+
+- Stopping a service, Reboot and Update ask first; so do installing or removing a package, emptying a pf
+  table, and turning off a DHCP server, the DNS Resolver, NTP or SSH. Deleting a static mapping, host override,
+  pool, custom option, cron job or time server, and no longer watching a service, have Undo (it adds it again);
+  everything else just does it.
 - The API key never goes in logs, the diagnostics file or `webState()`; the backup has it only with Include
   keys and sign-ins.
 - Made-up data only (192.168.1.x from the export's allowed examples, home.example.com, aa:bb:cc:dd:ee:0x).
@@ -97,3 +119,5 @@ luajit tests/run.lua        # pfsmodel, and pfsapi against a stand-in network
 ```
 
 Tried on the emulator against a stand-in REST API (made-up data), not yet against a real pfSense or on a Kindle.
+The second batch (packages to install and remove, pf tables, the settings pages) has its tests and was run with
+stand-ins for KOReader's widgets, not yet in the emulator: its fields are the OpenAPI document's.

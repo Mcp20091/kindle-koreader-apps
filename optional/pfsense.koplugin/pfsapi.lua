@@ -473,6 +473,292 @@ function API:history()
     return out
 end
 
+-- ------------------------------------------------------------------ packages
+
+--- The packages pfSense's package server has: { { name, shortname, descr, version, installed } }, or nil and why.
+function API:available()
+    return self:all("/system/package/available")
+end
+
+--- A package installed (by its name, such as "pfSense-pkg-Cron"): pfSense downloads it and sets it up, which
+-- takes a while.
+function API:installPackage(name)
+    return self:request("POST", "/system/package", nil, { name = name }, 300)
+end
+
+--- An installed package removed (its id is its place in the installed list: checked by its name first).
+function API:removePackage(id, name)
+    local p, why = self:request("GET", "/system/package", { id = id })
+    if not p then return nil, why == "notfound" and "changed" or why end
+    if type(p) ~= "table" or M.str(p.name) ~= name then return nil, "changed" end
+    return self:request("DELETE", "/system/package", { id = id }, nil, 180)
+end
+
+-- ------------------------------------------------------------------ pf tables
+
+--- Whether an entry of a table (an address, or a network such as 192.168.1.0/24) has address ip.
+local function inEntry(entry, ip)
+    entry = M.str(entry)
+    if entry == ip then return true end
+    local net, bits = entry:match("^([%d%.]+)/(%d+)$")
+    if not net or not M.isIPv4(net) or not M.isIPv4(ip) then return false end
+    local function n(s)
+        local a, b, c, d = s:match("^(%d+)%.(%d+)%.(%d+)%.(%d+)$")
+        return ((tonumber(a) * 256 + tonumber(b)) * 256 + tonumber(c)) * 256 + tonumber(d)
+    end
+    local size = 2 ^ (32 - math.min(32, tonumber(bits)))
+    return math.floor(n(net) / size) == math.floor(n(ip) / size)
+end
+API.inEntry = inEntry
+
+--- pf's tables (the block lists pfBlockerNG or Snort fill, the aliases' tables): { { name, count } }, or nil
+-- and why. Their entries stay in the child: a block list can have thousands.
+function API:tables()
+    local list, why = self:all("/diagnostics/tables")
+    if not list then return nil, why end
+    local out = {}
+    for __, t in ipairs(list) do
+        if type(t) == "table" then out[#out + 1] = { name = M.str(t.name), count = #(type(t.entries) == "table" and t.entries or {}) } end
+    end
+    return out
+end
+
+--- The tables with address ip in them (itself, or a network it's in): { { name, entries = { matching } } }.
+function API:lookup(ip)
+    local list, why = self:all("/diagnostics/tables")
+    if not list then return nil, why end
+    local out = {}
+    for __, t in ipairs(list) do
+        local hits = {}
+        for __, e in ipairs(type(t) == "table" and type(t.entries) == "table" and t.entries or {}) do
+            if inEntry(e, ip) then hits[#hits + 1] = M.str(e) end
+        end
+        if #hits > 0 then out[#out + 1] = { name = M.str(t.name), entries = hits } end
+    end
+    return out
+end
+
+--- A table's entries (by its name), at most limit of them: { name, count, entries }, or nil and why.
+function API:table(name, limit)
+    local t, why = self:request("GET", "/diagnostics/table", { id = name })
+    if not t then return nil, why end
+    if type(t) ~= "table" or M.str(t.name) ~= name then return nil, "changed" end
+    local all = type(t.entries) == "table" and t.entries or {}
+    local entries = {}
+    for k = 1, math.min(#all, limit or 500) do entries[k] = M.str(all[k]) end
+    return { name = name, count = #all, entries = entries }
+end
+
+--- A table emptied (the API can't take one entry out: only all of them). pfBlockerNG or Snort fill it again
+-- as they update.
+function API:flushTable(name)
+    local t, why = self:request("GET", "/diagnostics/table", { id = name })
+    if not t then return nil, why == "notfound" and "changed" or why end
+    if type(t) ~= "table" or M.str(t.name) ~= name then return nil, "changed" end
+    return self:request("DELETE", "/diagnostics/table", { id = name })
+end
+
+-- ------------------------------------------------------------------ service settings (read when their page opens)
+
+-- What each settings page reads (in the child), and the privilege a 403 means.
+API.CONFIG = {
+    watchdog = { "api-v2-services-service-watchdogs-get" },
+    cron = { "api-v2-services-cron-jobs-get" },
+    ntp = { "api-v2-services-ntp-settings-get" },
+    ssh = { "api-v2-services-ssh-get" },
+    dhcp = { "api-v2-services-dhcp-servers-get" },
+    dnsres = { "api-v2-services-dns-resolver-settings-get" },
+}
+
+-- The fields kept of each (NTP's authentication key and the DHCP servers' own static mappings stay in the child).
+local NTP_KEEP = { "enable", "interface", "ntpmaxpeers", "orphan", "dnsresolv", "logpeer", "logsys", "serverauth" }
+local DHCP_KEEP = { "id", "interface", "enable", "range_from", "range_to", "domain", "gateway", "dnsserver", "ntpserver",
+    "domainsearchlist", "defaultleasetime", "maxleasetime", "denyunknown", "staticarp", "ignorebootp" }
+local DNSRES_KEEP = { "enable", "port", "enablessl", "dnssec", "forwarding", "regdhcp", "regdhcpstatic", "regovpnclients",
+    "active_interface", "outgoing_interface", "strictout", "python" }
+
+local function pick(x, keep)
+    local t = {}
+    if type(x) == "table" then for __, f in ipairs(keep) do t[f] = x[f] end end
+    return t
+end
+
+--- A settings page's data (name: one of API.CONFIG), as plain tables, or nil and why.
+function API:config(name)
+    if name == "watchdog" then return self:all("/services/service_watchdogs") end
+    if name == "cron" then return self:all("/services/cron/jobs") end
+    if name == "ssh" then
+        local s, why = self:request("GET", "/services/ssh")
+        if not s then return nil, why end
+        return pick(s, { "enable", "port", "sshdkeyonly", "sshdagentforwarding" })
+    end
+    if name == "ntp" then
+        local s, why = self:request("GET", "/services/ntp/settings")
+        if not s then return nil, why end
+        local servers
+        servers, why = self:all("/services/ntp/time_servers")
+        if not servers then return nil, why end
+        return { settings = pick(s, NTP_KEEP), servers = servers }
+    end
+    if name == "dhcp" then
+        local list, why = self:all("/services/dhcp_servers")
+        if not list then return nil, why end
+        local servers = {}
+        for k, x in ipairs(list) do servers[k] = pick(x, DHCP_KEEP) end
+        local pools, options
+        pools, why = self:all("/services/dhcp_server/address_pools")
+        if not pools then return nil, why end
+        options, why = self:all("/services/dhcp_server/custom_options")
+        if not options then return nil, why end
+        return { servers = servers, pools = pools, options = options }
+    end
+    if name == "dnsres" then
+        local s, why = self:request("GET", "/services/dns_resolver/settings")
+        if not s then return nil, why end
+        return pick(s, DNSRES_KEEP)
+    end
+    return nil, "Unknown"
+end
+
+--- Read one object again and check it's the one meant: what(obj) true. nil and "changed" when it isn't.
+function API:check(path, params, what)
+    local x, why = self:request("GET", path, params)
+    if not x then return nil, why == "notfound" and "changed" or why end
+    if type(x) ~= "table" or not what(x) then return nil, "changed" end
+    return x
+end
+
+-- Service watchdog (applied at once)
+
+function API:addWatchdog(name, description, notify)
+    return self:request("POST", "/services/service_watchdog", nil, { name = name, description = description, notify = notify == true })
+end
+
+--- A watched service's notifications on or off (checked by the service's name).
+function API:setWatchdog(id, name, notify)
+    local ok, why = self:check("/services/service_watchdog", { id = id }, function(x) return M.str(x.name) == name end)
+    if not ok then return nil, why end
+    return self:request("PATCH", "/services/service_watchdog", nil, { id = id, notify = notify })
+end
+
+function API:deleteWatchdog(id, name)
+    local ok, why = self:check("/services/service_watchdog", { id = id }, function(x) return M.str(x.name) == name end)
+    if not ok then return nil, why end
+    return self:request("DELETE", "/services/service_watchdog", { id = id })
+end
+
+-- Cron jobs (applied at once), each told apart by its command and when it runs.
+API.CRON = { "minute", "hour", "mday", "month", "wday", "who", "command" }
+
+local function sameCron(x, sig)
+    for __, f in ipairs(API.CRON) do
+        if M.str(x[f]) ~= M.str(sig[f]) then return false end
+    end
+    return true
+end
+
+function API:addCron(f)
+    local body = {}
+    for __, k in ipairs(API.CRON) do body[k] = M.str(f[k]) end
+    return self:request("POST", "/services/cron/job", nil, body)
+end
+
+function API:editCron(id, sig, fields)
+    local ok, why = self:check("/services/cron/job", { id = id }, function(x) return sameCron(x, sig) end)
+    if not ok then return nil, why end
+    local body = { id = id }
+    for __, k in ipairs(API.CRON) do if fields[k] ~= nil then body[k] = fields[k] end end
+    return self:request("PATCH", "/services/cron/job", nil, body)
+end
+
+function API:deleteCron(id, sig)
+    local ok, why = self:check("/services/cron/job", { id = id }, function(x) return sameCron(x, sig) end)
+    if not ok then return nil, why end
+    return self:request("DELETE", "/services/cron/job", { id = id })
+end
+
+-- NTP and SSH (applied at once)
+
+function API:setNtp(on)
+    return self:request("PATCH", "/services/ntp/settings", nil, { enable = on }, 40)
+end
+
+--- ntpd restarted so it takes a changed list of time servers (the list doesn't apply by itself); none
+-- running (NTP off) is fine.
+local function ntpRestart(self, ok, why)
+    if not ok then return nil, why end
+    self:service("ntpd", "restart")
+    return true
+end
+
+--- A time server added (type: server, pool or peer).
+function API:addTimeServer(server, kind)
+    return ntpRestart(self, self:request("POST", "/services/ntp/time_server", nil, { timeserver = server, type = kind or "server" }))
+end
+
+function API:deleteTimeServer(id, server)
+    local ok, why = self:check("/services/ntp/time_server", { id = id }, function(x) return M.str(x.timeserver) == server end)
+    if not ok then return nil, why end
+    return ntpRestart(self, self:request("DELETE", "/services/ntp/time_server", { id = id }))
+end
+
+--- The SSH server's settings changed (fields: enable, port).
+function API:setSsh(fields)
+    local body = {}
+    if fields.enable ~= nil then body.enable = fields.enable == true end
+    if fields.port ~= nil then body.port = M.str(fields.port) end
+    return self:request("PATCH", "/services/ssh", nil, body, 40)
+end
+
+-- DHCP server settings, pools and options (then DHCP applied)
+
+local function dhcpApply(self, ok, why)
+    if not ok then return nil, why end
+    return self:request("POST", "/services/dhcp_server/apply", nil, {}, 40)
+end
+
+--- An interface's DHCP server changed (iface: its id, such as "lan"; fields as the API names them).
+function API:setDhcp(iface, fields)
+    local ok, why = self:check("/services/dhcp_server", { id = iface }, function() return true end)
+    if not ok then return nil, why end
+    local body = { id = iface }
+    for k, v in pairs(fields) do body[k] = v end
+    return dhcpApply(self, self:request("PATCH", "/services/dhcp_server", nil, body))
+end
+
+function API:addPool(parent, from, to)
+    return dhcpApply(self, self:request("POST", "/services/dhcp_server/address_pool", nil,
+        { parent_id = parent, range_from = from, range_to = to }))
+end
+
+--- A pool taken out (checked by its range).
+function API:deletePool(parent, id, from, to)
+    local ok, why = self:check("/services/dhcp_server/address_pool", { parent_id = parent, id = id },
+        function(x) return M.str(x.range_from) == from and M.str(x.range_to) == to end)
+    if not ok then return nil, why end
+    return dhcpApply(self, self:request("DELETE", "/services/dhcp_server/address_pool", { parent_id = parent, id = id }))
+end
+
+function API:addOption(parent, number, kind, value)
+    return dhcpApply(self, self:request("POST", "/services/dhcp_server/custom_option", nil,
+        { parent_id = parent, number = tonumber(number), type = kind, value = value }))
+end
+
+--- A custom option taken out (checked by its number and value).
+function API:deleteOption(parent, id, number, value)
+    local ok, why = self:check("/services/dhcp_server/custom_option", { parent_id = parent, id = id },
+        function(x) return tonumber(x.number) == tonumber(number) and M.str(x.value) == value end)
+    if not ok then return nil, why end
+    return dhcpApply(self, self:request("DELETE", "/services/dhcp_server/custom_option", { parent_id = parent, id = id }))
+end
+
+--- The DNS Resolver's settings changed (fields as the API names them), then applied.
+function API:setDnsResolver(fields)
+    local ok, why = self:request("PATCH", "/services/dns_resolver/settings", nil, fields)
+    if not ok then return nil, why end
+    return self:request("POST", "/services/dns_resolver/apply", nil, {}, 40)
+end
+
 function API:reboot()
     return self:request("POST", "/diagnostics/reboot", nil, {})
 end

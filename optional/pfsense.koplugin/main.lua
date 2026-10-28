@@ -4,7 +4,9 @@ pfSense: your pfSense firewall on the Kindle, over the REST API package
 interfaces and services (start, stop, restart), the devices on the network
 (DHCP leases, the ARP table; Wake-on-LAN), DHCP static mappings and DNS host
 overrides (add, change, delete), firewall rules on or off, VPN status, the
-firewall and system logs, packages with updates, reboot and pfSense's update.
+firewall and system logs, packages with updates (install, remove), reboot and
+pfSense's update; the DHCP server's and DNS Resolver's settings, pf tables,
+the service watchdog, cron jobs, NTP and SSH.
 
 Nothing runs in the background: pfSense is read while the app is open, and
 when the launcher's tile or a quick button shows it.
@@ -40,6 +42,10 @@ local state = {
     waiting = {},
     line = nil,        -- the launcher's line as last shown
     packages = nil,    -- { list, time } or { why, time }
+    available = nil,   -- the packages to install: { list } or { text }
+    tables = nil,      -- pf's tables as last read: { list } or { text }
+    lookup = nil,      -- the last address looked up in them: { ip, hits } or { ip, text }
+    config = {},       -- the settings pages' reads (watchdog, cron, ntp, ssh, dhcp, dnsres): name -> { value, time } or { text, time }
 }
 
 local PfSense = WidgetContainer:extend{
@@ -108,6 +114,7 @@ function PfSense:setCfg(t)
     end
     self.store:flush()
     state.data, state.why, state.time, state.listsTime, state.tried, state.packages = nil, nil, 0, 0, 0, nil
+    state.available, state.config, state.tables, state.lookup = nil, {}, nil, nil
     self:changed()
 end
 
@@ -273,6 +280,80 @@ end
 
 function PfSense:packageList() return state.packages and state.packages.list end
 
+--- The packages there are to install (not installed ones), by name: done(list) or done(nil, text). Read once
+-- per run, again with again.
+function PfSense:available(done, again)
+    local a = state.available
+    if a and not again then
+        if a.list then return done(a.list) end
+        return done(nil, a.text)
+    end
+    self:ask(function(api) return api:available() end, "api-v2-system-package-available-get", function(list, text)
+        if not list then
+            state.available = { text = text }
+            return done(nil, text)
+        end
+        local out = {}
+        for __, x in ipairs(list) do
+            local p = M.available(x)
+            if not p.installed and p.name ~= "" then out[#out + 1] = p end
+        end
+        table.sort(out, function(x, y) return x.short:lower() < y.short:lower() end)
+        state.available = { list = out }
+        self:changed()
+        done(out)
+    end, { limit = 90 })
+end
+
+--- pf's tables, with how many entries each has: done({ { name, count } }) or done(nil, text). Kept for the web page.
+function PfSense:tables(done)
+    self:ask(function(api)
+        local list, why = api:tables()
+        if not list then return nil, why end
+        table.sort(list, function(a, b) return a.name:lower() < b.name:lower() end)
+        return list
+    end, "api-v2-diagnostics-tables-get", function(list, text)
+        state.tables = { list = list, text = text }
+        if done then done(list, text) end
+    end, { limit = 90 })
+end
+
+--- The tables an address is in: done({ { name, entries } }) or done(nil, text). The last one is kept for the web page.
+function PfSense:lookup(ip, done, quiet)
+    self:ask(function(api) return api:lookup(ip) end, "api-v2-diagnostics-tables-get", function(hits, text)
+        state.lookup = { ip = ip, hits = hits, text = text }
+        if done then done(hits, text) end
+    end, { limit = 90, text = not quiet and T(_("Looking for %1…"), ip) or nil })
+end
+
+--- One table's entries (the first 500): done({ name, count, entries }) or done(nil, text).
+function PfSense:table(name, done)
+    self:ask(function(api) return api:table(name, 500) end, "api-v2-diagnostics-table-get", done, { limit = 60 })
+end
+
+--- A settings page's read (name: watchdog, cron, ntp, ssh, dhcp or dnsres; see pfsmodel.config), once per run,
+-- again with again: done(value) or done(nil, text).
+function PfSense:config(name, done, again)
+    local c = state.config[name]
+    if c and not again then
+        if c.value then return done and done(c.value) end
+        return done and done(nil, c.text)
+    end
+    self:ask(function(api) return api:config(name) end, require("pfsapi").CONFIG[name][1], function(raw, text)
+        if raw then
+            state.config[name] = { value = M.config(name, raw), time = os.time() }
+        else
+            state.config[name] = { text = text, time = os.time() }
+        end
+        self:changed()
+        if done then done(raw and state.config[name].value or nil, text) end
+    end)
+end
+
+--- A settings page's data as last read (nil until read), and why it couldn't be read.
+function PfSense:configData(name) return state.config[name] and state.config[name].value end
+function PfSense:configWhy(name) return state.config[name] and state.config[name].text end
+
 --- Something read only when asked (in a child): done(result) or done(nil, text). fn(api) -> result or nil, why.
 function PfSense:ask(fn, priv, done, opts)
     if not self:configured() or not NetworkMgr:isConnected() then return done(nil, self:whyText("offline")) end
@@ -284,7 +365,7 @@ function PfSense:ask(fn, priv, done, opts)
     end, function(r, why)
         if r and r.r then return done(r.r) end
         done(nil, self:whyText((r and r.why) or why, priv))
-    end, { limit = 50, text = opts and opts.text })
+    end, { limit = opts and opts.limit or 50, text = opts and opts.text })
 end
 
 --- A device's connections (firewall states from or to ip): done(list of pfsmodel.state) or done(nil, text).
@@ -463,6 +544,69 @@ local ACTIONS = {
         end },
     acme_renew = { run = function(api, a) return api:renewAcme(a.name) end, lists = true,
         priv = function() return "api-v2-services-acme-certificate-renew-post" end },
+    -- Packages ({ name }; remove: { id, name }): the installed list read again after, not the status.
+    pkg_install = { run = function(api, a) return api:installPackage(a.name) end, packages = true, limit = 330,
+        priv = function() return "api-v2-system-package-post" end },
+    pkg_remove = { run = function(api, a) return api:removePackage(a.id, a.name) end, packages = true, limit = 210,
+        priv = function() return "api-v2-system-package-delete" end },
+    -- A pf table emptied ({ name }).
+    table_flush = { run = function(api, a) return api:flushTable(a.name) end, quiet = true,
+        priv = function() return "api-v2-diagnostics-table-delete" end },
+    -- The settings pages': `config` is the one read again after; `edit` changes what was read at once.
+    watchdog_add = { run = function(api, a) return api:addWatchdog(a.name, a.description, a.notify) end, config = "watchdog",
+        priv = function() return "api-v2-services-service-watchdog-post" end },
+    watchdog_notify = { run = function(api, a) return api:setWatchdog(a.id, a.name, a.on) end, config = "watchdog",
+        priv = function() return "api-v2-services-service-watchdog-patch" end,
+        edit = function(list, a) for __, w in ipairs(list) do if w.id == a.id and w.name == a.name then w.notify = a.on end end end },
+    watchdog_delete = { run = function(api, a) return api:deleteWatchdog(a.id, a.name) end, config = "watchdog",
+        priv = function() return "api-v2-services-service-watchdog-delete" end,
+        edit = function(list, a)
+            for k, w in ipairs(list) do if w.id == a.id and w.name == a.name then table.remove(list, k) break end end
+        end },
+    cron_add = { run = function(api, a) return api:addCron(a) end, config = "cron",
+        priv = function() return "api-v2-services-cron-job-post" end },
+    cron_edit = { run = function(api, a) return api:editCron(a.id, a.sig, a.fields) end, config = "cron",
+        priv = function() return "api-v2-services-cron-job-patch" end },
+    cron_delete = { run = function(api, a) return api:deleteCron(a.id, a.sig) end, config = "cron",
+        priv = function() return "api-v2-services-cron-job-delete" end,
+        edit = function(list, a)
+            for k, c in ipairs(list) do if c.id == a.id and c.command == a.sig.command then table.remove(list, k) break end end
+        end },
+    ntp_enabled = { run = function(api, a) return api:setNtp(a.on) end, config = "ntp",
+        priv = function() return "api-v2-services-ntp-settings-patch" end,
+        edit = function(n, a) n.enabled = a.on end },
+    ntp_add = { run = function(api, a) return api:addTimeServer(a.server, a.type) end, config = "ntp",
+        priv = function() return "api-v2-services-ntp-time-server-post" end },
+    ntp_delete = { run = function(api, a) return api:deleteTimeServer(a.id, a.server) end, config = "ntp",
+        priv = function() return "api-v2-services-ntp-time-server-delete" end,
+        edit = function(n, a)
+            for k, x in ipairs(n.servers) do if x.id == a.id and x.server == a.server then table.remove(n.servers, k) break end end
+        end },
+    ssh_set = { run = function(api, a) return api:setSsh(a) end, config = "ssh",
+        priv = function() return "api-v2-services-ssh-patch" end,
+        edit = function(c, a)
+            if a.enable ~= nil then c.enabled = a.enable end
+            if a.port ~= nil then c.port = a.port end
+        end },
+    -- DHCP ({ iface, fields } with the API's names; pools { parent, from, to }; options { parent, number, type, value }).
+    dhcp_set = { run = function(api, a) return api:setDhcp(a.iface, a.fields) end, config = "dhcp",
+        priv = function() return "api-v2-services-dhcp-server-patch" end },
+    pool_add = { run = function(api, a) return api:addPool(a.parent, a.from, a.to) end, config = "dhcp",
+        priv = function() return "api-v2-services-dhcp-server-address-pool-post" end },
+    pool_delete = { run = function(api, a) return api:deletePool(a.parent, a.id, a.from, a.to) end, config = "dhcp",
+        priv = function() return "api-v2-services-dhcp-server-address-pool-delete" end },
+    option_add = { run = function(api, a) return api:addOption(a.parent, a.number, a.type, a.value) end, config = "dhcp",
+        priv = function() return "api-v2-services-dhcp-server-custom-option-post" end },
+    option_delete = { run = function(api, a) return api:deleteOption(a.parent, a.id, a.number, a.value) end, config = "dhcp",
+        priv = function() return "api-v2-services-dhcp-server-custom-option-delete" end },
+    -- The DNS Resolver's settings ({ fields } with the API's names: enable, dnssec, forwarding, regdhcp…).
+    dnsres_set = { run = function(api, a) return api:setDnsResolver(a.fields) end, config = "dnsres",
+        priv = function() return "api-v2-services-dns-resolver-settings-patch" end,
+        edit = function(c, a)
+            local names = { enable = "enabled", dnssec = "dnssec", forwarding = "forwarding", regdhcp = "regdhcp",
+                regdhcpstatic = "regdhcpstatic", regovpnclients = "regovpnclients" }
+            for k, v in pairs(a.fields) do if names[k] then c[names[k]] = v end end
+        end },
 }
 PfSense.ACTIONS = ACTIONS
 
@@ -480,6 +624,11 @@ function PfSense:act(name, args, done, opts)
         a.apply(state.data, args)
         self:changed()
     end
+    local cfg = a.config and self:configData(a.config)
+    if cfg and a.edit then
+        a.edit(cfg, args)
+        self:changed()
+    end
     require("pfsbg").run(function()
         local ok, why = a.run(api, args)
         if not ok then return { why = why or "refused" } end
@@ -492,12 +641,18 @@ function PfSense:act(name, args, done, opts)
             logger.warn("pfSense:", name, why)
             text = self:whyText(why, a.priv(args))
         end
-        -- (read again: confirms the change, or puts back what it couldn't do)
-        if not a.quiet then
+        -- (read again: confirms the change, or puts back what it couldn't do; a settings page's own read, or
+        -- the installed packages)
+        if a.config then
+            UIManager:scheduleIn(good and 1 or 0, function() self:config(a.config, nil, true) end)
+        elseif a.packages then
+            state.available = nil
+            UIManager:scheduleIn(0, function() self:packages(function() end, true) end)
+        elseif not a.quiet then
             UIManager:scheduleIn(good and 1 or 0, function() self:fetch(nil, a.lists or not good) end)
         end
         if done then done(good and true or false, text) end
-    end, { limit = 60, text = opts and opts.text })
+    end, { limit = a.limit or 60, text = opts and opts.text })
 end
 
 --- Whether the key reads this firewall: done(name) or done(nil, why). cfg: { url, key }.
@@ -805,7 +960,64 @@ function PfSense:webState()
             table.insert(out.gwchoices, { name = g.name, family = g.family ~= "" and g.family or "inet", group = true })
         end
     end
+    -- What's read only when asked (the page's Read buttons): packages, pf tables, the settings pages.
+    if state.packages then out.packages = { list = state.packages.list, why = state.packages.text } end
+    if state.available then out.available = { list = state.available.list, why = state.available.text } end
+    if state.tables then out.tables = { list = state.tables.list, why = state.tables.text } end
+    if state.lookup then out.lookup = { ip = state.lookup.ip, hits = state.lookup.hits, why = state.lookup.text } end
+    out.config = {}
+    for name, c in pairs(state.config) do out.config[name] = { value = c.value, why = c.text } end
     return out
+end
+
+-- What the web page may change of a DHCP server, and how each is typed.
+local DHCP_FIELDS = { enable = "bool", range_from = "ip", range_to = "ip", domain = "text", gateway = "ip",
+    dnsserver = "ips", defaultleasetime = "secs", maxleasetime = "secs" }
+local DNSRES_FIELDS = { enable = true, dnssec = true, forwarding = true, regdhcp = true, regdhcpstatic = true, regovpnclients = true }
+PfSense.DHCP_FIELDS = DHCP_FIELDS
+
+--- A DHCP server's field as typed (kind from DHCP_FIELDS): the value for the API, or nil and why.
+function PfSense:dhcpValue(field, v)
+    local kind = DHCP_FIELDS[field]
+    if kind == "bool" then return v == true end
+    if kind == "ip" then
+        v = M.str(v)
+        if field == "gateway" and (v == "" or v == "none") then return v end
+        if not M.isIPv4(v) then return nil, _("Enter an IP address, such as 192.168.1.20.") end
+        return v
+    end
+    if kind == "ips" then
+        local ips = M.strings(v)
+        for __, x in ipairs(ips) do if not M.isIPv4(x) then return nil, _("Enter IP addresses, such as 192.168.1.1, with commas between.") end end
+        return ips
+    end
+    if kind == "secs" then
+        local n = tonumber(v)
+        if M.str(v) == "" then return 0 end
+        if not n or n < 60 then return nil, _("Enter the time in seconds (60 or more), such as 7200.") end
+        return math.floor(n)
+    end
+    if kind == "text" then return M.str(v) end
+    return nil, "Which field?"
+end
+
+--- One of the settings pages' items by id from what was read (and the field it's told apart by).
+local function cfgItem(name, list, id)
+    local cfg = state.config[name] and state.config[name].value
+    for __, x in ipairs(cfg and (list and cfg[list] or cfg) or {}) do
+        if x.id == id then return x end
+    end
+end
+
+--- A DHCP server, pool or option as read (parent: the interface).
+local function dhcpPart(parent, kind, id)
+    local cfg = state.config.dhcp and state.config.dhcp.value
+    for __, s in ipairs(cfg and cfg.servers or {}) do
+        if s.id == parent then
+            if not kind then return s end
+            for __, x in ipairs(s[kind]) do if x.id == id then return x end end
+        end
+    end
 end
 
 --- The web page's actions: service { name, action }, rule_enabled { id, tracker, on },
@@ -814,7 +1026,14 @@ end
 -- { id, host, domain }, reboot, update, nat_enabled { kind, id, on }, wg_enabled { key, on }, route_enabled
 -- { id, on }, default_gw { family, name }, kill_states { ip }, alias_set { id, name, addresses },
 -- sort { list, by, reverse }, refresh (started in the background: the page reads
--- the state again after); settings { url, key, interval, notify }. Returns true, or false and why.
+-- the state again after); settings { url, key, interval, notify }. Read only when asked: read { what =
+-- packages | available | tables | watchdog | cron | ntp | ssh | dhcp | dnsres }, lookup { ip }. Then
+-- pkg_install { name }, pkg_remove { name }, table_flush { name }, watchdog_add { name, description, notify },
+-- watchdog_notify { id, on }, watchdog_delete { id }, cron_add { minute, hour, mday, month, wday, who, command },
+-- cron_delete { id }, ntp_enabled { on }, ntp_add { server, type }, ntp_delete { id }, ssh_set { enable, port },
+-- dhcp_set { iface, field, value }, pool_add { parent, from, to }, pool_delete { parent, id }, option_add
+-- { parent, number, type, value }, option_delete { parent, id }, dnsres_set { field, value } (ids as last read:
+-- each is checked against what was read, and again on pfSense). Returns true, or false and why.
 function PfSense:webAct(name, args)
     args = type(args) == "table" and args or {}
     if name == "settings" then
@@ -843,6 +1062,21 @@ function PfSense:webAct(name, args)
     if not NetworkMgr:isConnected() then return false, self:whyText("offline") end
     if name == "refresh" then
         self:fetch(nil, true)
+        return true
+    end
+    -- (read only when asked: started here, the page reads the state again after)
+    if name == "read" then
+        local what = M.str(args.what)
+        if what == "packages" then self:packages(function() end, true)
+        elseif what == "available" then self:available(function() end, true)
+        elseif what == "tables" then self:tables()
+        elseif require("pfsapi").CONFIG[what] then self:config(what, nil, true)
+        else return false, "Read what?" end
+        return true
+    end
+    if name == "lookup" then
+        if not M.isIPv4(args.ip) then return false, _("Enter an IP address, such as 192.168.1.20.") end
+        self:lookup(M.str(args.ip), nil, true)
         return true
     end
     local a
@@ -903,6 +1137,80 @@ function PfSense:webAct(name, args)
         local old = {}
         for __, e in ipairs(x.entries) do old[e.address] = e.detail end
         for k, addr in ipairs(a.addresses) do a.details[k] = old[addr] or "" end
+    elseif name == "pkg_install" then
+        local p
+        for __, x in ipairs(state.available and state.available.list or {}) do if x.name == M.str(args.name) then p = x end end
+        if not p then return false, "Which one?" end
+        a = { name = p.name }
+    elseif name == "pkg_remove" then
+        local p
+        for __, x in ipairs(self:packageList() or {}) do if x.name == M.str(args.name) then p = x end end
+        if not p then return false, "Which one?" end
+        a = { id = p.id, name = p.name }
+    elseif name == "table_flush" then
+        a = { name = M.str(args.name) }
+        if a.name == "" then return false, "Which one?" end
+    elseif name == "watchdog_add" then
+        a = { name = M.str(args.name), description = M.str(args.description), notify = args.notify ~= false }
+        if a.name == "" then return false, "Which service?" end
+    elseif name == "watchdog_notify" or name == "watchdog_delete" then
+        local w = cfgItem("watchdog", nil, tonumber(args.id))
+        if not w then return false, "Which one?" end
+        a = { id = w.id, name = w.name, on = args.on == true }
+    elseif name == "cron_add" then
+        a = {}
+        for __, k in ipairs(require("pfsapi").CRON) do a[k] = M.str(args[k]) end
+        if a.command == "" or a.minute == "" then return false, _("Enter when it runs and the command.") end
+        for __, k in ipairs({ "hour", "mday", "month", "wday" }) do if a[k] == "" then a[k] = "*" end end
+        if a.who == "" then a.who = "root" end
+    elseif name == "cron_delete" then
+        local c = cfgItem("cron", nil, tonumber(args.id))
+        if not c then return false, "Which one?" end
+        a = { id = c.id, sig = c.sig }
+    elseif name == "ntp_enabled" then
+        a = { on = args.on == true }
+    elseif name == "ntp_add" then
+        a = { server = M.str(args.server), type = (args.type == "pool" or args.type == "peer") and args.type or "server" }
+        if a.server == "" then return false, _("Enter a time server, such as pool.ntp.org.") end
+    elseif name == "ntp_delete" then
+        local x = cfgItem("ntp", "servers", tonumber(args.id))
+        if not x then return false, "Which one?" end
+        a = { id = x.id, server = x.server }
+    elseif name == "ssh_set" then
+        a = {}
+        if type(args.enable) == "boolean" then a.enable = args.enable end
+        if args.port ~= nil then
+            local port = tonumber(args.port)
+            if not port or port < 1 or port > 65535 then return false, _("Enter a port from 1 to 65535.") end
+            a.port = tostring(math.floor(port))
+        end
+    elseif name == "dhcp_set" then
+        local s = dhcpPart(M.str(args.iface))
+        if not s then return false, "Which interface?" end
+        local v, why = self:dhcpValue(M.str(args.field), args.value)
+        if v == nil then return false, why end
+        a = { iface = s.id, fields = { [M.str(args.field)] = v } }
+    elseif name == "pool_add" then
+        if not dhcpPart(M.str(args.parent)) then return false, "Which interface?" end
+        if not M.isIPv4(args.from) or not M.isIPv4(args.to) then return false, _("Enter the first and last address, such as 192.168.1.50.") end
+        a = { parent = M.str(args.parent), from = M.str(args.from), to = M.str(args.to) }
+    elseif name == "pool_delete" then
+        local x = dhcpPart(M.str(args.parent), "pools", tonumber(args.id))
+        if not x then return false, "Which one?" end
+        a = { parent = x.parent, id = x.id, from = x.from, to = x.to }
+    elseif name == "option_add" then
+        if not dhcpPart(M.str(args.parent)) then return false, "Which interface?" end
+        local n = tonumber(args.number)
+        if not n or n < 1 or n > 254 then return false, _("Enter the option's number (1 to 254).") end
+        a = { parent = M.str(args.parent), number = math.floor(n), type = M.str(args.type) ~= "" and M.str(args.type) or "text",
+            value = M.str(args.value) }
+    elseif name == "option_delete" then
+        local x = dhcpPart(M.str(args.parent), "options", tonumber(args.id))
+        if not x then return false, "Which one?" end
+        a = { parent = x.parent, id = x.id, number = x.number, value = x.value }
+    elseif name == "dnsres_set" then
+        if not DNSRES_FIELDS[M.str(args.field)] then return false, "Which setting?" end
+        a = { fields = { [M.str(args.field)] = args.value == true } }
     else
         return false, "Unknown action"
     end
