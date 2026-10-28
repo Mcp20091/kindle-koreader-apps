@@ -123,6 +123,27 @@ function PfSense:interval()
     return math.max(15, math.min(300, tonumber(G_reader_settings:readSetting("pfsense_interval")) or 60))
 end
 
+--- How a list is sorted (leases, arp, statics, overrides): by ("name" or "ip"), reverse.
+function PfSense:sortOf(list)
+    return M.sortOf(G_reader_settings:readSetting("pfsense_sort"), list)
+end
+
+--- Sort a list (by "name" or "ip"; reverse): kept for next time, the same on the web page.
+function PfSense:setSort(list, by, reverse)
+    if not M.SORTABLE[list] then return end
+    local saved = G_reader_settings:readSetting("pfsense_sort")
+    saved = type(saved) == "table" and saved or {}
+    saved[list] = { by = by == "ip" and "ip" or "name", reverse = reverse == true }
+    G_reader_settings:saveSetting("pfsense_sort", saved)
+end
+
+--- A list as read, sorted as the user chose.
+function PfSense:sortedList(list)
+    local d = state.data
+    local by, reverse = self:sortOf(list)
+    return M.sorted(d and d[list] or {}, by, reverse)
+end
+
 --- Whether a gateway, interface or service going down is a notification.
 function PfSense:notifying()
     return G_reader_settings:nilOrTrue("pfsense_notify")
@@ -252,7 +273,8 @@ end
 
 function PfSense:packageList() return state.packages and state.packages.list end
 
---- The newest lines of a log (kind: "system" or "firewall"): done(lines) or done(nil, text).
+--- The newest lines of a log (kind: an id of pfsmodel.LOGS, such as "system"), newest first:
+-- done(lines) or done(nil, text).
 function PfSense:log(kind, done)
     if not self:configured() or not NetworkMgr:isConnected() then return done(nil, self:whyText("offline")) end
     local api = self:api()
@@ -261,10 +283,10 @@ function PfSense:log(kind, done)
         if not list then return { why = why } end
         local out = {}
         for __, x in ipairs(list) do out[#out + 1] = M.str(type(x) == "table" and x.text or x) end
-        return { lines = out }
+        return { lines = M.newest(out, M.LOG_LINES) }
     end, function(r, why)
         if r and r.lines then return done(r.lines) end
-        done(nil, self:whyText((r and r.why) or why, "api-v2-status-logs-" .. kind .. "-get"))
+        done(nil, self:whyText((r and r.why) or why, "api-v2-status-logs-" .. kind:gsub("/", "-") .. "-get"))
     end, { limit = 45 })
 end
 
@@ -609,7 +631,12 @@ end
 function PfSense:webState()
     local c = self:cfg()
     local d = self:configured() and self:status(15) or nil
-    local out = { configured = self:configured(), url = c.url, name = self:fwName(), hasKey = c.key ~= nil,
+    local sort = {}
+    for list in pairs(M.SORTABLE) do
+        local by, reverse = self:sortOf(list)
+        sort[list] = { by = by, reverse = reverse }
+    end
+    local out = { configured = self:configured(), url = c.url, name = self:fwName(), hasKey = c.key ~= nil, sort = sort,
         interval = self:interval(), notify = self:notifying(), read = state.time > 0 and state.time or nil,
         why = state.why and self:whyText(state.why) or nil }
     if d and d.system then
@@ -626,16 +653,16 @@ function PfSense:webState()
         for __, x in ipairs(d.services or {}) do
             table.insert(out.services, { key = x.key, name = x.name, running = x.running, enabled = x.enabled, state = M.serviceState(x) })
         end
-        for __, l in ipairs(d.leases or {}) do
+        for __, l in ipairs(self:sortedList("leases")) do
             table.insert(out.devices, { name = l.name, ip = l.ip, mac = l.mac, iface = l.iface, online = l.online, line = M.leaseLine(l) })
         end
         for __, r in ipairs(d.rules or {}) do
             table.insert(out.rules, { id = r.id, tracker = r.tracker, name = r.name, on = not r.disabled, line = M.ruleLine(r) })
         end
-        for __, x in ipairs(d.statics or {}) do
+        for __, x in ipairs(self:sortedList("statics")) do
             table.insert(out.statics, { parent = x.parent, id = x.id, mac = x.mac, ip = x.ip, hostname = x.hostname, descr = x.descr, name = x.name })
         end
-        for __, o in ipairs(d.overrides or {}) do
+        for __, o in ipairs(self:sortedList("overrides")) do
             table.insert(out.overrides, { id = o.id, host = o.host, domain = o.domain, ips = table.concat(o.ips, ", "),
                 aliases = table.concat(o.aliases, ", "), descr = o.descr, name = o.fqdn })
         end
@@ -646,7 +673,7 @@ end
 --- The web page's actions: service { name, action }, rule_enabled { id, tracker, on },
 -- wake { iface, mac }, static_add { parent, mac, ip, hostname, descr }, static_delete
 -- { parent, id, mac }, override_add { host, domain, ips, descr, aliases }, override_delete
--- { id, host, domain }, reboot, update, refresh (started in the background: the page reads
+-- { id, host, domain }, reboot, update, sort { list, by, reverse }, refresh (started in the background: the page reads
 -- the state again after); settings { url, key, interval, notify }. Returns true, or false and why.
 function PfSense:webAct(name, args)
     args = type(args) == "table" and args or {}
@@ -664,6 +691,12 @@ function PfSense:webAct(name, args)
         end
         if type(args.notify) == "boolean" then G_reader_settings:saveSetting("pfsense_notify", args.notify) end
         if self:configured() and next(t) then self:fetch(nil, true) end
+        return true
+    end
+    if name == "sort" then
+        if not M.SORTABLE[args.list] then return false, "Which list?" end
+        self:setSort(args.list, args.by, args.reverse == true)
+        require("pfsui").refreshAll()
         return true
     end
     if not self:configured() then return false, self:whyText("notset") end

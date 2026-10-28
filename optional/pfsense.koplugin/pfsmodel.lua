@@ -167,6 +167,9 @@ function M.interface(i)
         inErrs = num(i.inerrs), outErrs = num(i.outerrs), collisions = num(i.collisions), mtu = str(i.mtu),
     }
     t.up = IFACE_UP[t.status] == true
+    -- (some versions of the REST API say enable = false for interfaces that are on, up and
+    -- addressed: one that's up, or has an address, is on whatever it says)
+    if t.up or t.ip ~= "" or t.ipv6 ~= "" then t.enabled = true end
     return t
 end
 
@@ -270,6 +273,35 @@ function M.package(p)
         update = p.update_available == true }
 end
 
+local MONTHS = { Jan = 1, Feb = 2, Mar = 3, Apr = 4, May = 5, Jun = 6, Jul = 7, Aug = 8, Sep = 9, Oct = 10, Nov = 11, Dec = 12 }
+
+--- A log line's time as a number to compare ("Oct 27 14:35:01" or "2026-10-27T14:35:01"), or nil.
+function M.logTime(s)
+    s = str(type(s) == "table" and s.text or s)
+    local mon, d, h, mi, se = s:match("^(%a%a%a)%s+(%d+)%s+(%d+):(%d+):(%d+)")
+    mon = mon and MONTHS[mon]
+    if not mon then
+        local y
+        y, mon, d, h, mi, se = s:match("^(%d%d%d%d)%-(%d%d)%-(%d%d)T(%d%d):(%d%d):(%d%d)")
+        if not y then return nil end
+        mon = tonumber(mon)
+    end
+    return ((((mon * 32 + tonumber(d)) * 24 + tonumber(h)) * 60 + tonumber(mi)) * 60) + tonumber(se)
+end
+
+--- The newest n lines of a log, newest first. pfSense gives a log's lines oldest first (its file's
+-- order); one given newest first (its first line later than its last) is kept as it is.
+function M.newest(lines, n)
+    local first, last = M.logTime(lines[1]), M.logTime(lines[#lines])
+    local out = {}
+    if first and last and first > last then
+        for k = 1, math.min(n, #lines) do out[#out + 1] = lines[k] end
+        return out
+    end
+    for k = #lines, math.max(1, #lines - n + 1), -1 do out[#out + 1] = lines[k] end
+    return out
+end
+
 --- A log line as pfSense gives it, split: { time, text } ("Oct 27 14:35:01" and the rest).
 function M.logLine(s)
     s = str(type(s) == "table" and s.text or s)
@@ -364,6 +396,81 @@ function M.ipLess(a, b)
     if x then return true end
     if y then return false end
     return str(a) < str(b)
+end
+
+-- ------------------------------------------------------------------ sorting and searching
+
+-- The lists that can be sorted, and the logs there are (each a path after /status/logs/).
+M.SORTABLE = { leases = true, arp = true, statics = true, overrides = true }
+M.LOGS = {
+    { id = "system", name = _("System") }, { id = "firewall", name = _("Firewall") },
+    { id = "dhcp", name = _("DHCP") }, { id = "auth", name = _("Authentication") },
+    { id = "openvpn", name = _("OpenVPN") }, { id = "packages/restapi", name = _("REST API") },
+}
+
+--- An item's address to sort by: its IPv4 address (an override's first).
+local function ipOf(x) return x.ip or (x.ips and x.ips[1]) or "" end
+
+--- A copy of a list sorted by "name" or "ip" (the other one breaks ties), the other way round
+-- with reverse; by nil keeps the list's own order (only reverse turns it round).
+function M.sorted(list, by, reverse)
+    local out = {}
+    for k, x in ipairs(list or {}) do out[k] = x end
+    local function name(x) return str(x.name):lower() end
+    local less
+    if by == "ip" then
+        less = function(a, b)
+            if ipOf(a) ~= ipOf(b) then return M.ipLess(ipOf(a), ipOf(b)) end
+            return name(a) < name(b)
+        end
+    elseif by == "name" then
+        less = function(a, b)
+            if name(a) ~= name(b) then return name(a) < name(b) end
+            return M.ipLess(ipOf(a), ipOf(b))
+        end
+    end
+    if less then table.sort(out, less) end
+    if reverse then
+        for k = 1, math.floor(#out / 2) do out[k], out[#out - k + 1] = out[#out - k + 1], out[k] end
+    end
+    return out
+end
+
+--- Whether an item has q (in lower case) in any of its words: its name, addresses, MAC,
+-- description, aliases… (every text field, and lists of text).
+function M.matches(x, q)
+    if not q or q == "" then return true end
+    q = q:lower()
+    -- (a MAC address typed with dashes, "AA-BB-CC", is looked for as pfSense writes it too)
+    local q2 = q:find("^%x%x[%-:]") and q:gsub("%-", ":") or q
+    local function has(s) return s:lower():find(q, 1, true) or s:lower():find(q2, 1, true) end
+    for __, v in pairs(x) do
+        if type(v) == "string" then
+            if has(v) then return true end
+        elseif type(v) == "table" then
+            for __, s in ipairs(v) do
+                if type(s) == "string" and has(s) then return true end
+            end
+        end
+    end
+    return false
+end
+
+--- The items of a list that have q (all of them without one).
+function M.filter(list, q)
+    if not q or q == "" then return list or {} end
+    local out = {}
+    for __, x in ipairs(list or {}) do if M.matches(x, q) then out[#out + 1] = x end end
+    return out
+end
+
+--- How a list is sorted, from the saved setting ({ leases = { by, reverse }, … }): by, reverse.
+-- To start with: by name (rules and services keep pfSense's order or their own).
+function M.sortOf(saved, list)
+    local s = type(saved) == "table" and saved[list]
+    if type(s) ~= "table" then return "name", false end
+    local by = (s.by == "ip" or s.by == "name") and s.by or "name"
+    return by, s.reverse == true
 end
 
 local KINDS = { gateway = "gateways", interface = "interfaces", service = "services", lease = "leases", arp = "arp",

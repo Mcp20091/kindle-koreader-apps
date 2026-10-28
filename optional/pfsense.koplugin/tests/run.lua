@@ -138,6 +138,8 @@ eq(M.interfaceLine(d.interfaces[1]), "Up · 10.0.0.2/24 · 1000baseT", "interfac
 eq(d.interfaces[3].name, "OPT1", "an interface without a description")
 eq(M.interfaceState(d.interfaces[3]), "No cable", "no carrier")
 eq(M.interfaceState(d.interfaces[4]), "Disabled", "disabled interface")
+eq(M.interfaceState(M.interface({ name = "lan", enable = false, status = "up", ipaddr = "192.168.1.1" })), "Up", "enable false but up and addressed: on")
+eq(M.interface({ name = "opt3", enable = false, status = "no carrier", ipaddr = "192.168.1.2" }).enabled, true, "enable false with an address: on")
 eq(M.serviceState(M.find(d, "service", "ntpd")), "Stopped", "service stopped")
 eq(M.find(d, "service", "openvpn").name, "openvpn", "service without a description")
 eq(d.leases[1].name, "laptop", "online leases first, by name")
@@ -225,6 +227,37 @@ ch = M.changes(fw(false, false, false), fw(true, true, true))
 eq(table.concat(ch.remove, ","), "pfsense:gateway:WAN,pfsense:interface:lan,pfsense:service:unbound", "back up: notifications go")
 local noLists = M.data({ system = {} })
 eq(#M.changes(fw(true, true, true), noLists).add, 0, "a read without the lists isn't news")
+
+-- sorting and searching the lists
+local function names(list) local o = {} for k, x in ipairs(list) do o[k] = x.name end return table.concat(o, ",") end
+eq(names(M.sorted(d.leases, "name")), "laptop,nas,Printer", "leases by name")
+eq(names(M.sorted(d.leases, "ip")), "Printer,laptop,nas", "leases by IP address, in number order")
+eq(names(M.sorted(d.leases, "ip", true)), "nas,laptop,Printer", "reversed")
+eq(names(M.sorted(d.rules, nil, true)), "Floating,Block 192.168.1.42 to any:443,Default allow LAN", "own order, reversed")
+eq(d.leases[1].name, "laptop", "sorting leaves the list as read")
+eq(names(M.sorted(d.overrides, "ip")), "example.com,nas.home.example.com", "overrides by their first address")
+eq(names(M.filter(d.leases, "aa:bb:cc:dd:ee:02")), "nas", "search by MAC address")
+eq(names(M.filter(d.leases, "AA-BB-CC-DD-EE-02")), "nas", "a MAC typed with dashes and capitals")
+eq(names(M.filter(d.statics, "tv")), "TV", "search the description")
+eq(names(M.filter(d.overrides, "files")), "nas.home.example.com", "search an alias")
+eq(names(M.filter(d.arp, "192.168.1.5")), "192.168.1.5,nas.home.example.com", "search ARP by address (.50 has it too)")
+eq(#M.filter(d.leases, "nothing like it"), 0, "nothing found")
+eq(#M.filter(d.leases, nil), 3, "no search: all of them")
+local by, rev = M.sortOf(nil, "leases")
+eq(by .. tostring(rev), "namefalse", "sorted by name to start with")
+by, rev = M.sortOf({ leases = { by = "ip", reverse = true } }, "leases")
+eq(by .. tostring(rev), "iptrue", "the saved sort")
+eq(M.sortOf({ leases = { by = "bogus" } }, "leases"), "name", "an unknown sort is by name")
+eq(#M.LOGS, 6, "every log the API has")
+
+-- the newest log lines, newest first, whichever order pfSense sends them in
+local oldFirst = { "Oct 26 23:59:00 a", "Oct 27 08:00:00 b", "Oct 27 14:35:01 c" }
+eq(table.concat(M.newest(oldFirst, 2), "|"), "Oct 27 14:35:01 c|Oct 27 08:00:00 b", "oldest first: the last ones, turned round")
+local newFirst = { "Oct 27 14:35:01 c", "Oct 27 08:00:00 b", "Oct 26 23:59:00 a" }
+eq(table.concat(M.newest(newFirst, 2), "|"), "Oct 27 14:35:01 c|Oct 27 08:00:00 b", "newest first: kept as it is")
+eq(#M.newest({}, 100), 0, "an empty log")
+eq(M.logTime("2026-10-27T14:35:01+00:00 x") > M.logTime("2026-10-27T08:00:00+00:00 y"), true, "ISO times compare")
+eq(M.logTime("no time"), nil, "a line without a time")
 
 -- search
 eq(#M.search(d, "nas"), 3, "search: the lease, the mapping and the override")
