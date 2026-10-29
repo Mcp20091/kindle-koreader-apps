@@ -43,7 +43,7 @@ function SSH:init()
     -- SSH's job and AI features in Settings > AI (the launcher's)
     require("sshai").register()
     local PS = require("pluginshare")
-    -- the checks every few minutes (once while KOReader runs)
+    -- the checks (one timer, for the next one due; saved() sets it again)
     if not state.checking then
         state.checking = true
         require("sshnet").start(self)
@@ -242,6 +242,8 @@ end
 --- After a change to the data: saved, and the lists showing it redrawn.
 function SSH:saved()
     self.store:save()
+    -- the next check follows the hosts and settings (one timer, or none)
+    require("sshnet").start(self)
 end
 
 -- ------------------------------------------------------------------ launcher

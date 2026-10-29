@@ -511,6 +511,31 @@ function M.appsLine(data)
     return n == 1 and "1 host" or n .. " hosts"
 end
 
+--- Every how many minutes (0: off) a host is checked: its own, or every
+-- host's (`all`: nil is 15).
+function M.checkEvery(host, all)
+    if host.check ~= nil then return host.check end
+    if all == nil then return 15 end
+    return all
+end
+
+--- In how many seconds the next check is due (0: now), or nil when none
+-- can be: checks off, no hosts, every host paused or not one that can be
+-- read without asking (canCheck(host), optional). A failed read waits its
+-- turn like a good one.
+function M.nextCheckIn(hosts, all, now, canCheck)
+    local soonest
+    for __, h in ipairs(hosts or {}) do
+        local every = M.checkEvery(h, all)
+        if every and every > 0 and not h.paused and (not canCheck or canCheck(h)) then
+            local since = math.max(h.last and h.last.at or 0, h.failedAt or 0)
+            local left = math.max(0, since + every * 60 - now)
+            if not soonest or left < soonest then soonest = left end
+        end
+    end
+    return soonest
+end
+
 --- The gesture action's choices: ids "<host id>/<command id>" and labels
 -- "Pi: Uptime".
 function M.gestureChoices(data)
