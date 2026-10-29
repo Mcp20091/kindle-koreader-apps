@@ -36,12 +36,12 @@ local Settings = require("hasettings")
 local Template = require("hatemplate")
 local View = require("haview")
 
--- Online enough to try: Wi-Fi has an address. (NetworkMgr:isOnline looks up
--- a name on the internet, which can hang the screen for many seconds when
--- Wi-Fi is up but the internet isn't; Home Assistant at home doesn't need it.)
 -- Routines (loaded when first used).
 local RR = setmetatable({}, { __index = function(__, k) return require("haroutines")[k] end })
 
+-- Online enough to try: Wi-Fi has an address. (NetworkMgr:isOnline looks up
+-- a name on the internet, which can hang the screen for many seconds when
+-- Wi-Fi is up but the internet isn't; Home Assistant at home doesn't need it.)
 local function online()
     return NetworkMgr:isConnected() ~= false
 end
@@ -314,7 +314,7 @@ function HomeAssistant:shareWithApps()
             local out = {}
             if not ha then return out end
             for __, r in ipairs(RR.list(ha.prefs)) do
-                if (r.name or ""):lower():find(q, 1, true) then
+                if #out < 20 and (r.name or ""):lower():find(q, 1, true) then
                     table.insert(out, { title = r.name, sub = _("Routine") .. "  \u{00B7}  " .. HomeAssistant.stepsText(r),
                         open = function()
                             local h = HomeAssistant.instance
