@@ -239,11 +239,11 @@ function Views.messageRow(text)
 end
 
 --- "Deleted (2)": what waits for the next sync, to put back.
-function Views.deletedRow(text, tap)
+function Views.deletedRow(text, tap, icon, action)
     return { h = 40, draw = function(p, y, zone, W)
-        p:icon("trash-2", 14, y + 12, 15)
+        p:icon(icon or "trash-2", 14, y + 12, 15)
         p:text(40, y + 26, text, 11.5, false, GREY, "start", W - 80)
-        p:text(W - 14, y + 26, _("Put back"), 10, false, GREY, "end")
+        p:text(W - 14, y + 26, action or _("Put back"), 10, false, GREY, "end")
         zone(0, y, W, 40, tap)
     end }
 end
@@ -636,6 +636,8 @@ function Views.list(c, view)
         end
     end
     if #rows == 0 then table.insert(rows, Views.messageRow(_("Nothing to do here."))) end
+    local completed = #c.store:completedTasks(list.id)
+    if completed > 0 then table.insert(rows, Views.deletedRow(T(_("Completed (%1)"), completed), function() c:showCompleted(list.id) end, "check", _("Not done"))) end
     local deleted = #c.store:deletedTasks(list.id)
     if deleted > 0 then table.insert(rows, Views.deletedRow(T(_("Deleted (%1)"), deleted), function() c:showDeleted(list.id) end)) end
     return {

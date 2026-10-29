@@ -437,6 +437,14 @@ do
     ls.data.locals[1].tasks[#ls.data.locals[1].tasks].completedAt = 5000 - 2 * 86400
     ls:save()
     check("local done yesterday: hidden", ls:findTask(L, old), nil)
+    check("local done yesterday: under Completed", ls:completedTasks(L)[1].title, "Old chore")
+    check("local done yesterday: Completed has it only", #ls:completedTasks(L), 1)
+    ls:toggleDone(L, old)
+    check("Not done: out of Completed", #ls:completedTasks(L), 0)
+    check("Not done: back in the list", ls:findTask(L, old).completed, nil)
+    ls:toggleDone(L, old)
+    ls.data.locals[1].tasks[#ls.data.locals[1].tasks].completedAt = 5000 - 2 * 86400
+    ls:save()
     -- A whole list to To Do.
     local newList = ls:moveListToTodo(L)
     check("list to To Do: new list", ls:findList(newList).name, "Groceries")

@@ -81,6 +81,8 @@ Each task shows its due day, reminder time, repeat, steps ("2/5"), a notes mark,
 
 A deleted task goes at once, with **Undo** for a few seconds, and waits under **Deleted** at the end of its list until the next sync, with **Put back**.
 
+Done tasks leave a list at the end of the day. Until then (and for as long as they're kept) they wait under **Completed (3)** at the end of the list, before **Deleted**; tap one for **Not done**. Tasks in a list on this Kindle are kept for 90 days. A Microsoft To Do task stays there only until the next sync (the sync downloads open tasks only), so after that it's in To Do but no longer here; search finds it while it's here.
+
 ![Undo after deleting a task](img/apps/todo-undo.png)
 
 ## Adding a task
@@ -193,9 +195,8 @@ Done tasks, tasks hidden on sleep and hidden lists are left out.
 
 ### Home
 
-- **Home tiles** and **Lists**: order them and choose which show. Tap one, then the arrows (to top, up, down, to bottom); the eye shows or hides it; **Undo** puts back the last move. The web page's To Do tab draws the Home tiles to drag into order.
+- **Home tiles** and **Lists**: order them and choose which show. Tap one, then the arrows (to top, up, down, to bottom); the eye shows or hides it; **Undo** puts back the last move. The web page's To Do tab draws the Home tiles and the lists to drag into order (or into Hidden), or tap one for Move up, Move down and To… .
 - **Show hidden lists**, **Pinned list** and **Default list**.
-- **Lists on this Kindle**: on to start with; off hides them (see "Lists on this Kindle").
 
 ### Tasks
 
@@ -203,6 +204,7 @@ Done tasks, tasks hidden on sleep and hidden lists are left out.
 - **Group by due date**.
 - **Tap action**: **Open task** or **Quick actions**.
 - **Postpone by**: the usual number of days (1 to 60).
+- **Lists on this Kindle**: on to start with; off hides them (see "Lists on this Kindle").
 
 - **Reminder alerts**: reminders pop up on the Kindle while KOReader is open, with **Snooze**, **Open** and **Done**. **Snooze** brings it back in 15 or 30 minutes, 1 or 3 hours, tomorrow at 9 AM, or **Custom…** (type a number, then **Minutes**, **Hours** or **Days**), on the Kindle only (To Do's reminder on your phone stays as it was). A reminder you don't answer stays in Notifications. Ones missed in the last two hours (while asleep) show when it wakes.
 
@@ -217,6 +219,6 @@ Done tasks, tasks hidden on sleep and hidden lists are left out.
 
 - The **Flagged emails** list from Outlook shows in Starred and its own list, but stays out of Today, the Agenda and the calendar.
 - Hold a Home tile and choose **Add to launcher** to put Today or a list on the launcher, with its own count.
-- The web page's To Do tab has the same lists with a keyboard, plus CSV import and export.
+- The web page's To Do tab has the same lists with a keyboard, plus CSV import and export. Its settings are the same ones in the same order and words (Display, Home, Tasks, Sync, Sleep screen), including **Full refresh**, **Lists**, **Pinned list**, **Default list**, **Postpone by** (1 to 60) and **Sleep screen content**. A task's **Hide on sleep** is there too, and **Completed (3)** at the end of a list has **Not done**.
 - Swipe in from the left edge to go back; other swipes turn pages (on the calendar, its months).
 - Your KOReader gestures for the light, warmth, refresh, night mode, Wi-Fi and a screenshot, and the other apps' actions (Launcher, Notes, Home Assistant, Web server, Wikipedia, Syncthing, SSH), work on To Do's screens too. Library and book actions don't.

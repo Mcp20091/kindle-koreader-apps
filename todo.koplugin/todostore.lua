@@ -576,6 +576,18 @@ function Store:deletedTasks(listId)
     return out
 end
 
+--- A list's done tasks, the latest first: { task }. To Do's go at the next
+-- sync (the download has open tasks only); a list on this Kindle keeps them 90 days.
+function Store:completedTasks(listId)
+    local list = Store.isLocal(listId) and findList(self.data.locals, listId) or self:findList(listId)
+    local out = {}
+    for _i, t in ipairs(list and list.tasks or {}) do
+        if t.completed then table.insert(out, t) end
+    end
+    table.sort(out, function(a, b) return (a.completedAt or 0) > (b.completedAt or 0) end)
+    return out
+end
+
 --- Deleted lists, newest first: { op, title }.
 function Store:deletedLists()
     local out = {}
