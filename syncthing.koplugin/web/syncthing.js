@@ -35,8 +35,31 @@ App.pages.syncthing = {
       try { await App.api('/api/syncthing/power', { json: { on } }); App.toast(on ? 'Starting Syncthing…' : 'Syncthing is off'); } catch (e) { App.fail(e); }
       setTimeout(() => page.reload(), on ? 3000 : 300);
     };
+    const syncOff = async () => {
+      try {
+        await App.api('/api/syncthing/syncoff', { json: {} });
+        App.toast('Syncthing turns off once everything is up to date');
+      } catch (e) { App.fail(e); }
+      setTimeout(() => page.reload(), 1000);
+    };
+    const setPassword = async () => {
+      if (!s.running) { App.toast('Turn Syncthing on first'); return; }
+      const input = h('input', { type: 'password', style: 'width:100%', autocomplete: 'new-password' });
+      input.addEventListener('keydown', (e) => { if (e.key === 'Enter') input.closest('.modal').querySelector('.btn.primary').click(); });
+      const pw = await App.modal('Web GUI password', h('div', {}, h('p', { class: 'small muted' }, 'For Syncthing’s own web page. User name: syncthing.'), input),
+        [{ text: 'Cancel', result: null }, { text: 'Set', primary: true, value: () => input.value }]);
+      if (!pw) return;
+      page.act('password', { password: pw }, 'Password set');
+    };
+    const setPort = async () => {
+      if (s.running) { App.toast('Turn Syncthing off to change the port'); return; }
+      const v = await App.prompt('Port', String(s.port), 'Syncthing’s web GUI and API (8384 unless something else uses it).');
+      if (v === null) return;
+      try { await App.api('/api/syncthing/settings', { json: { port: v } }); App.toast('Port set'); } catch (e) { App.fail(e); }
+      setTimeout(() => page.reload(), 300);
+    };
     const line = !s.program ? 'The syncthing program is missing from the plugin’s folder.'
-      : s.running ? (s.summary || 'Starting…') : (s.withWifi ? 'Off · starts when Wi-Fi connects' : 'Off');
+      : s.running ? (s.turnsOff ? 'Turns off when up to date' : (s.summary || 'Starting…')) : (s.withWifi ? 'Off · starts when Wi-Fi connects' : 'Off');
     const copy = async () => {
       try { await navigator.clipboard.writeText(s.id); App.toast('ID copied'); } catch (e) { App.prompt('This Kindle’s ID', s.id); }
     };
@@ -46,14 +69,23 @@ App.pages.syncthing = {
           h('div', { class: 'muted' }, line)),
         h('div', { class: 'row', style: 'white-space:nowrap' },
           s.running ? h('button', { class: 'btn small', onclick: () => page.act('rescan', {}, 'Rescanning all folders') }, 'Rescan all') : null, ' ',
+          s.program && !s.turnsOff ? h('button', { class: 'btn small', onclick: syncOff }, 'Sync now, then turn off') : null, ' ',
           h('button', { class: 'btn' + (s.running ? '' : ' primary'), disabled: !s.program, onclick: () => power(!s.running) }, s.running ? 'Turn off' : 'Turn on'))),
       s.id ? h('div', { class: 'small', style: 'margin-top:10px' }, 'This Kindle’s ID: ',
         h('code', { style: 'word-break:break-all' }, s.id), ' ', h('button', { class: 'btn small', onclick: copy }, 'Copy')) : null,
       App.setting('Start with Wi-Fi', App.toggle(!!s.withWifi, async (v) => {
         try { await App.api('/api/syncthing/settings', { json: { withWifi: v } }); } catch (e) { App.fail(e); }
       }), 'Starts when the Kindle’s Wi-Fi connects and stops before it goes off.'),
+      App.setting('Turn off when up to date', App.toggle(!!s.offWhenSynced, async (v) => {
+        try { await App.api('/api/syncthing/settings', { json: { offWhenSynced: v } }); } catch (e) { App.fail(e); }
+        setTimeout(() => page.reload(), 300);
+      }), 'Turns Syncthing off once every folder is up to date with the connected devices, or after 30 minutes.'),
+      App.setting('Web GUI password', h('span', {}, s.passwordSet === undefined || s.passwordSet === null ? '' : (s.passwordSet ? 'Set' : 'Not set'), ' ',
+        h('button', { class: 'btn small', onclick: setPassword }, 'Set password')), 'For Syncthing’s own web page. User name: syncthing.'),
+      App.setting('Port', h('span', {}, String(s.port), ' ', h('button', { class: 'btn small', disabled: s.running, onclick: setPort }, 'Change')),
+        'Syncthing’s web GUI and API (8384 unless something else uses it). Turn Syncthing off to change it.'),
       s.gui ? h('p', { class: 'small muted' }, 'Syncthing’s own web page (for settings not here): ',
-        h('a', { href: s.gui, target: '_blank', rel: 'noopener' }, s.gui), ' · user name syncthing; set its password on the Kindle (Syncthing > ⋮ > Web GUI password).') : null);
+        h('a', { href: s.gui, target: '_blank', rel: 'noopener' }, s.gui), ' · user name syncthing.') : null);
   },
 
   requests(s) {

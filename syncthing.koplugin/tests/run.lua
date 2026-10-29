@@ -121,5 +121,35 @@ eq(M.folderPath("/mnt/us/documents/", "Comics"), "/mnt/us/documents/Comics", "fo
 eq(M.folderPath("/mnt/us/documents", "A/B"), "/mnt/us/documents/A_B", "folderPath slash replaced")
 eq(M.folderPath(nil, ".."), "/Sync", "folderPath no home, odd label")
 
+-- everything up to date (Turn off when up to date)
+local function dev(connected, completion, paused)
+    return { device = { paused = paused }, conn = { connected = connected }, completion = completion }
+end
+local done = { needItems = 0, needBytes = 0 }
+local idle = folder("Books", "idle", { needFiles = 0 })
+eq(M.allInSync({ folders = { idle }, devices = { dev(true, done) } }), true, "allInSync: idle and the device has everything")
+eq(M.allInSync({ folders = { idle }, devices = { dev(true, done), dev(false, nil) } }), true, "allInSync: a device that isn't connected is left out")
+eq(M.allInSync({ folders = { idle }, devices = { dev(true, done), dev(true, { needItems = 3, needBytes = 10 }, true) } }), true, "allInSync: a paused device is left out")
+eq(M.allInSync({ folders = { idle, folder("Papers", "idle", { needFiles = 2 }) }, devices = { dev(true, done) } }), false, "allInSync: a folder still needs files")
+eq(M.allInSync({ folders = { idle, folder("Papers", "scanning") }, devices = { dev(true, done) } }), false, "allInSync: a folder is scanning")
+eq(M.allInSync({ folders = { idle, folder("Papers", "syncing") }, devices = { dev(true, done) } }), false, "allInSync: a folder is syncing")
+eq(M.allInSync({ folders = { idle, folder("Papers", "idle", { pullErrors = 1 }) }, devices = { dev(true, done) } }), false, "allInSync: a folder has errors")
+eq(M.allInSync({ folders = { idle, { folder = { label = "Old", paused = true } } }, devices = { dev(true, done) } }), true, "allInSync: a paused folder is left out")
+eq(M.allInSync({ folders = { idle }, devices = { dev(true, { needItems = 1, needBytes = 5 }) } }), false, "allInSync: a device still needs files")
+eq(M.allInSync({ folders = { idle }, devices = { dev(true, nil) } }), false, "allInSync: a connected device's progress isn't known")
+eq(M.allInSync({ folders = { idle }, devices = { dev(false, nil) } }), false, "allInSync: nobody connected")
+eq(M.allInSync({ folders = {}, devices = { dev(true, done) } }), false, "allInSync: no folders")
+eq(M.allInSync({ folders = { { folder = { paused = true } } }, devices = { dev(true, done) } }), false, "allInSync: only paused folders")
+eq(M.allInSync({ folders = { { folder = {}, status = nil } }, devices = { dev(true, done) } }), false, "allInSync: a folder not read yet")
+eq(M.allInSync(nil), false, "allInSync: no status")
+
+-- the web GUI's port
+eq(M.validPort("8384"), 8384, "validPort text")
+eq(M.validPort(65535), 65535, "validPort top")
+eq(M.validPort("1023"), nil, "validPort too low")
+eq(M.validPort("65536"), nil, "validPort too high")
+eq(M.validPort("80.5"), nil, "validPort not whole")
+eq(M.validPort("abc"), nil, "validPort not a number")
+
 print(string.format("%d passed, %d failed", passed, failed))
 os.exit(failed == 0 and 0 or 1)

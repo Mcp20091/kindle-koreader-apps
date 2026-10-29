@@ -160,6 +160,39 @@ function M.summary(snap)
     return _("Up to date")
 end
 
+--- Whether everything is up to date: at least one folder that isn't paused and every one of
+-- those idle with nothing left to get or send, and at least one connected device (not paused)
+-- and every one of those with nothing left to get. snap as API:snapshot makes it. Used by
+-- "Turn off when up to date".
+function M.allInSync(snap)
+    if type(snap) ~= "table" then return false end
+    local folders, devices = 0, 0
+    for __, f in ipairs(snap.folders or {}) do
+        if not f.folder.paused then
+            local st = f.status
+            if not st or st.state ~= "idle" or M.need(st) > 0 then return false end
+            if (tonumber(st.pullErrors) or 0) > 0 or (tonumber(st.errors) or 0) > 0 then return false end
+            folders = folders + 1
+        end
+    end
+    for __, d in ipairs(snap.devices or {}) do
+        if not (d.device and d.device.paused) and d.conn and d.conn.connected then
+            -- (a connected device whose progress wasn't read is not known to be done)
+            local c = d.completion
+            if not c or (tonumber(c.needItems) or 0) > 0 or (tonumber(c.needBytes) or 0) > 0 then return false end
+            devices = devices + 1
+        end
+    end
+    return folders > 0 and devices > 0
+end
+
+--- A port Syncthing's web GUI can use (1024 to 65535) as a whole number, or nil.
+function M.validPort(v)
+    local n = tonumber(v)
+    if not n or n ~= math.floor(n) or n < 1024 or n > 65535 then return nil end
+    return n
+end
+
 --- The launcher's line: "On · Up to date", "On · Syncing · 3 files left", "Off".
 function M.appsLine(running, snap)
     if not running then return _("Off") end
