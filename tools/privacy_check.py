@@ -36,11 +36,12 @@ PATTERNS = {
     'windows pc name': r'\bDESKTOP-[A-Z0-9]{5,}\b',
 }
 # Example values the apps and the guide use on purpose.
-OK_IPS = {'192.168.1.5', '192.168.1.10', '192.168.1.20', '192.168.1.42', '192.168.1.50', '127.0.0.1', '0.0.0.0',
+OK_IPS = {'192.168.1.5', '192.168.1.10', '192.168.1.20', '192.168.1.30', '192.168.1.42', '192.168.1.50', '127.0.0.1', '0.0.0.0',
           '192.0.2.1', '255.255.255.255', '1.2.3.4', '10.0.0.1', '10.0.0.2', '192.168.1.2', '192.168.1.1', '192.168.1.0', '10.0.0.0',
           '1.3.101.112', '2.5.29.17', '225.0.0.9'}  # OIDs (Ed25519 in the SSH key code, subject alternative names in
           # the web server's certificates), FlashForge printers' discovery address (their protocol's own) and
-          # pfSense's default LAN address, and the example networks (192.168.1.0/24, 10.0.0.0/24)
+          # pfSense's default LAN address, the example networks (192.168.1.0/24, 10.0.0.0/24), and a second made-up
+          # host for SSH's tests (192.168.1.30)
 OK_EMAILS = re.compile(r'(?i)^(pi@|git@github\.com$|user@|you@|me@|someone@|name@|root@|admin@|noreply@|.*@example\.(com|org|net)$'
                        r'|.*@localhost|support@github\.com$|\d+\+[\w-]+(\[bot\])?@users\.noreply\.github\.com$)')
 # Files where a kind is expected (key handling code and its tests).
