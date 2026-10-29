@@ -948,9 +948,10 @@ function M.webState(data)
     for __, h in ipairs(data.hosts) do
         local c = {}
         for k, v in pairs(h) do
-            if k ~= "password" then c[k] = v end
+            if k ~= "password" and k ~= "pin" then c[k] = v end
         end
         c.hasPassword = type(h.password) == "string" and h.password ~= ""
+        c.hasPin = h.pin ~= nil
         hosts[#hosts + 1] = c
     end
     -- the command list with which are built in (for the page's Custom filter)
@@ -1006,8 +1007,162 @@ local function hostFrom(args, h)
     return h
 end
 
+local function trim(x) return (tostring(x or ""):match("^%s*(.-)%s*$")) end
+
+--- Groups from the page: a list, or "Home, Servers" (nil: none).
+local function cleanGroups(g)
+    local out, seen = {}, {}
+    local function add(n)
+        n = trim(n)
+        if n ~= "" and not seen[n] then
+            seen[n] = true
+            out[#out + 1] = n
+        end
+    end
+    if type(g) == "table" then
+        for __, n in ipairs(g) do add(n) end
+    else
+        for n in (tostring(g or "") .. ","):gmatch("([^,]*),") do add(n) end
+    end
+    return #out > 0 and out or nil
+end
+
+--- The simple settings of a host (groups, mac, check, readOnOpen) from the
+-- page's args, each in a table of one (nil is a value: it removes the
+-- setting); or nil, why when one is wrong. They are all checked before any is kept.
+local function hostExtras(args)
+    local out = {}
+    if args.groups ~= nil then out.groups = { cleanGroups(args.groups) } end
+    if args.mac ~= nil then
+        local mac = trim(args.mac)
+        if mac ~= "" and not require("sshstats").magicPacket(mac) then
+            return nil, "That isn't a MAC address (like dc:a6:32:01:02:03)."
+        end
+        out.mac = { mac ~= "" and mac:lower() or nil }
+    end
+    if args.check ~= nil then
+        local n = tonumber(args.check)
+        if not n then return nil, "Choose how often to check it." end
+        -- (below 0: like every host)
+        out.check = { n >= 0 and n or nil }
+    end
+    if args.readOnOpen ~= nil then
+        local off = args.readOnOpen == false
+        out.readOnOpen = { off and false or nil }
+        if off then out.readOnOpen[1] = false end
+    end
+    return out
+end
+
+--- A host's stats choice, custom sensors and alerts from the page, checked
+-- and cleaned: { stats, sensors, alerts, customAlerts } or nil, why.
+-- args: { stats = { [id] = bool }, sensors = { { id?, name, cmd, kind, unit } },
+-- alerts = { [id] = limit | true }, customAlerts = { { id?, what, op, value } } }.
+local function cleanStats(args)
+    local S = require("sshstats")
+    local sensors, byId = {}, {}
+    local list = type(args.sensors) == "table" and args.sensors or {}
+    local n = 0
+    for __, c in ipairs(list) do
+        local k = tonumber(tostring(c.id or ""):match("^s(%d+)$"))
+        if k and k > n then n = k end
+    end
+    for __, c in ipairs(list) do
+        local cmd = tostring(c.cmd or ""):gsub("[\r\n]+", " ")
+        if not cmd:match("%S") then return nil, "A custom sensor needs a command." end
+        local kind
+        for __, k in ipairs(S.SENSOR_KINDS) do if k.id == c.kind then kind = k.id end end
+        if not kind then return nil, "Choose what the sensor gives." end
+        local id = tostring(c.id or "")
+        if not id:match("^s%d+$") or byId[id] then
+            n = n + 1
+            id = "s" .. n
+        end
+        local e = { id = id, name = trim(c.name), cmd = cmd, kind = kind }
+        if kind == "number" and trim(c.unit) ~= "" then e.unit = trim(c.unit) end
+        byId[id] = e
+        sensors[#sensors + 1] = e
+    end
+    local stats = {}
+    for id, on in pairs(type(args.stats) == "table" and args.stats or {}) do
+        id = tostring(id)
+        local cs = id:match("^cs_(.+)$")
+        if (S.byId[id] or (cs and byId[cs])) and type(on) == "boolean" then stats[id] = on end
+    end
+    local alerts = {}
+    for id, v in pairs(type(args.alerts) == "table" and args.alerts or {}) do
+        id = tostring(id)
+        local a
+        for __, x in ipairs(S.ALERTS) do if x.id == id then a = x end end
+        local cs = id:match("^cs_(.+)$")
+        if a then
+            if a.yesno then
+                if v == true then alerts[id] = true end
+            elseif tonumber(v) and tonumber(v) > 0 then
+                alerts[id] = tonumber(v)
+            end
+        elseif cs and byId[cs] then
+            if byId[cs].kind == "ok" then
+                if v == true then alerts[id] = true end
+            elseif byId[cs].kind ~= "text" and tonumber(v) then
+                alerts[id] = tonumber(v)
+            end
+        end
+    end
+    local custom, top, seen = {}, 0, {}
+    local mine = type(args.customAlerts) == "table" and args.customAlerts or {}
+    for __, a in ipairs(mine) do top = math.max(top, tonumber(a.id) or 0) end
+    local watch = {}
+    for __, w in ipairs(S.watchable(sensors)) do watch[w.id] = w end
+    for __, a in ipairs(mine) do
+        local w = watch[tostring(a.what)]
+        if not w then return nil, "A custom alert watches something that isn't there." end
+        local op
+        for __, o in ipairs(S.OPS) do if o.id == a.op then op = o.id end end
+        if not op then return nil, "Choose a test for the alert." end
+        local value = trim(a.value)
+        if value == "" then return nil, "A custom alert needs a value." end
+        if (op == "gt" or op == "lt") and not tonumber(value) then return nil, "Above and below need a number." end
+        local id = tonumber(a.id)
+        if not id or seen[id] then
+            top = top + 1
+            id = top
+        end
+        seen[id] = true
+        custom[#custom + 1] = { id = id, what = w.id, op = op, value = tonumber(value) or value }
+    end
+    return { stats = stats, sensors = sensors, alerts = alerts, customAlerts = custom }
+end
+
+--- A host's quick commands from the page: ids from the system's list, or
+-- "cmd:<command>|<name>" of its own; none given: the usual ones.
+-- Returns { quick, icons } or nil, why.
+local function cleanQuick(host, args)
+    if args.quick == nil or args.quick == false then return {} end
+    if type(args.quick) ~= "table" then return nil, "Choose the quick commands." end
+    local S = require("sshstats")
+    local d = host.last and host.last.v and host.last.v.docker
+    local known = {}
+    for __, q in ipairs(S.quickFor(host.os ~= "auto" and host.os or host.detected, d and d.ok)) do known[q.id] = true end
+    local quick, icons = {}, {}
+    local given = type(args.quickIcons) == "table" and args.quickIcons or {}
+    for __, id in ipairs(args.quick) do
+        id = tostring(id)
+        local cmd = id:match("^cmd:(.*)|.*$")
+        if known[id] then
+            quick[#quick + 1] = id
+        elseif cmd and cmd:match("%S") and not id:find("[\r\n]") then
+            quick[#quick + 1] = id
+            if type(given[id]) == "string" and given[id]:match("^[%w%-]+$") then icons[id] = given[id] end
+        end
+    end
+    return { quick = quick, icons = next(icons) and icons or nil }
+end
+
 --- Changes from the web page (or the Kindle) to the data, in place: name is
--- saveHost { id?, name, address, user, port, auth, key, password? },
+-- saveHost { id?, name, address, user, port, auth, key, password?, groups, mac,
+-- check (below 0: like every host), readOnOpen }, saveHostStats { id, stats,
+-- sensors, alerts, customAlerts }, saveHostQuick { id, quick (false: the usual ones), quickIcons },
 -- deleteHost { id }, saveCommands { list }, saveHostCommands { id, list },
 -- addBuiltIn {} (the built-in commands missing from the list), renameKey { id, name }.
 -- Returns a result table (saveHost: { id }) or nil, why.
@@ -1023,13 +1178,37 @@ function M.act(data, name, args)
         if new.auth == "key" and not (new.key and M.key(data, new.key)) then return nil, "Choose a key." end
         local why = M.checkHost(new)
         if why then return nil, why end
+        local extras, ewhy = hostExtras(args)
+        if not extras then return nil, ewhy end
         new.port = tonumber(new.port)
         if not h then
             h = { id = M.newId(data, "h"), commands = {}, recent = {} }
             data.hosts[#data.hosts + 1] = h
         end
         for __, k in ipairs({ "name", "address", "user", "port", "auth", "key", "password", "os", "detected" }) do h[k] = new[k] end
+        for k, v in pairs(extras) do h[k] = v[1] end
         return { id = h.id }
+    elseif name == "saveHostStats" then
+        local h = M.host(data, args.id)
+        if not h then return nil, "No such host." end
+        local c, why = cleanStats(args)
+        if not c then return nil, why end
+        h.stats, h.sensors, h.alerts, h.customAlerts = c.stats, c.sensors, c.alerts, c.customAlerts
+        -- (an alert that's gone isn't raised any more)
+        if type(h.raised) == "table" then
+            local live = {}
+            for id in pairs(c.alerts) do live[id] = true end
+            for __, a in ipairs(c.customAlerts) do live["ca_" .. a.id] = true end
+            for id in pairs(h.raised) do if not live[id] then h.raised[id] = nil end end
+        end
+        return {}
+    elseif name == "saveHostQuick" then
+        local h = M.host(data, args.id)
+        if not h then return nil, "No such host." end
+        local c, why = cleanQuick(h, args)
+        if not c then return nil, why end
+        h.quick, h.quickIcons = c.quick, c.icons
+        return {}
     elseif name == "deleteHost" then
         local __, i = M.host(data, args.id)
         if not i then return nil, "No such host." end

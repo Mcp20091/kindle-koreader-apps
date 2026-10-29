@@ -17,7 +17,7 @@ local function ssh()
 end
 
 local ACTIONS = { saveHost = true, deleteHost = true, saveCommands = true, saveHostCommands = true, addBuiltIn = true, renameKey = true,
-    addCommand = true, importConfig = true,
+    addCommand = true, importConfig = true, saveHostStats = true, saveHostQuick = true, saveSettings = true, wakeHost = true,
     importKey = true, createKey = true, deleteKey = true, forgetHost = true }
 
 function Web.routes(server)
