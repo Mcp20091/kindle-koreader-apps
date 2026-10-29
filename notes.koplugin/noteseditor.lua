@@ -77,6 +77,7 @@ local PUZZLE_BUTTONS = {
     { key = "hint", label = _("Hint"), icon = "lightbulb" },
     { key = "check", label = _("Check my answers"), icon = "spell-check" },
     { key = "getcw", label = _("Get a crossword"), icon = "newspaper" },
+    { key = "random", label = _("Random puzzle"), icon = "shuffle" },
     { key = "orient", label = _("Page orientation"), icon = "rotate-cw" },
     { key = "web", label = _("Open on the web page"), icon = "qr-code" },
     { key = "ask", label = _("Ask AI"), icon = "sparkles" },
@@ -87,7 +88,7 @@ local PUZZLE_BUTTONS = {
     { key = "light", label = _("Light"), icon = "sun" },
     { key = "night", label = _("Night mode"), icon = "moon" },
 }
-local PUZZLE_DEFAULT = { "hint", "check" }   -- (Refresh and Settings are always at the bottom)
+local PUZZLE_DEFAULT = { "hint", "check", "random" }   -- (Refresh and Settings are always at the bottom)
 -- In the ⋯ menu only (at the toolbar's bottom anyway).
 local PUZZLE_MENU_ONLY = {
     { key = "refresh", label = _("Refresh screen"), icon = "refresh-cw" },
@@ -1463,6 +1464,8 @@ function Editor:puzzleActions(byKey)
         nb.feed and self.on_check and not Settings.noAI() and act("check", nil, function() close() self.on_check(self) end) or false,
         -- A book of crosswords fetched: another one from its source.
         nb.feed and nb.feed ~= "imp" and self.on_crossword and act("getcw", nil, function() close() self.on_crossword(nb.feed) end) or false,
+        -- Another puzzle, picked at random (one not started, else downloaded).
+        nb.feed and self.on_random and act("random", nil, function() close() self.on_random(self) end) or false,
         nb.feed and self.on_orient and act("orient", self:orientationName(), function()
             close()
             self:chooseOrientation(function(landscape, mode) self.on_orient(self, landscape, mode, true) end)

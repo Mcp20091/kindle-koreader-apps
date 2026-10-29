@@ -76,7 +76,7 @@ You can open it three ways:
 
 ### Random puzzle
 
-**⋮ > Random puzzle** on the Crosswords list opens a puzzle you haven't started yet, picked at random. When every puzzle is started, it downloads a random one from the sources you get puzzles from, with a waiting box and **Cancel**. Without Wi-Fi it says so. The same button can go on the launcher's quick buttons: **Add a button > Crossword… > Random puzzle**.
+A **Random puzzle** button on a puzzle's toolbar (a shuffle, next to **Hint** and **Check my answers**; it's one of **Toolbar buttons** in Crossword settings, also on the web page) switches to a random puzzle. **⋮ > Random puzzle** on the Crosswords list does the same. It opens a puzzle you haven't started yet, picked at random. When every puzzle is started, it downloads a random one from the sources you get puzzles from, with a waiting box and **Cancel**. Without Wi-Fi it says so. The same button can go on the launcher's quick buttons: **Add a button > Crossword… > Random puzzle**.
 
 ### Recent crosswords on the launcher
 
@@ -94,7 +94,7 @@ The Guardian Prize answers are published a week after the puzzle. Get the same p
 
 ## Solving
 
-Write the letters in the squares with the pen, as on paper. The toolbar down the left starts with **Home** (the house, back to the launcher, when it's installed) and the book (closes the puzzle book, back to where you opened it). Then come the pen (tap it again for its tips and sizes), eraser, lasso, zoom, Undo, Redo and **Done** (the ✓), and under them the buttons you've pinned: **Hint** and **Check my answers** to start with. Lower down are the page arrows, the puzzle list, **⋯** and the button that folds the toolbar away, and at the very bottom, always: **Refresh screen**, the **bell** (notifications, with the launcher installed) and **Settings**, which opens Crossword settings.
+Write the letters in the squares with the pen, as on paper. The toolbar down the left starts with **Home** (the house, back to the launcher, when it's installed) and the book (closes the puzzle book, back to where you opened it). Then come the pen (tap it again for its tips and sizes), eraser, lasso, zoom, Undo, Redo and **Done** (the ✓), and under them the buttons you've pinned: **Hint**, **Check my answers** and **Random puzzle** to start with. Lower down are the page arrows, the puzzle list, **⋯** and the button that folds the toolbar away, and at the very bottom, always: **Refresh screen**, the **bell** (notifications, with the launcher installed) and **Settings**, which opens Crossword settings.
 
 ![A crossword being solved: letters written in the squares, finished clues ticked, "3 of 24 clues" at the top](img/crosswords/cw-solve.png)
 

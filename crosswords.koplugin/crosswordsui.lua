@@ -1408,10 +1408,14 @@ function Notes:randomPuzzle()
         self.randomSeeded = true
     end
     local fresh = {}
+    -- (Not the puzzle open now.)
+    local ed = self.editor
+    local here = ed and UIManager:isWidgetShown(ed) and ed.notebook and ed.notebook.pages[ed.page] and Crossword.keyPart(ed.notebook.pages[ed.page])
     for __, nb in ipairs(self:crosswordBooks()) do
         for i, page in ipairs(nb.pages) do
             local key, part = Crossword.keyPart(page)
-            if key and part == "1" and not page.hide and Crossword.state(nb, key) == "new" then
+            local current = here and key == here and ed.notebook.id == nb.id
+            if key and part == "1" and not page.hide and not current and Crossword.state(nb, key) == "new" then
                 table.insert(fresh, { book = nb.id, page = i })
             end
         end
