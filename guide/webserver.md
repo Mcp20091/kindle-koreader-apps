@@ -170,7 +170,7 @@ The Kindle's **Reading statistics** tile has the same fixes (each book's page li
 
 - **Home screen**: drawn as the launcher shows them, in its layout and columns: the **Main page**, each group's page, and **Hidden**. Drag a tile to reorder it, into a group or to Hidden; or tap one for **Move up**, **Move down** and **To** a page, with **Rename**, **Icon** and **Delete group** for a group and **Remove** for a shortcut. **New group** adds one. (Every visual editor here works the same way: drag with a mouse, or tap for the menu on a phone.)
 - **Add shortcut**: a Home Assistant screen or room, a To Do view or list, a notebook, a Notes folder, or a KOReader action.
-- **Display**: **Layout** (**Tiles**, **Bold tiles**, **Compact**, **List**, **Icons**), **Columns**, **Clock** (**Large** or **Small**), **24-hour clock** (KOReader's own, for every app), **Button labels** (the pop-ups' buttons, in every app, and each app on its own), **At a glance**, **Recent books**, **Recent notebooks**, **Recent crosswords** and **Recent items** (**Separate rows** or **One row**).
+- **Display**: **Layout** (**Tiles**, **Bold tiles**, **Compact**, **List**, **Icons**), **Columns**, **Clock** (**Large** or **Small**), **24-hour clock** (KOReader's own, for every app), **Button labels** (the pop-ups' buttons, in every app, and each app on its own), **Page bar** (**Numbered parts**, **Parts and Next** or **Words**, at the foot of every app's pages), **At a glance**, **Recent books**, **Recent notebooks**, **Recent crosswords** and **Recent items** (**Separate rows** or **One row**).
 - **Quick buttons**: drawn as on the Kindle, in sections: **On the home screen** (the two rows under the clock, then More), **Only in the control center** (the rest) and **Always in the control center** (the built-ins every control center has; click one to add it to yours). Drag one to reorder, between sections, or into a group's box to put it there; click one for **Remove**, **Move** (to a group), **Out of the group** or **Rename** (a group). Pick a built-in or a shortcut and **Add**, or **New group**. **Show on the home screen** turns the rows under the clock on or off.
 - **Widgets sleep screen**: its parts as cards, top to bottom (the clock, your book, To Do today, Home Assistant's alerts, the latest notifications), dragged into order or to **Off**.
 - **Weather**: **Weather from** (Automatic, Home Assistant, Open-Meteo or Off), **Place** (**Set** or **Change**: type your town or city, then pick it from the matches; the page looks it up with Open-Meteo's free place search) and **Units** (°F or °C). The Kindle loads the forecast when its Wi-Fi is on. **Test connection** tries Open-Meteo (and the US weather alerts) from the Kindle.
@@ -203,22 +203,22 @@ The top says when it last synced and how many changes are waiting; **Sync now** 
 
 ## Fonts
 
-The same as the Kindle's Fonts screen, which uses the same code (it needs the launcher). **Font settings** first, the same as in KOReader's menus:
+The same as the Kindle's Fonts screen, which uses the same code (it needs the launcher), in the same three tabs.
 
-- **Font for new books** and **Font size for new books** (also on the Kindle's **Settings > KOReader**).
-- **Fallback font**: for characters the book's font doesn't have (Chinese, Japanese, symbols…), and **Use more fallback fonts** for KOReader's own list after it. These apply to every book, the open one too.
-- **Use the book's own fonts** (fonts that come inside a book) and **Font weight** (thinner or bolder text).
-- **Advanced**: **Hinting** and **Kerning**.
-- Except the fallback fonts, these are the defaults for books you haven't opened yet: a book you've already opened keeps its own.
-
-Then **Your fonts**: every font KOReader can use for books, each name and a sample line drawn in its own typeface, marked **Built-in** or **Added by you**.
+**Your fonts**: which font new books open in, then every font KOReader can use for books, each name and a sample line drawn in its own typeface, marked **Built-in** or **Added by you**.
 - **Add fonts**: drop TTF or OTF files, or a zip of a family, on the box (or pick them). Anything that isn't a font is turned away. They're kept in the folder KOReader reads your own fonts from (the tab names it).
-- **Get from Google Fonts**: type a family's name (such as Lora) and the Kindle downloads its regular, bold and italic styles, as many as the family has, then adds them. It needs Wi-Fi on the Kindle; the tab shows how it's going.
-- **Set as default**: the font new books start with (the same setting as **Font for new books** on the Kindle).
+- **Set as default**: the font new books start with (the same setting as **Font for new books**), with **Undo** for a few seconds.
 - **Remove**: takes out a font you added, with **Undo** for a few seconds. Built-in fonts stay.
 - KOReader reads its fonts when it starts, so after a change the tab offers **Restart KOReader**; new or removed fonts show in books after that.
 
-![The Fonts tab: font settings, adding fonts, and each font drawn in its own typeface](img/apps/web-fonts.png)
+**Get more**: every family on [Google Fonts](https://fonts.google.com), as on the Kindle: a search box (it searches as you type), the chips **Suggested**, **All**, **Serif**, **Sans**, **Mono**, **Handwriting** and **Display**, the order (**Popular first**, **A–Z**, **Newest first**) and pages. Here each name is drawn in its own typeface, straight from Google Fonts. **Get** has the Kindle download the family's regular, bold and italic styles (as many as it has) over its Wi-Fi; the row then says **Installed**. A name that isn't in the list can still be got by name. **List from…** says when the Kindle got the list; **Update** gets it again.
+
+**Settings**: the same as in KOReader's menus, in groups:
+- **New books**: **Font for new books**, **Font size for new books**, **Font weight** (thinner or bolder text) and **Use the book's own fonts** (fonts that come inside a book). A book you've already opened keeps its own.
+- **Fallback fonts**: **Fallback font**, for characters the book's font doesn't have (Chinese, Japanese, symbols…), and **Use more fallback fonts** for KOReader's own list after it. These apply to every book, the open one too.
+- **Advanced**: **Hinting** and **Kerning**.
+
+![The Fonts tab's Get more: Google Fonts' serif families, popular first, each drawn in its own typeface](img/apps/web-fonts.png)
 
 ## KOReader
 
@@ -239,7 +239,7 @@ KOReader's own settings, without leaving the launcher on the Kindle:
 
 - **Problems**: KOReader's crashes and freezes, read from its log, newest first. Tap one for the details. **Stopped without closing** usually means it froze and you restarted the Kindle by holding the power button. A freeze that it recovers from ("KOReader stopped answering") is only noticed while the web server runs. When KOReader ended badly, the launcher also says so the next time you open it.
 - **What's installed**: each plugin's version (the date it was made) and **What changed** in its latest updates.
-- **Update from GitHub**: the same as the Kindle's Settings > Launcher. Type a repo (owner/repo; this project's own to start with) and its releases and branches show in the list; pick one and **Install**. A branch is the code as it is on it now, not a release. Under it, **Optional apps** lists the apps that version offers (FlashForge, …) with **Install**, or **Update** and **Remove**; the installed ones are updated with the rest (**Also updates: …**).
+- **Updates**: the same as the Kindle's Settings > Updates. **Repository** (owner/repository; this project's own to start with), **Select version** (the latest or a previous release) with **Install**, and **Show test versions** (versions for trying changes before they're released, in **Select version**; it warns first). Under them, **Optional apps** lists the apps that aren't in the main install (FlashForge, …) with **Install**, or **Remove**; the installed ones are updated with the rest (**Also updates: …**).
 - **Update plugins**: **Install a zip…** installs new versions of the plugins (see Getting started). Everything in the zip is checked first; if anything is wrong, nothing changes. Under **Earlier versions kept**, **Go back** puts a plugin back as it was before its update.
 - While either installs, a bar shows how far it is, here and in a pop-up on the Kindle: the upload (or download), then checking and installing a plugin at a time. Then KOReader restarts; don't turn the Kindle off. The web server starts again by itself and this page comes back on its own.
 - **Battery**: the level, and KOReader's battery statistics since the last charge (awake, asleep, the last charge, each with how much an hour), what is on now that uses power, and **Reset statistics**. The same as the launcher's Battery screen.

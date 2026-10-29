@@ -100,6 +100,28 @@ function Web.routes(server)
     end)
 
     server:route("GET", "^/api/fonts/google$", function(req, res) res:json(F().googleState() or { status = "none" }) end)
+
+    -- Every Google Fonts family to browse (appsgooglefonts.lua, as the Kindle's Get more tab):
+    -- ?q=&cat=suggested|all|serif|sans|mono|hand|display&sort=popular|az|new&page=&per=
+    server:route("GET", "^/api/fonts/catalogue$", function(req, res)
+        local G = require("appsgooglefonts")
+        G.ensure()
+        local q = req.query or {}
+        local per = math.max(5, math.min(100, tonumber(q.per) or 24))
+        local page = math.max(1, tonumber(q.page) or 1)
+        local r = G.query{ q = q.q, cat = q.cat, sort = q.sort, from = (page - 1) * per + 1, count = per }
+        local categories, sorts = {}, {}
+        for __, c in ipairs(G.CATEGORIES) do table.insert(categories, { c[1], c[2] }) end
+        for __, s in ipairs(G.SORTS) do table.insert(sorts, { s[1], s[2] }) end
+        res:json({ state = G.state(), total = r.total, items = r.items, exact = r.exact or false, page = page,
+            pages = math.max(1, math.ceil(r.total / per)), categories = categories, sorts = sorts })
+    end)
+
+    server:route("POST", "^/api/fonts/catalogue/update$", function(req, res)
+        local why = require("appsgooglefonts").update()
+        if why then return res:error(400, why) end
+        res:json({ ok = true })
+    end)
 end
 
 return Web

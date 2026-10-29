@@ -154,4 +154,25 @@ function Common.buttonDialog(o)
     return P.menu{ title = o.title, items = items, no_close = strict, keep_open = strict, dismissable = o.dismissable }
 end
 
+--- The apps' web page tabs, from what each app registers (PS.appInfo: see
+-- apps.koplugin/appsinfo.lua; read here so the web server works without the launcher),
+-- in the apps' order: { { plugin, page, name, card, routes, script, dir } }. Only those
+-- whose plugin is running now.
+function Common.webApps()
+    local ok, PS = pcall(require, "pluginshare")
+    local out = {}
+    for plugin, e in pairs(ok and PS.appInfo or {}) do
+        local w = type(e) == "table" and e.web
+        if type(w) == "table" and Common.plugin(plugin) then
+            table.insert(out, { plugin = plugin, page = w.page, name = w.name or e.name or plugin, card = w.card,
+                routes = w.routes, script = w.script, dir = w.dir or e.dir, order = tonumber(e.order) or 999 })
+        end
+    end
+    table.sort(out, function(a, b)
+        if a.order ~= b.order then return a.order < b.order end
+        return tostring(a.name) < tostring(b.name)
+    end)
+    return out
+end
+
 return Common

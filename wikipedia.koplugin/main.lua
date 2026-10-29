@@ -61,6 +61,17 @@ function Wikipedia:init()
     local PS = require("pluginshare")
     PS.notifyOpeners = PS.notifyOpeners or {}
     PS.notifyOpeners.wikipedia = function(route) self:openRoute(route) end
+    -- What it is for the launcher and the web page: its tile, Settings group, web tab
+    -- (apps.koplugin/appsinfo.lua).
+    PS.appInfo = PS.appInfo or {}
+    PS.appInfo.wikipedia = { name = _("Wikipedia"), icon = "wikipedia", dir = self.path, order = 50, group = "reading",
+        explore = _("Read articles and save them for offline"),
+        tiles = { { key = "wikipedia", event = "ShowWikipedia", line = function(w)
+            local line = w:appsLine() or ""
+            return line ~= "" and line or _("Search and save articles")
+        end } },
+        web = { page = "wikipedia", routes = "webwikipedia", script = "web/wikipedia.js",
+            card = "Saved articles, and saving new ones to the Kindle." } }
     -- The launcher's Settings list, and its search (saved articles, by title).
     if PS.registerSettings then
         PS.registerSettings{ key = "wikipedia", name = _("Wikipedia"), icon = "wikipedia",
@@ -256,6 +267,9 @@ end
 --- The front page (tab: "today", "saved", "recent" or "settings"); jump: a
 -- setting's name, to open the settings at its page.
 function Wikipedia:show(tab, jump, pick)
+    -- App lock (the launcher's): its passcode first, when this app is locked.
+    local lock = require("pluginshare").lock
+    if lock and lock.ask("wikipedia", function() self:show(tab, jump, pick) end) then return end
     -- The launcher's recent apps (the switcher brings this screen back: self.screen).
     local PS = require("pluginshare")
     if PS.noteRecent then PS.noteRecent("wikipedia") end

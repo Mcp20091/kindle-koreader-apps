@@ -9,8 +9,10 @@ A Pangolin server's organization on the Kindle, over Pangolin's Integration API 
 Assistant): sites, public resources (health per target), private resources, clients, and the switches the
 Home Assistant integration has (resource enabled, sign-in, block access; private resource enabled; client
 blocked and archived; reset bandwidth). An **optional** app: it lives in `optional/`, isn't in the main install
-zip, and has its own (`optional/build-zip.py`; the release makes `kindle-pangolin.zip`). The launcher shows its
-tile only when it's installed (`plugin = "pangolin"` in appsmodel's TILES).
+zip, and has its own (`optional/build-zip.py`; the release makes `kindle-pangolin.zip`). It says what it is in
+`PS.appInfo.pangolin` (main.lua's `shareWithApps`): its tile, Settings group and web tab
+(`webpangolin.lua`, `web/pangolin.js`, here), so the launcher and the web page show it only when it's
+installed, with nothing of it in their code.
 
 ## The API (what pgapi.lua speaks)
 

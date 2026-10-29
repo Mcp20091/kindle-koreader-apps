@@ -1,3 +1,6 @@
-2026-10-27 19:50
-Oct 27  Export check: made-up addresses in the FlashForge and Pangolin tests from the allowed examples; Pangolin's README names its Home Assistant integration without a link to an account; the HTTPS code's OID and PEM name and FlashForge's discovery address allowed
-Oct 27  Pangolin: a new optional app for a Pangolin server over its Integration API (sites online, each public resource's health and targets, private resources, clients; resources on or off, sign-in, block access, clients blocked or archived, reset bandwidth), in optional/ with its own zip
+2026-10-27 23:58
+Oct 27  Pangolin: App lock (Settings > Launcher > App lock) asks before it opens, from the Tools menu and gestures too
+Oct 27  Pangolin: in Settings' Optional apps group
+Oct 27  Pangolin: says what it is to the launcher and the web page (its tile, its web tab, now in this folder)
+Oct 27  Pangolin: the fallback icon (star) in its icons, so an icon it lacks shows as a star, not a box
+Oct 27  Pangolin: the Recent apps icon (history) in its icons, where a box showed in the title bar

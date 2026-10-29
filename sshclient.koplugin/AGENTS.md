@@ -134,8 +134,8 @@ user asked for this to hold everywhere, so check every new screen against it:
   web page's changes; for the AI: `M.redact` (secrets blanked), `M.aiPart`,
   `M.aiOutputText`, `M.aiFollowUp`, `M.aiCommands` (COMMAND: lines)) and `sshkeys.lua` (base64, OpenSSH and Dropbear key
   formats, public key lines).
-- The web page's SSH tab lives in the web server plugin (`webssh.lua`,
-  `web/ssh.js`) and only calls `webState()` / `act()`, and for AI help
+- The web page's SSH tab is here (`webssh.lua`, `web/ssh.js`, served by the web server as
+  `PS.appInfo.sshclient.web` says) and only calls `webState()` / `act()`, and for AI help
   `aiStart(args)` / `aiResult(key)` (`plugin.lastOutput`: the last output page).
 
 ## Data on the Kindle
@@ -208,6 +208,11 @@ Helpers more than one app needs live in the launcher (apps.koplugin) and are rea
   commands, id `"<host id>/<command id>"`, grouped by host. A tap runs the command as the app
   does (`Run.command`), a hold opens the host's page, and `item()` returns nil when it's gone.
 - Recent apps: `PS.noteRecent("ssh")`; the top page is kept in `plugin.screen`.
+- App lock: `PS.lock.ask("ssh", ...)` in `SSH:show` and the gesture's
+  `onRunSSHCommand`. SSH's own app PIN (`data.app_pin`) is only the fallback without the launcher:
+  with it, `UI.adoptAppPin` hands it over (SSH ticked when a passcode is set there; else the PIN
+  becomes the passcode the first time it's typed). Hosts' own PINs stay SSH's (`M.needsPin`).
+  ⋮ > Lock now locks both.
 - Pop-ups through `sshko.lua`, which uses `PS.popup` and falls back to
   KOReader's widgets without the launcher.
 - Undo after deleting a host, a command or a key (`PS.popup.undo`). Without it,

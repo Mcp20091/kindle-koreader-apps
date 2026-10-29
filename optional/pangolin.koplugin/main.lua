@@ -82,6 +82,9 @@ function Pangolin:onShowPangolin()
 end
 
 function Pangolin:show(page)
+    -- App lock (the launcher's): its passcode first, when this app is locked.
+    local lock = require("pluginshare").lock
+    if lock and lock.ask("pangolin", function() self:show(page) end) then return end
     return require("pgui").show(self, page)
 end
 
@@ -232,6 +235,9 @@ end
 
 --- Open Pangolin at a site's or resource's page (from a notification or search).
 function Pangolin:showItem(kind, id)
+    -- App lock (the launcher's): its passcode first, when this app is locked.
+    local lock = require("pluginshare").lock
+    if lock and lock.ask("pangolin", function() self:showItem(kind, id) end) then return end
     self:show()
     require("pgui").item(self, kind, id)
 end
@@ -384,6 +390,15 @@ end
 function Pangolin:shareWithApps()
     local PS = require("pluginshare")
     PS.notifyOpeners = PS.notifyOpeners or {}
+    -- What it is for the launcher and the web page: its tile (only there while it's installed:
+    -- an optional app), Settings group (Optional apps; its tile in the suggested Tools group), web tab
+    -- (apps.koplugin/appsinfo.lua).
+    PS.appInfo = PS.appInfo or {}
+    PS.appInfo.pangolin = { name = _("Pangolin"), icon = "shield-check", dir = self.path, order = 85, group = "optional",
+        -- "All online · 4 sites", "1 site offline".
+        tiles = { { key = "pangolin", group = "tools", event = "ShowPangolin", line = function(p) return p:appsLine() end } },
+        web = { page = "pangolin", routes = "webpangolin", script = "web/pangolin.js",
+            card = "Your Pangolin server: sites, resources and clients, and turning them on or off." } }
     PS.notifyOpeners.pangolin = function(route)
         local p = current()
         if not p then return end

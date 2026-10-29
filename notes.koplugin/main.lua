@@ -131,6 +131,9 @@ end
 -- (a time in it), from the month calendar; its page goes among the others
 -- in date order.
 function Notes:todayPage(when)
+    -- App lock (the launcher's): its passcode first, when this app is locked.
+    local lock = require("pluginshare").lock
+    if lock and lock.ask("notes", function() self:todayPage(when) end) then return end
     -- The notebook open is saved and closed first (it may be the Journal).
     self:closeEditor()
     local store = self.store
@@ -369,6 +372,9 @@ end
 --- Notes opened (menu, gesture, Apps): the list, and the last notebook on
 -- top of it when the settings say so.
 function Notes:showStart()
+    -- App lock (the launcher's): its passcode first, when this app is locked.
+    local lock = require("pluginshare").lock
+    if lock and lock.ask("notes", function() self:showStart() end) then return end
     self:closeEditor()
     self.crosswordsApp = nil
     self:show()
@@ -386,6 +392,9 @@ function Notes:penReady()
 end
 
 function Notes:show()
+    -- App lock (the launcher's): its passcode first, when Notes (or Crosswords) is locked.
+    local lock = require("pluginshare").lock
+    if lock and lock.ask(self.crosswordsApp and "crosswords" or "notes", function() self:show() end) then return end
     if self.menu then UIManager:close(self.menu) end
     self.inTrash, self.selection = false, nil
     -- New crosswords from the sources picked, when Wi-Fi is on, and finished
@@ -657,6 +666,9 @@ function Notes:closeEditor()
 end
 
 function Notes:open(id, page)
+    -- App lock (the launcher's): its passcode first, when Notes (or Crosswords) is locked.
+    local lock = require("pluginshare").lock
+    if lock and lock.ask(self.crosswordsApp and "crosswords" or "notes", function() self:open(id, page) end) then return end
     if not self:penReady() then return end
     -- Locked: its PIN first.
     if self:isLocked(id) and not self.pinOK then

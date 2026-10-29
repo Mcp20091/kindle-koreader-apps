@@ -87,6 +87,18 @@ end
 -- your Kindle.
 function WebPage:shareWithApps()
     local PS = require("pluginshare")
+    -- What it is for the launcher (apps.koplugin/appsinfo.lua): its tile, which switches it on
+    -- or shows the address, and its Settings group.
+    PS.appInfo = PS.appInfo or {}
+    PS.appInfo.webpage = { name = _("Web server"), icon = "globe", dir = self.path, order = 90, group = "tools",
+        tiles = { { key = "web", switches = true,
+            line = function(web)
+                local address = web:address() or ""
+                return address ~= "" and T(_("On · %1"), address) or _("Off · Tap to start")
+            end,
+            open = function(web)
+                if web:address() ~= "" then web:showAddress() else web:start() end
+            end } } }
     local function web()
         local ReaderUI = package.loaded["apps/reader/readerui"]
         local FileManager = package.loaded["apps/filemanager/filemanager"]
@@ -500,24 +512,32 @@ function WebPage:routes(server)
         res:file(dir .. req.captures[1], req.captures[1], true)
     end)
     server:route("GET", "^/favicon%.ico$", function(req, res) res:status(204):send("") end)
+    -- An app's own files for its tab (its web/ folder): /static/app/<plugin>/<file>.
+    server:route("GET", "^/static/app/([%w_%-]+)/([%w%._%-]+)$", function(req, res)
+        for __, a in ipairs(require("webcommon").webApps()) do
+            if a.plugin == req.captures[1] and a.dir and not req.captures[2]:find("^%.") then
+                return res:file(a.dir .. "/web/" .. req.captures[2], req.captures[2], true)
+            end
+        end
+        res:error(404, "Not found")
+    end)
     require("webhome").routes(server, self)
     require("webfiles").routes(server)
     require("weblibrary").routes(server)
     require("webservers").routes(server)
     require("webdiag").routes(server)
-    require("webha").routes(server)
     require("webdash").routes(server)
     require("webapps").routes(server)
     require("webbackup").routes(server, self)
     require("webmicrosoft").routes(server)
-    require("webtodo").routes(server)
-    require("webnotes").routes(server)
-    require("webcrosswords").routes(server)
-    require("webwikipedia").routes(server)
-    require("websyncthing").routes(server)
-    require("webssh").routes(server)
-    require("webflashforge").routes(server)
-    require("webpangolin").routes(server)
+    -- Each app's tab (Home Assistant, To Do, Notes...): the routes in its own folder, as it
+    -- says (PS.appInfo); one that fails is left out, not the server.
+    for __, a in ipairs(require("webcommon").webApps()) do
+        if a.routes then
+            local ok, err = pcall(function() require(a.routes).routes(server) end)
+            if not ok then logger.warn("WebPage: no tab for", a.plugin, err) end
+        end
+    end
     require("webplugins").routes(server, self)
     require("websearch").routes(server)
     require("websystem").routes(server, self)

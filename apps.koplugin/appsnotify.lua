@@ -60,21 +60,17 @@ local Notify = {}
 local MAX = 100
 local FILE = DataStorage:getSettingsDir() .. "/notifications.lua"
 
--- The apps' names and icons in the list.
+-- The apps' names and icons in the list: the launcher's here, each app's as it says
+-- (appsinfo.lua, by its plugin's name).
 local APPS = {
-    todo = { _("To Do"), "list-checks" },
-    homeassistant = { _("Home Assistant"), "house" },
-    notes = { _("Notes"), "notebook-pen" },
-    crosswords = { _("Crosswords"), "newspaper" },
-    wikipedia = { _("Wikipedia"), "wikipedia" },
-    syncthing = { _("Syncthing"), "folder-sync" },
-    sshclient = { _("SSH"), "terminal" },
-    ssh = { _("SSH"), "terminal" },
-    flashforge = { _("FlashForge"), "printer" },
-    pangolin = { _("Pangolin"), "shield-check" },
-    webpage = { _("Web server"), "globe" },
     apps = { _("Launcher"), "app-window" },
 }
+
+local function appOf(app)
+    if APPS[app] then return APPS[app] end
+    local ok, name, icon = pcall(function() return require("appsinfo").nameOf(app) end)
+    if ok and name then return { name, icon } end
+end
 
 local store        -- LuaSettings
 local opens = {}   -- entry id -> open function (this run only)
@@ -189,11 +185,13 @@ function Notify.markSeen()
 end
 
 function Notify.appName(e)
-    return e.name or (APPS[e.app] and APPS[e.app][1]) or e.app
+    local a = appOf(e.app)
+    return e.name or (a and a[1]) or e.app
 end
 
 function Notify.appIcon(e)
-    return e.icon or (APPS[e.app] and APPS[e.app][2]) or "bell"
+    local a = appOf(e.app)
+    return e.icon or (a and a[2]) or "bell"
 end
 
 --- The app's pop-up for it (PS.notifyPopups), when it has one.
@@ -211,8 +209,15 @@ function Notify.hasPopup(e) return popupOf(e) ~= nil end
 function Notify.popup(e)
     local p = popupOf(e)
     if not p then return false end
-    pcall(p.show, e.route, e)
+    Notify.unlocked(e, function() pcall(p.show, e.route, e) end)
     return true
+end
+
+--- fn now, or (the app locked in App lock) once the passcode is right.
+function Notify.unlocked(e, fn)
+    local lock = require("pluginshare").lock
+    if lock and e.app then return lock.run(e.app, fn) end
+    fn()
 end
 
 --- A tap: its own action, or the app's opener for its saved route; then gone from the list.
@@ -223,10 +228,10 @@ function Notify.open(e)
     end
     local fn = opens[e.id]
     Notify.unnotify(e.id)
-    if fn then return pcall(fn) end
+    if fn then return Notify.unlocked(e, function() pcall(fn) end) end
     local PS = require("pluginshare")
     local opener = PS.notifyOpeners and PS.notifyOpeners[e.app]
-    if opener then return pcall(opener, e.route, e) end
+    if opener then return Notify.unlocked(e, function() pcall(opener, e.route, e) end) end
 end
 
 --- "5 min ago", "2:15 PM", "Mon 9:00 AM", "Oct 12".

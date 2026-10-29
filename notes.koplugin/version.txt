@@ -1,6 +1,6 @@
-2026-10-27 05:26
+2026-10-27 23:58
+Oct 27  Notes: App lock (Settings > Launcher > App lock) asks before it opens, from the Tools menu and gestures too
+Oct 27  Notes: says what it is to the launcher and the web page (its tile and line, its web tab, now in this folder)
 Oct 27  Notes: tapping a crossword's number refreshes only the outlines and the clue card, not the whole page (the outline's whole-page redraw merged with the card's clean refresh into a full flash); the card's X and a closing toolbar panel clean only where they were
 Oct 27  Notes: a pinned clue or hint that takes the place of another refreshes only where the two cards are, not the whole page (Crosswords' hints)
 Oct 25  A screen closed during a KOReader gesture's action no longer hands its close on to the file browser (which tore itself down: Home Assistant, the web server and the other apps stopped answering until a restart)
-Oct 25  Writing with the pen counts as use: KOReader's Automatic dimmer and sleep timer told (Notes, crosswords, quick notes, the handwriting strip), so the screen no longer dims while you write
-Oct 25  Notes and crosswords: KOReader's light swipes along the edge ignored unless Swipes change the light is on (Notes settings, Crossword settings, web page)

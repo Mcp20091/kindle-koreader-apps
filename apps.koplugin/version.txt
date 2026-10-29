@@ -1,6 +1,6 @@
-2026-10-27 19:50
-Oct 27  Export check: made-up addresses in the FlashForge and Pangolin tests from the allowed examples; Pangolin's README names its Home Assistant integration without a link to an account; the HTTPS code's OID and PEM name and FlashForge's discovery address allowed
-Oct 27  Launcher: the apps are called Clod UI (U.NAME): its header over the version on Set up your Kindle's Updates step and Settings > Updates, and an Optional apps header over the optional apps; setup steps' rows can have headers
-Oct 27  Launcher: a Pangolin tile when the optional Pangolin app is installed (its line, settings, notifications, gestures), in the public export and the guide's optional apps; the tile tests' expected lists brought up to date
-Oct 27  Launcher: an Updates step in Set up your Kindle, after Wi-Fi (where updates are, a new version looked up and offered, the optional apps with Install, Check automatically); optional apps called extra apps you can add; a step's not-done line can change (notDoneText as a function)
-Oct 27  Launcher: Settings in groups (Getting started, Settings, Accounts, Reading, Home, Writing, Tools, as the suggested groups; One list as an option): hold a row to move, group or hide it, a group's name to rename, move or delete it; hidden rows found by search (hold to show them again); Updates on its own page at the top; To Do in the suggested Tools group
+2026-10-28 19:30
+Oct 28  Launcher: Settings > Updates shows the optional apps at once (the list kept from last time, and the ones installed), as one row that opens them, under one line saying installed ones update automatically
+Oct 28  Fonts: three tabs along the top (Your fonts, Get more, Settings); the font new books open in at the top of Your fonts, a new default with Undo; Get more browses all of Google Fonts (search, kinds, popular, A–Z or newest, pages), its list fetched in the background and kept a month; the page bar is one bar when there are too many pages for a part each
+Oct 28  Launcher: Help (in the three dots) in the apps' read pop-up, in pages, rewritten for today's apps, with User guide (the guide's QR code and PDF)
+Oct 27  Launcher: App lock, a passcode (keypad) or password before the apps you tick (Settings > Launcher > App lock and the web page); unlocked until the Kindle sleeps, a locked app covered when it wakes
+Oct 27  Updates: an optional app that can't be updated with the rest gets a notification (tap: Settings > Updates); one older than the launcher (no tile) shows Update instead of Remove

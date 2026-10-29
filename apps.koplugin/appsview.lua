@@ -159,37 +159,6 @@ end
 
 -- Notes' notebooks without reading their ink: how many, and the newest one's
 -- name (from the start of its file).
-local function notebooksLine(notes)
-    local dir = notes.store and notes.store.dir
-    local lfs = require("libs/libkoreader-lfs")
-    if not dir or lfs.attributes(dir, "mode") ~= "directory" then return nil end
-    local count, newest, newestTime = 0, nil, -1
-    for name in lfs.dir(dir) do
-        if name:match("^nb%d+%.lua$") then
-            count = count + 1
-            local t = lfs.attributes(dir .. "/" .. name, "modification") or 0
-            if t > newestTime then newest, newestTime = name, t end
-        end
-    end
-    if count == 0 then return _("No notebooks yet") end
-    local title
-    local f = io.open(dir .. "/" .. newest, "r")
-    if f then
-        local head = f:read(2048) or ""
-        f:close()
-        local quoted = head:match('name=("[^"\\]*")') or head:match("name=(%b\"\")")
-        if quoted then
-            local fn = loadstring("return " .. quoted)
-            if fn then
-                setfenv(fn, {})
-                local ok, v = pcall(fn)
-                if ok and type(v) == "string" then title = v end
-            end
-        end
-    end
-    return title and T(_("%1 notebooks \u{00B7} last: %2"), count, title) or T(_("%1 notebooks"), count)
-end
-
 local function try(fn)
     local ok, v = pcall(fn)
     if ok then return v end
@@ -352,6 +321,11 @@ function View:status(tile)
         end
         return n == 1 and _("1 tile") or T(_("%1 tiles"), n)
     end
+    -- An app's tile: the line it gives (appsinfo.lua), from its plugin.
+    if tile.line then
+        local p = self:plugin(tile.app)
+        return p and try(function() return tile.line(p) end) or ""
+    end
     local key = tile.key
     if key == "readingtime" then
         local stats = try(function() return self.apps:readingStats() end)
@@ -373,26 +347,6 @@ function View:status(tile)
         return tag and T(_("Update available: %1"), tag) or _("Every app's settings")
     elseif key == "kosettings" then
         return _("Device, screen, network and more")
-    elseif key == "wikipedia" then
-        local w = self:plugin("wikipedia")
-        local line = w and w.appsLine and try(function() return w:appsLine() end) or ""
-        return line ~= "" and line or _("Search and save articles")
-    elseif key == "syncthing" then
-        -- "On · Up to date", "On · Syncing · 3 files left", "Off".
-        local s = self:plugin("syncthing")
-        return s and s.appsLine and try(function() return s:appsLine() end) or ""
-    elseif key == "flashforge" then
-        -- "Printing 42% · 1 h 5 min left", "Ready".
-        local s = self:plugin("flashforge")
-        return s and s.appsLine and try(function() return s:appsLine() end) or ""
-    elseif key == "pangolin" then
-        -- "All online · 4 sites", "1 site offline".
-        local s = self:plugin("pangolin")
-        return s and s.appsLine and try(function() return s:appsLine() end) or ""
-    elseif key == "ssh" then
-        -- "3 hosts".
-        local s = self:plugin("sshclient")
-        return s and s.appsLine and try(function() return s:appsLine() end) or ""
     elseif key == "battery" then
         return try(function() return require("appsbattery").line(self:ui()) end) or ""
     elseif key == "weather" then
@@ -417,49 +371,6 @@ function View:status(tile)
     elseif key == "library" then
         local home = G_reader_settings:readSetting("home_dir")
         return home and (home:match("([^/]+)/*$") or home) or _("Your books")
-    elseif key == "ha" then
-        local ha = self:plugin("homeassistant")
-        if not (ha and ha.snap) then return ha and ha.api and ha.api:signedIn() and _("Open to load") or _("Not signed in") end
-        return try(function()
-            local HaModel = require("hamodel")
-            local on = #HaModel.onNow(ha.snap, ha.prefs)
-            local att = HaModel.attention(ha.snap, ha.prefs)
-            return (on > 0 and T(_("%1 on"), on) or _("All off")) .. " · " .. att.text
-        end) or ""
-    elseif key == "dashboard" then
-        local ha = self:plugin("homeassistant")
-        local w = ha and ha.snap and ha.snap.weather
-        if not w then return _("Clock, weather, cameras") end
-        return try(function()
-            local HaModel = require("hamodel")
-            local text = HaModel.weather(w.state)
-            local inside = HaModel.inside(ha.snap, ha.prefs)
-            return (w.temp and HaModel.formatTemp(w.temp) .. " " or "") .. text ..
-                (inside and (" · " .. T(_("inside %1"), HaModel.formatTemp(inside))) or "")
-        end) or ""
-    elseif key == "todo" then
-        local todo = self:plugin("todo")
-        if not (todo and todo.store) then return "" end
-        return try(function()
-            local s = require("todomodel").summary(todo.store:lists(), todo:today(), { hidden = todo:hiddenSet() })
-            if s.today == 0 and s.overdue == 0 then
-                return s.week > 0 and T(_("Nothing today · %1 this week"), s.week) or _("Nothing due")
-            end
-            return T(_("%1 today"), s.today) .. (s.overdue > 0 and (" · " .. T(_("%1 overdue"), s.overdue)) or "")
-        end) or ""
-    elseif key == "notes" then
-        local notes = self:plugin("notes")
-        if not (notes and notes.store) then return "" end
-        return try(function() return notebooksLine(notes) end) or ""
-    elseif key == "crosswords" then
-        -- The Crosswords app: today's puzzle, as the crossword tile says it.
-        local notes = self:plugin("notes")
-        if not (notes and notes.todaysCrosswordInfo) then return "" end
-        return try(function() return crosswordLine(notes, nil, true) end) or ""
-    elseif key == "web" then
-        local web = self:plugin("webpage")
-        local address = web and web.address and web:address() or ""
-        return address ~= "" and T(_("On · %1"), address) or _("Off · Tap to start")
     elseif key == "wifi" then
         return NetworkMgr:isWifiOn() and (NetworkMgr:isConnected() and _("Connected") or _("On")) or _("Off")
     elseif key == "exit" then
@@ -537,12 +448,16 @@ function View:open(tile)
         end
     elseif tile.event then
         if ui then ui:handleEvent(Event:new(tile.event)) end
+    elseif tile.open then
+        local p = self:plugin(tile.app)
+        if p then try(function() tile.open(p) end) end
     elseif key == "weather" then
         require("appsweather").open(self)
         return
     elseif key == "fonts" then
         self.away = false
         self.mode, self.fontsPage, self.fontsData = "fonts", 1, nil
+        self.fontsTab, self.fontsPages = nil, nil
         self:refresh()
         return
     elseif key == "readingtime" then
@@ -597,11 +512,6 @@ function View:open(tile)
         self:render()
         UIManager:setDirty(self, "full")
         return
-    elseif key == "web" then
-        local web = self:plugin("webpage")
-        if web then
-            if web:address() ~= "" then web:showAddress() else web:start() end
-        end
     elseif key == "wifi" then
         -- Says what is happening at once (turning Wi-Fi off takes a few
         -- seconds on a Kindle), then the real state when KOReader is done.
@@ -977,31 +887,36 @@ function View:pager(c, cx, y)
 end
 
 local HELP = [[
-THE LAUNCHER
-• Tap a tile to open it. Hold a tile to move, hide or remove it, or to put it in a group (a tile that opens its own page).
-• Under the clock: the weather, what is next and the tasks due; then buttons for Wi-Fi, the light, night mode and a refresh.
+THE HOME SCREEN
+• Tap a tile to open it. Hold it to move it, put it in a group, hide it or edit the home screen.
+• Under the clock: the weather, what's next and the tasks due, then your quick buttons. Tap a button to do it; hold it for more. More shows the rest.
 • Hold a recent book to mark it finished, take it out of the history or open its folder.
-• Swipe left or right to turn the page.
-• Swipe diagonally to refresh the screen.
-• At the top right: refresh (the lines again and a full screen refresh), the bell (notifications from every app; the count is how many are new) and ⋮ (the light, night mode, screen refresh, this help, and Settings: the launcher's tiles and shortcuts, its layout and the sleep screen).
+• The magnifying glass searches books, notebooks, tasks, devices, apps and settings.
 • To leave, open Library or a book, or tap Exit KOReader.
-• In any app, tap the time and battery at the top for the control center (Wi-Fi, light, night mode, Keep awake…). ⋮ > Recent apps shows what you opened lately. Swipe in from the left edge to go back.
-• The magnifying glass searches books, notebooks, tasks and devices.
-• In a book or the library, tap the top for the same bar as the apps: back, the house (the launcher), the time, refresh, the bell and ⋮ (KOReader's menu and the book's contents, bookmarks and search). Launcher settings > Title bar in books turns it off.
 
-HOME ASSISTANT, TO DO AND THE OTHER APPS
-• The same bar at the top of each: ‹ goes back (from an app's first screen, to the launcher), the house goes to the launcher; at the right the app's own buttons, the time and battery, refresh, the bell and ⋮ (Settings is its last item).
-• Swipe left or right to turn the page.
-• Hold an item for more options.
-• ⋮ has the light, night mode, screen refresh, Add to launcher and Settings.
-• On the dashboard: tap the time or the status line to close it, the weather for the forecast, ⚙ for the settings.
+THE BAR AT THE TOP OF EVERY APP
+• At the left: the arrow goes back, the house goes to the launcher, and the clock with an arrow shows Recent apps.
+• Tap the time and battery for the control center: Wi-Fi, the light, night mode, Keep awake and all your quick buttons.
+• At the right: the round arrow refreshes, the bell has notifications from every app, and the three dots have the app's extras, Recent apps, Light, Night mode, Refresh screen and Settings.
+• In a book or the library, tap the top of the page for the same bar.
 
-YOUR KOREADER GESTURES
-• The two-finger swipes, edge swipes and multiswipes set in KOReader also work here, for the light, warmth, night mode, refresh, Wi-Fi and these apps.
-• Gestures for folders and books only work in the library or a book.]]
+SETTINGS AND UPDATES
+• Settings, last in the three dots, has every app's settings, in groups. Hold a row to move it or hide it.
+• Settings > Updates checks for a new version, installs another one, and adds optional apps: extra apps you can add, such as FlashForge and Pangolin.
+• Settings > Set up your Kindle goes through the setup again.
 
+GESTURES
+• Swipe in from the left edge to go back.
+• Swipe left or right to turn the page. Swipe diagonally for a full refresh.
+• Your KOReader gestures for the light, night mode, a refresh, Wi-Fi and the apps work here too.
+• Hold anything that has no menu of its own and it works like a tap.]]
+
+--- ⋮ > Help: how the launcher and the apps' bar work, in pages; User guide opens the guide's page.
 function View:showHelp()
-    UIManager:show(require("ui/widget/textviewer"):new{ title = _("Help"), text = _(HELP) })
+    require("appspopup").read{ title = _("Help"), text = _(HELP), buttons = {
+        { icon = "book-open", text = _("User guide"), fn = function() require("appssetup").showGuide() end },
+        { icon = "check", text = _("Done"), primary = true },
+    } }
 end
 
 function View:leaveGroup()
@@ -1036,12 +951,6 @@ function View:onClose()
     end
     if self.mode == "arrange" then
         self.mode, self.orderUndo = "hub", nil
-        self:refresh()
-        return true
-    end
-    if self.mode == "fontsget" then
-        -- Get fonts: back to Fonts.
-        self.mode = "fonts"
         self:refresh()
         return true
     end
@@ -1166,7 +1075,7 @@ function View:bar(c, title, buttons)
     end
     -- Apps' settings, opened from the list of every app's: back to the list.
     local back = self.mode == "arrange" and function() self.mode, self.orderUndo = "hub", nil self:refresh() end
-        or (self.mode == "statsbook" or self.mode == "fontsget" or self.backTo) and function() self:onClose() end or home
+        or (self.mode == "statsbook" or self.backTo) and function() self:onClose() end or home
     Bar.draw(c, {
         title = title,
         back = back, home = home,
@@ -1214,7 +1123,27 @@ function View:paintTo(bb, x, y)
     if self.canvas then self.canvas:paint(bb, x, y) end
 end
 
+-- The launcher's Settings screens: with Settings locked in App lock, only once the passcode is right.
+local SETTINGS_MODES = { hub = true, arrange = true, page = true, quick = true, conntest = true }
+
+--- Settings locked: back to the tiles and the passcode asked (then the screen it was going to).
+function View:lockSettings()
+    -- (Fonts' Get more tab too.)
+    local settings = SETTINGS_MODES[self.mode] or (self.mode == "fonts" and self.fontsTab == "get")
+    if not settings or self.lockAsking then return end
+    local Lock = require("appslock")
+    if not Lock.get():needs("settings") then return end
+    local mode = self.mode
+    self.mode, self.lockAsking = "tiles", true
+    UIManager:nextTick(function()
+        Lock.prompt{ title = T(_("%1 is locked"), _("Settings")),
+            onOk = function() self.lockAsking = nil self.mode = mode self:refresh() end,
+            onCancel = function() self.lockAsking = nil end }
+    end)
+end
+
 function View:render()
+    self:lockSettings()
     if self.canvas then self.canvas:release() end
     self.dithered = nil
     local c = Canvas.new(self.w, self.h, false)
@@ -1229,7 +1158,6 @@ function View:render()
     elseif self.mode == "icons" then require("appsicons").draw(self, c)
     elseif self.mode == "weather" then require("appsweather").draw(self, c)
     elseif self.mode == "fonts" then require("appsfontsview").draw(self, c)
-    elseif self.mode == "fontsget" then require("appsfontsview").drawGet(self, c)
     elseif self.mode == "quick" then require("appsquick").drawEditor(self, c)
     elseif self.mode == "conntest" then require("appstest").draw(self, c)
     elseif self.mode == "switcher" then require("appsswitcher").draw(self, c)
@@ -1868,6 +1796,14 @@ local function tasksToday(todo)
     return out
 end
 
+--- "Overdue · Mon, Oct 26" for a task past its due date (To Do's day number), else nil.
+local function overdueText(t)
+    if not t.overdue then return nil end
+    local okD, Dates = pcall(require, "tododates")
+    local day = okD and t.due and try(function() return Dates.short(t.due) end)
+    return day and (_("Overdue") .. "  \u{00B7}  " .. day) or _("Overdue")
+end
+
 --- The next thing with a time: a Home Assistant calendar event, else a To Do reminder today.
 local function nextUp(apps)
     local ha = apps:plugin("homeassistant")
@@ -2000,8 +1936,9 @@ function View.drawSleep(apps, c)
                 break
             end
             c:box(28, y + 8, 18, 18, { r = 4, border = C.BLACK, bw = 1.3 })
-            c:text(58, y + 23, t.title, 13, { maxw = c.W - 190 })
-            if t.overdue then c:text(c.W - 28, y + 23, _("Overdue"), 11, { bold = true, align = "end" }) end
+            local due = overdueText(t)
+            c:text(58, y + 23, t.title, 13, { maxw = c.W - 86 - (due and c:width(due, 11) + 16 or 0) })
+            if due then c:text(c.W - 28, y + 23, due, 11, { bold = true, align = "end" }) end
             c:hline(58, y + 34, c.W - 86)
             y = y + 36
         end
@@ -2009,8 +1946,8 @@ function View.drawSleep(apps, c)
 end
 
 --- The parts the Apps widgets sleep screen can show, in their order.
-View.WIDGETS = { "clock", "book", "todo", "ha", "notifications" }
-View.WIDGET_NAMES = { clock = _("Clock"), book = _("Current book"), todo = _("To Do today"), ha = _("Home Assistant alerts"),
+View.WIDGETS = { "clock", "forecast", "book", "todo", "ha", "notifications" }
+View.WIDGET_NAMES = { clock = _("Clock and weather"), forecast = _("Weather forecast"), book = _("Current book"), todo = _("To Do today"), ha = _("Home Assistant alerts"),
     notifications = _("Latest notifications") }
 
 --- The parts in their order: as set (sleep_widgets_order), the others after in the usual order.
@@ -2086,7 +2023,19 @@ function View.drawWidgets(apps, c)
             local clock = string.format(twelve and "%d:%02d" or "%02d:%02d", hour, now.min)
             local w = c:text(46, yy + 78, clock, 56, { bold = true }) or 0
             if twelve then c:text(46 + w + 8, yy + 78, now.hour < 12 and "AM" or "PM", 18, { bold = true }) end
-            c:text(48, yy + 110, os.date("%A, %B ") .. now.day, 14, { color = C.GREY })
+            local date = os.date("%A, %B ") .. now.day
+            c:text(48, yy + 110, date, 14, { color = C.GREY })
+            -- The weather beside the time (Home Assistant's or Open-Meteo's, as set): now, then today's high and low.
+            local okW, w = pcall(function() return require("appsweather").now(apps) end)
+            if okW and w and (w.temp or w.text) then
+                local temp = w.temp or ""
+                local tw = c:width(temp, 22)
+                c:text(c.W - 46, yy + 86, temp, 22, { bold = true, align = "end" })
+                c:icon(w.alert and "triangle-alert" or w.icon, c.W - 46 - tw - 34, yy + 64, 26)
+                local line = (w.alert or w.text or "") .. (w.high and ("  \u{00B7}  " .. w.high .. " / " .. (w.low or "–")) or "")
+                c:text(c.W - 46, yy + 110, line, 11.5, { align = "end", color = C.GREY, bold = w.alert ~= nil,
+                    maxw = c.W - 92 - c:width(date, 14) - 24 })
+            end
             local powerd = Device:getPowerDevice()
             local battery = powerd and try(function() return powerd:getCapacity() end)
             local charging = powerd and try(function() return powerd:isCharging() end)
@@ -2103,6 +2052,7 @@ function View.drawWidgets(apps, c)
     parts.book = function()
         -- The book open now (its page, in memory), else the launcher's last recent book.
         local file, title, pct
+        local lines = {}
         local ReaderUI = package.loaded["apps/reader/readerui"]
         local ui = ReaderUI and ReaderUI.instance
         if ui and ui.document then
@@ -2110,13 +2060,23 @@ function View.drawWidgets(apps, c)
             local props = ui.doc_props or {}
             title = props.display_title or props.title
             pct = try(function() return math.floor(ui:getCurrentPage() / ui.document:getPageCount() * 100 + 0.5) end)
+            -- The chapter, the page, and from KOReader's reading statistics (in memory) the time
+            -- left at this pace and the time read.
+            lines = try(function()
+                local page, st = ui:getCurrentPage(), ui.statistics
+                return Model.bookLines{ page = page, pages = ui.document:getPageCount(),
+                    chapter = ui.toc and try(function() return ui.toc:getTocTitleByPage(page) end),
+                    chapterLeft = ui.toc and try(function() return ui.toc:getChapterPagesLeft(page) end),
+                    avg = st and st.avg_time,
+                    read = st and st.book_read_time and (st.book_read_time + (st.mem_read_time or 0)) }
+            end) or {}
         end
         local r = recent[1]
         if not file and r then file, title, pct = r.file, r.title, r.percent end
         if file then
             if not title or title == "" then title = Model.bookName(file) end
             pct = pct or 0
-            card(120, function(yy)
+            card(120 + #lines * 26, function(yy)
                 heading(yy, _("READING"))
                 local img = cachedCover(file, c:X(54), c:X(76))
                 if img then
@@ -2130,6 +2090,9 @@ function View.drawWidgets(apps, c)
                 c:box(116, yy + 76, c.W - 210, 8, { r = 4, border = C.BLACK })
                 if pct > 0 then c:box(117, yy + 77, (c.W - 212) * math.min(100, pct) / 100, 6, { r = 3, fill = C.BLACK }) end
                 c:text(c.W - 46, yy + 86, pct .. "%", 11, { align = "end", color = C.GREY })
+                for i, line in ipairs(lines) do
+                    c:text(116, yy + 92 + i * 26, line, 11.5, { color = C.GREY, maxw = c.W - 162 })
+                end
             end)
         end
     end
@@ -2145,8 +2108,9 @@ function View.drawWidgets(apps, c)
                 for i = 1, n do
                     local t, ty = list[i], yy + 38 + (i - 1) * 32
                     c:box(46, ty + 4, 18, 18, { r = 4, border = C.BLACK, bw = 1.3 })
-                    c:text(76, ty + 19, t.title, 13, { maxw = c.W - 210 })
-                    if t.overdue then c:text(c.W - 46, ty + 19, _("Overdue"), 11, { bold = true, align = "end" }) end
+                    local due = overdueText(t)
+                    c:text(76, ty + 19, t.title, 13, { maxw = c.W - 122 - (due and c:width(due, 11) + 16 or 0) })
+                    if due then c:text(c.W - 46, ty + 19, due, 11, { bold = true, align = "end" }) end
                 end
             end)
         end
@@ -2167,6 +2131,30 @@ function View.drawWidgets(apps, c)
                 for i = 1, n do c:text(76, yy + 56 + i * 26, lines[i], 12, { maxw = c.W - 130 }) end
             end)
         end
+    end
+    parts.forecast = function()
+        -- The next hours, then the next days, each a column: when, its icon, the temperature(s), the chance of rain.
+        local n = math.max(4, math.min(8, math.floor((c.W - 92) / 84)))
+        local okF, f = pcall(function() return require("appsweather").forecast(apps, n) end)
+        if not (okF and f) then return end
+        local rows = {}
+        if #f.hours > 0 then table.insert(rows, { list = f.hours, hours = true }) end
+        if #f.days > 0 then table.insert(rows, { list = f.days }) end
+        card(38 + #rows * 96, function(yy)
+            heading(yy, _("FORECAST"), agoText(f.at))
+            local cw = (c.W - 92) / n
+            for r, row in ipairs(rows) do
+                local ry = yy + 38 + (r - 1) * 96
+                if r > 1 then c:hline(46, ry - 4, c.W - 92) end
+                for i, e in ipairs(row.list) do
+                    local x = 46 + (i - 1) * cw + cw / 2
+                    c:text(x, ry + 16, e.label, 10.5, { align = "middle", color = C.GREY })
+                    c:icon(e.icon, x - 11, ry + 24, 22)
+                    c:text(x, ry + 66, row.hours and e.temp or (e.high .. " / " .. e.low), row.hours and 12 or 11, { align = "middle", bold = true, maxw = cw - 4 })
+                    if e.rain and e.rain > 0 then c:text(x, ry + 84, e.rain .. "%", 10, { align = "middle", color = C.GREY }) end
+                end
+            end
+        end)
     end
     parts.notifications = function()
         local okN, Notify = pcall(require, "appsnotify")
@@ -2314,6 +2302,12 @@ function View:settingsRows()
             local text = on and _("On") or _("Off")
             return own > 0 and T(_("%1 · %2 apps differ"), text, own) or text
         end)(), function() View.buttonLabels(self) end },
+        -- The bar at the foot of every app's pages when there are several (appscanvas.lua's Flow:pages).
+        { _("Page bar"), View.pageBarName(require("appscanvas").pageBar()), pick = function()
+            local out = {}
+            for __, v in ipairs({ "parts", "next", "words" }) do table.insert(out, { View.pageBarName(v), v }) end
+            return out, require("appscanvas").pageBar(), function(v) G_reader_settings:saveSetting("apps_page_bar", v) end
+        end },
         { heading = _("HOME SCREEN") },
         { _("At a glance"), s.today ~= false, function() s.today = s.today == false and true or false end },
         { _("Quick buttons"), (function()
@@ -2392,6 +2386,14 @@ function View:settingsRows()
         end },
         { heading = _("START") },
         { _("Open at startup"), s.at_start == true, function() s.at_start = not s.at_start end },
+        -- A passcode or password before the apps you tick (appslock.lua): its own page.
+        { heading = _("APP LOCK") },
+        { _("App lock"), (function()
+            local l = require("appslock").get()
+            if not l:isSet() then return _("Off") end
+            local n = l:countLocked()
+            return n == 1 and _("On · 1 app") or T(_("On · %1 apps"), n)
+        end)(), function() require("appslock").showSettings() end },
         { heading = _("WI-FI") },
         { _("Turn off when idle"), View.wifiIdleName(s.wifi_idle), pick = function()
             local options = {}
@@ -2602,6 +2604,13 @@ function View.sleepAfterName(seconds) return require("appskosettings").sleepAfte
 function View:setSleepAfter(seconds) require("appskosettings").setSleepAfter(seconds) end
 
 
+--- The page bar's looks, in words: "parts", "next" or "words".
+function View.pageBarName(v)
+    if v == "next" then return _("Parts and Next") end
+    if v == "words" then return _("Words") end
+    return _("Numbered parts")
+end
+
 --- Settings > Launcher > Button labels: for every app, then each app on its own (As in
 -- Default (as for every app), On, Off). The shared pop-ups read it (appspopup.lua's labels()).
 function View.buttonLabels(view)
@@ -2609,7 +2618,7 @@ function View.buttonLabels(view)
     local PS = require("pluginshare")
     local function apps()
         local out = {}
-        for __, a in ipairs(Popup.LABEL_APPS) do
+        for __, a in ipairs(Popup.labelApps()) do
             if a.key == "apps" or view:plugin(a.plugin) then table.insert(out, a) end
         end
         return out

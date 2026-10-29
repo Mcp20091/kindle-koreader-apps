@@ -243,12 +243,25 @@ end
 local Flow = {}
 Flow.__index = Flow
 
--- The bar at the foot of a page with more after it: "More on page 2 of 3 ›".
+-- The bar at the foot of a page when there's more than one. How it looks is one setting for
+-- every app (Settings > Launcher > Page bar, apps_page_bar):
+--   "parts"  one part per page with its number, the page you're on filled; a tap on one goes there
+--   "next"   "Page 1 of 4" over thin parts (a tap goes there), and Next
+--   "words"  "Page 1 of 4 · Next page ›", only on a page with more after it
+-- With more than 12 pages, "parts" drops the numbers and adds the "Page 1 of 4" line.
 local MORE_H = 48
 
+--- The page bar's look: "parts" (the default), "next" or "words".
+function Canvas.pageBar()
+    local s = rawget(_G, "G_reader_settings")
+    local v = s and s:readSetting("apps_page_bar")
+    if v == "next" or v == "words" then return v end
+    return "parts"
+end
+
 --- Blocks from `top` to `bottom`; only page `want` is drawn. With the canvas's
--- `turn` (fn(delta), set by the page that draws it), a page with more after it
--- ends in a bar that turns to the next one (room kept for it at the foot).
+-- `turn` (fn(delta), set by the page that draws it), a page of several ends in the
+-- page bar (room kept for it at the foot).
 function Canvas:flow(top, bottom, want)
     return setmetatable({ c = self, top = top, bottom = bottom, y = top, page = 1, want = want or 1,
         room = self.turn and MORE_H or 0 }, Flow)
@@ -269,18 +282,53 @@ function Flow:gap(h)
     if self.y > self.top then self.y = self.y + h end
 end
 
---- How many pages (once every block is in); draws the bar to the next page on one with more after it.
+--- How many pages (once every block is in); draws the page bar when there's more than one.
 function Flow:pages()
-    if self.room > 0 and self.want < self.page and not self.barDone then
-        self.barDone = true
-        local c = self.c
-        local y = self.bottom - MORE_H + 6
-        local label = require("ffi/util").template(require("gettext")("More on page %1 of %2"), self.want + 1, self.page) .. "  \u{203A}"
-        c:box(14, y, c.W - 28, MORE_H - 10, { r = 8, border = Canvas.BLACK, bw = 1.5 })
-        c:text(c.W / 2, y + 25, label, 12, { align = "middle", bold = true })
-        c:hit(14, y, c.W - 28, MORE_H - 10, function() c.turn(1) end)
+    if self.room == 0 or self.barDone or self.page < 2 then return self.page end
+    self.barDone = true
+    local c, n, at = self.c, self.page, self.want
+    local style = Canvas.pageBar()
+    local T = require("ffi/util").template
+    local _ = require("gettext")
+    local y, h = self.bottom - MORE_H + 6, MORE_H - 10
+    local function go(k) return function() if k ~= at then c.turn(k - at) end end end
+    if style == "words" then
+        if at < n then
+            c:box(14, y, c.W - 28, h, { r = 8, border = Canvas.BLACK, bw = 1.5 })
+            c:text(c.W / 2, y + 25, T(_("Page %1 of %2 · Next page"), at, n) .. "  \u{203A}", 12, { align = "middle", bold = true })
+            c:hit(14, y, c.W - 28, h, go(at + 1))
+        end
+        return n
     end
-    return self.page
+    local x0, x1 = 14, c.W - 14
+    local numbered = style == "parts" and n <= 12
+    local py, ph = y, h
+    if not numbered then
+        c:text(14, y + 11, T(_("Page %1 of %2"), at, n), 9.5, { color = Canvas.GREY })
+        py, ph = y + 18, 16
+    end
+    if style == "next" then
+        local label = _("Next") .. "  \u{203A}"
+        local bw = c:width(label, 11.5, true) + 28
+        if at < n then
+            c:box(x1 - bw, y + 4, bw, h - 4, { r = 8, border = Canvas.BLACK, bw = 1.5 })
+            c:text(x1 - bw / 2, y + 26, label, 11.5, { align = "middle", bold = true })
+            c:hit(x1 - bw, y, bw, h + 4, go(at + 1))
+        end
+        x1 = x1 - bw - 10
+    end
+    local gap = n > 12 and 3 or 6
+    local w = (x1 - x0 - (n - 1) * gap) / n
+    for k = 1, n do
+        local x = x0 + (k - 1) * (w + gap)
+        local on = k == at
+        c:box(x, py, w, ph, { r = math.min(6, ph / 2), fill = on and Canvas.FILL or Canvas.WHITE, border = Canvas.BLACK, bw = 1.3 })
+        if numbered then
+            c:text(x + w / 2, py + ph / 2 + 5, tostring(k), 12, { align = "middle", bold = true, color = on and Canvas.ON_FILL or Canvas.BLACK })
+        end
+        c:hit(x, y, w + gap, h + 4, go(k))
+    end
+    return n
 end
 
 return Canvas

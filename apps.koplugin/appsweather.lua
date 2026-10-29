@@ -300,7 +300,10 @@ function Weather.now(apps, view)
         if not okM then return nil end
         local w = p.snap.weather
         local text, icon = M.weather(w.state)
-        if p.loadForecast then pcall(p.loadForecast, p) end
+        -- (Its hours too while the widgets sleep screen shows the forecast, so they're there at sleep.)
+        local s = apps.settings or {}
+        local hours = G_reader_settings:readSetting("sleep_screen_app") == "widgets" and not (s.sleep_widgets and s.sleep_widgets.forecast == false)
+        if p.loadForecast then pcall(p.loadForecast, p, hours) end
         local f = p.forecast and p.forecast[1]
         return { temp = w.temp and M.formatTemp(w.temp), text = _(text), icon = icon,
             high = f and f.high and M.formatTemp(f.high), low = f and f.low and M.formatTemp(f.low),
@@ -359,6 +362,55 @@ local function hour(t)
     if require("appsko").twentyFour() then return os.date("%H", t) end
     local h = tonumber(os.date("%H", t))
     return ((h + 11) % 12 + 1) .. (h < 12 and "a" or "p")
+end
+
+--- The next hours and days from the source in use, as already fetched (nothing fetched here), up to n
+-- of each: { hours = { { label, icon, temp, rain } }, days = { { label, icon, high, low, rain } }, at }
+-- (days from tomorrow), or nil.
+function Weather.forecast(apps, n)
+    local now, out = os.time(), { hours = {}, days = {} }
+    local src = Weather.source(apps)
+    if src == "ha" then
+        local p = ha(apps)
+        local okM, M = pcall(require, "hamodel")
+        if not okM then return nil end
+        for __, f in ipairs(p.hourly or {}) do
+            local t = M.isoTime(f.day)
+            if t and t > now - 1800 and #out.hours < n then
+                local _t, icon = M.weather(f.condition)
+                table.insert(out.hours, { label = M.hourLabel(f.day, require("appsko").twentyFour()), icon = icon,
+                    temp = f.high and M.formatTemp(f.high) or "–", rain = f.rain })
+            end
+        end
+        local today = os.date("%Y-%m-%d")
+        for __, f in ipairs(p.forecast or {}) do
+            local t = M.isoTime(f.day)
+            if t and os.date("%Y-%m-%d", t) > today and #out.days < n then
+                local _t, icon = M.weather(f.condition)
+                table.insert(out.days, { label = os.date("%a", t), icon = icon, high = f.high and M.formatTemp(f.high) or "–",
+                    low = f.low and M.formatTemp(f.low) or "–", rain = f.rain })
+            end
+        end
+        out.at = p.forecastAt
+    elseif src == "openmeteo" then
+        local d = Weather.data(apps)
+        if not d then return nil end
+        for __, hh in ipairs(d.hourly or {}) do
+            if hh.t > now - 1800 and #out.hours < n then
+                local _t, icon = Weather.code(hh.code, not hh.day)
+                table.insert(out.hours, { label = hour(hh.t), icon = icon, temp = deg(hh.temp), rain = hh.rain })
+            end
+        end
+        for i, day in ipairs(d.daily or {}) do
+            if i > 1 and #out.days < n then
+                local _t, icon = Weather.code(day.code)
+                table.insert(out.days, { label = os.date("%a", day.t), icon = icon, high = deg(day.high), low = deg(day.low), rain = day.rain })
+            end
+        end
+        out.at = d.at
+    end
+    if #out.hours == 0 and #out.days == 0 then return nil end
+    return out
 end
 
 function Weather.draw(view, c)

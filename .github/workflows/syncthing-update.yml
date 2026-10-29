@@ -1,0 +1,129 @@
+# A newer Syncthing release, made ready to try: every week (or run by hand, Actions > Syncthing update >
+# Run workflow) this looks for a Syncthing release newer than the one pinned on test. When there is one,
+# it puts test plus the update (syncthing.koplugin/tools/update-syncthing.sh: the signed checksums, the
+# program, the notices) on the test-syncthing branch, tags it with the next free test tag (v1.0.15-testN,
+# like tools/test-release.sh), has the Release workflow build that pre-release (Settings > Updates >
+# Select version on the Kindle), and opens a pull request into test (or, where Actions may not open pull
+# requests, an issue with the link to open it). A version already on test-syncthing isn't made again.
+# (A schedule runs from main: this starts every week once main has this file.)
+name: Syncthing update
+
+on:
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: A Syncthing version (vX.Y.Z); empty for its latest release
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: syncthing-update
+
+env:
+  BASE: test
+  BRANCH: test-syncthing
+
+jobs:
+  update:
+    if: github.repository == 'Mcp20091/kindle-koreader-apps'
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.BASE }}
+          fetch-depth: 0
+
+      - name: The update
+        id: update
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          old=$(sed -n 's/^VERSION=//p' syncthing.koplugin/tools/fetch-syncthing.sh)
+          bash syncthing.koplugin/tools/update-syncthing.sh $VERSION
+          new=$(sed -n 's/^VERSION=//p' syncthing.koplugin/tools/fetch-syncthing.sh)
+          echo "old=$old" >> "$GITHUB_OUTPUT"
+          echo "new=$new" >> "$GITHUB_OUTPUT"
+          if [ "$new" = "$old" ]; then
+            echo "$BASE has the latest Syncthing ($old): nothing to do"
+          elif git fetch -q origin "$BRANCH" 2>/dev/null &&
+               [ "$(git show FETCH_HEAD:syncthing.koplugin/tools/fetch-syncthing.sh | sed -n 's/^VERSION=//p')" = "$new" ]; then
+            echo "$BRANCH already has Syncthing $new: nothing to do"
+          else
+            echo "make=yes" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: The branch, checked
+        if: steps.update.outputs.make == 'yes'
+        env:
+          OLD: ${{ steps.update.outputs.old }}
+          NEW: ${{ steps.update.outputs.new }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add syncthing.koplugin/syncthing syncthing.koplugin/tools/fetch-syncthing.sh \
+            syncthing.koplugin/SYNCTHING-NOTICE.txt tools/SYNCTHING-NOTICE.txt \
+            syncthing.koplugin/README.md syncthing.koplugin/version.txt
+          git commit -q -m "Syncthing: the Kindle's program is Syncthing $NEW (was $OLD), as released and checked"
+          # (A workflow's own push doesn't start the Privacy workflow, so its check runs here.)
+          python3 tools/privacy_check.py --range "origin/$BASE..HEAD"
+          git push -q --force origin "HEAD:refs/heads/$BRANCH"
+
+      - name: The tag
+        id: tag
+        if: steps.update.outputs.make == 'yes'
+        env:
+          OLD: ${{ steps.update.outputs.old }}
+          NEW: ${{ steps.update.outputs.new }}
+        run: |
+          base=$(git tag -l 'v*' | grep -v -- - | sort -V | tail -1)
+          n=$(git tag -l "$base-test*" | sed -E "s/^$base-test//" | grep -E '^[0-9]+$' | sort -n | tail -1 || true)
+          tag="$base-test$(( ${n:-0} + 1 ))"
+          {
+            echo "Test release from the $BRANCH branch: $BASE with Syncthing $NEW, not a finished release."
+            echo
+            echo "- Syncthing: the Kindle's program is Syncthing $NEW (was $OLD), as released and checked"
+            echo "- What's new in Syncthing: https://github.com/syncthing/syncthing/releases/tag/$NEW"
+          } > "$RUNNER_TEMP/notes.md"
+          python3 tools/privacy_check.py --text "$RUNNER_TEMP/notes.md"
+          git tag -a "$tag" -F "$RUNNER_TEMP/notes.md"
+          git push -q origin "refs/tags/$tag"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "tagged: $tag on $BRANCH"
+
+      - name: The pull request (or an issue)
+        if: steps.update.outputs.make == 'yes'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OLD: ${{ steps.update.outputs.old }}
+          NEW: ${{ steps.update.outputs.new }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          title="Syncthing $NEW (was $OLD)"
+          body="The Kindle's program moved to Syncthing $NEW, its checksums from the release's signed sha256sum.txt.asc (syncthing.koplugin/tools/update-syncthing.sh). To try it: Settings > Updates > Select version > $TAG (test). What's new in Syncthing: https://github.com/syncthing/syncthing/releases/tag/$NEW"
+          if [ -n "$(gh pr list --head "$BRANCH" --base "$BASE" --state open --json number -q '.[].number')" ]; then
+            echo "the pull request from $BRANCH is open already (now with $NEW)"
+          elif gh pr create --head "$BRANCH" --base "$BASE" --title "$title" --body "$body"; then
+            :
+          else
+            gh issue create --title "$title" --body "$body
+
+          Actions may not open pull requests in this repo, so open it here: https://github.com/${{ github.repository }}/compare/$BASE...$BRANCH"
+          fi
+
+  release:
+    needs: update
+    if: needs.update.outputs.tag != ''
+    uses: ./.github/workflows/release.yml
+    with:
+      tag: ${{ needs.update.outputs.tag }}
+    permissions:
+      contents: write

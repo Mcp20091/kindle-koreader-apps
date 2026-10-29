@@ -21,6 +21,10 @@ center, pop-ups and Undo. It adds the title bar over books and the library, and 
 - `appsview.lua`: the launcher screen and its modes (`tiles`, `hub`, `page`, `switcher`, search).
   It also draws the widgets sleep screen (its parts in `View.widgetOrder`: the `sleep_widgets_order` setting, the
   web page's order; `sleep_widgets` turns each off).
+- `appsinfo.lua`: what each app says about itself (`PS.appInfo`: tiles, order, groups, gestures,
+  notifications' names, Button labels, web tab), read by the model, the Settings list, the switcher,
+  the notifications, the pop-ups and the shared menus. No app is named in the launcher's lists:
+  `Model.TILES` has `{ apps = true }` where the apps' tiles go.
 - `appsmodel.lua`: tiles, their order and their lines. Plain Lua with no KOReader modules, so the
   tests can run it.
 - `appscanvas.lua`: drawing in units. The short side of the screen is 620 units, so on a Kindle
@@ -67,7 +71,7 @@ center, pop-ups and Undo. It adds the title bar over books and the library, and 
 - AI for this (`PS.ai.quickPick(jobOrFeatureKey)`): the service and a model for that one job. Give every AI button in the shared boxes `aiJob = key` (a hold opens it), and call it from a hold on your own AI buttons.
 - `appshandwrite.lua` and `appspen.lua`: handwriting input for every app's text boxes (`PS.handwriting`).
 - `appsfonts.lua` (fonts: list, add, remove with Undo, default, Google Fonts in a child process; the
-  web page's Fonts tab calls it too) and `appsfontsview.lua` (the Fonts screen, mode `fonts`, and its Get fonts page, mode `fontsget`).
+  web page's Fonts tab calls it too) and `appsfontsview.lua` (the Fonts screen, mode `fonts`, in three tabs: `view.fontsTab` mine, get, settings, each with its own page), and `appsgooglefonts.lua` (every Google Fonts family to browse: its catalogue fetched in a child process and kept short in the cache, then searched in memory; the web page uses it too).
 - `appsai.lua` (AI for every app: the services, their keys in `ai_secrets.lua` and settings in
   `G_reader_settings` "apps_ai", which service does each job, each feature's instructions, Try a prompt,
   Test connection's "ai", `AI.ask` in a child process; moved once from Notes' settings and
@@ -134,6 +138,15 @@ Plugins load in alphabetical order, so Apps is first. Other plugins must still c
   your Kindle. `help = { button, title, steps = { … }, after, guide }` adds a "How to…" page: the
   short steps, numbered, and a QR code of `Setup.GUIDE_URL .. guide` (the public repo's guide folder;
   change it there if the repo moves). `PS.showSetup()`.
+- App lock (`appslock.lua`): every app with a tile in `PS.appInfo` is listed (`Lock.apps`; a
+  `PS.lockApps.<key> = { key, name, plugin }` entry adds one by hand). `PS.lock.ask(key, fn)` (true:
+  the passcode is up, return; fn runs once it's right) at the top of an app's show; `PS.lock.run(key,
+  fn)` runs fn now or after the passcode. The core is plain Lua, tested (`Lock.new{ store, now, hash,
+  random }`); the keypad is `Popup.keypad` in appspopup.lua, or the password box; Settings > Launcher >
+  App lock is `Lock.rows`; the cover at sleep shows at wake when there's a sleep screen (on a Kindle
+  it's drawn before the Suspend event). The launcher guards tiles, Recent apps (appsswitcher),
+  notifications (appsnotify), search (appssearch), quick buttons (appsquick), its Settings screens
+  (`View:lockSettings`) and `PS.showSettings`. `tests/check_app_lock.py` checks every app asks.
 - `PS.noteRecent(key)` puts an app first in Recent apps (call it when the app opens).
   `PS.showSwitcher()`.
 - `PS.showControlCenter(koMenu)`, `PS.appsHome()` (the ⌂ button), `PS.appsView()`.

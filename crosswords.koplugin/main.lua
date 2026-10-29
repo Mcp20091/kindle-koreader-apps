@@ -46,6 +46,15 @@ function Crosswords:init()
     self.ui.menu:registerToMainMenu(self)
     -- The launcher's Settings list and search (when the launcher is installed).
     local PS = require("pluginshare")
+    -- What it is for the launcher and the web page: its tiles, Settings group, web tab
+    -- (apps.koplugin/appsinfo.lua).
+    PS.appInfo = PS.appInfo or {}
+    PS.appInfo.crosswords = { name = _("Crosswords"), icon = "newspaper", dir = self.path, order = 40, group = "writing",
+        explore = _("Daily crosswords to solve with the pen"),
+        tiles = { { key = "crosswords", icon = "grid-3x3", event = "ShowCrosswords",
+            line = function(c) return c:appsLine() end } },
+        web = { page = "crosswords", routes = "webcrosswords", script = "web/crosswords.js",
+            card = "Puzzle books, and getting new crosswords." } }
     if PS.registerSettings then
         PS.registerSettings{ key = "crosswords", name = _("Crosswords"), icon = "newspaper", open = function()
             local notes = self:notes()
@@ -122,6 +131,23 @@ function Crosswords:onTodaysCrossword()
     local notes = self:notes()
     if notes then notes:todaysCrossword() end
     return true
+end
+
+--- The launcher's tile line: today's puzzle, "Guardian · Wed 21 Oct · Started", or
+-- "Not downloaded yet".
+function Crosswords:appsLine()
+    local notes = self.ui.notes
+    if not (notes and notes.todaysCrosswordInfo) then return "" end
+    local info = notes:todaysCrosswordInfo() or {}
+    local parts = { info.name }
+    if not info.have then
+        table.insert(parts, _("Not downloaded yet"))
+    else
+        if info.day then table.insert(parts, os.date("!%a %d %b", info.day * 86400)) end
+        local states = { new = _("New"), started = _("Started"), done = _("Done") }
+        table.insert(parts, states[info.state])
+    end
+    return table.concat(parts, " \u{00B7} ")
 end
 
 return Crosswords

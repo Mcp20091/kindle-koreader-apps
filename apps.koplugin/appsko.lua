@@ -26,13 +26,17 @@ function KO.notOurs(id)
     return not (id:find("^tap_") or id:find("^hold_") or id:find("^double_tap_") or id == "short_diagonal_swipe")
 end
 
---- Gesture actions that make sense over these apps (by name). Others open
+--- Gesture actions that make sense over these apps (by name): KOReader's own
+-- here, the launcher's, and each app's as it says (appsinfo.lua). Others open
 -- the library's folders or a book's menus over them.
-local OVER_APPS = { "frontlight", "warmth", "refresh", "night_mode", "wifi", "screenshot",
-    "^apps_", "^notes_", "^todo_", "^homeassistant_", "^webpage_", "^wikipedia_", "^syncthing_", "^toggle_syncthing_server$", "^sshclient_", "^flashforge_", "^pangolin_" }
+local OVER_APPS = { "frontlight", "warmth", "refresh", "night_mode", "wifi", "screenshot", "^apps_" }
 
 local function overApp(name)
     for __, pat in ipairs(OVER_APPS) do
+        if name:find(pat) then return true end
+    end
+    local ok, pats = pcall(function() return require("appsinfo").gestures() end)
+    for __, pat in ipairs(ok and pats or {}) do
         if name:find(pat) then return true end
     end
     return false

@@ -1,6 +1,6 @@
-2026-10-25 21:08
+2026-10-27 23:58
+Oct 27  To Do: App lock (Settings > Launcher > App lock) asks before it opens, from the Tools menu and gestures too
+Oct 27  To Do: says what it is to the launcher and the web page (its tile and line, its web tab, now in this folder)
 Oct 25  A screen closed during a KOReader gesture's action no longer hands its close on to the file browser (which tore itself down: Home Assistant, the web server and the other apps stopped answering until a restart)
 Oct 25  To Do: snooze a reminder for a custom time (a number of minutes, hours or days)
 Oct 25  Title bar: a hold works its buttons as a tap (a firm pen press lasts long enough to be a hold)
-Oct 25  Reminders: Snooze (15, 30 min, 1, 3 hours, tomorrow 9 AM), the shared pop-up with Snooze, Open and Done; a tap in Notifications shows it again
-Oct 25  Send changes: how long after the last change they go out (2 s at least)

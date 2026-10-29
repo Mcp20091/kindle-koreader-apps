@@ -225,24 +225,22 @@ App.pages.system = {
       p.show('KOReader hasn’t answered yet. Once the Kindle shows its library again, start the web server there and reload this page.', null, true);
     }
 
-    // Updates from GitHub, as on the Kindle (Settings > Updates): the repo, and once it's typed
-    // its releases and branches to pick from; the one picked is installed with its progress.
+    // Updates, as on the Kindle (Settings > Updates): the repository updates come from, a version
+    // to install (test versions too with Show test versions on, past a warning), and the optional
+    // apps with Install or Remove. A Kindle installed from a branch (as could be done before) gets
+    // Back to the releases.
     function githubCard() {
-      const box = h('div', { class: 'card stack', style: 'margin-top:16px' }, h('h2', {}, 'Update from GitHub'));
+      const box = h('div', { class: 'card stack', style: 'margin-top:16px' }, h('h2', {}, 'Updates'));
       App.api('/api/update').then((u) => {
         if (!u.launcher) { box.append(h('p', { class: 'muted small' }, 'Needs the launcher (apps.koplugin).')); return; }
-        const repo = h('input', { type: 'text', value: u.repo, placeholder: u.default, spellcheck: false, style: 'flex:1;min-width:220px' });
-        const pick = h('select', { disabled: true, style: 'flex:1;min-width:220px' }, h('option', {}, 'Looking up…'));
+        const repo = h('input', { type: 'text', value: u.repo, placeholder: 'owner/repository, such as ' + u.default, spellcheck: false, style: 'min-width:260px' });
+        const version = h('select', { disabled: true, style: 'min-width:200px' }, h('option', {}, 'Looking up…'));
+        const versionGo = h('button', { class: 'btn primary', disabled: true }, 'Install');
         const note = h('div', { class: 'small muted' });
-        const go = h('button', { class: 'btn primary', disabled: true }, 'Install');
         const p = installProgress();
-        // The optional apps of the version picked: each with Install, or Update and Remove.
         const also = h('div', { class: 'small muted' });
         const optional = h('div', { class: 'list-rows' });
-        const chosen = () => {
-          const [kind, ...rest] = pick.value.split(':');
-          return kind === 'branch' ? { branch: rest.join(':') } : { tag: rest.join(':') };
-        };
+        const repoName = () => repo.value.trim() || u.default;
         const busy = (on) => { for (const el of box.querySelectorAll('button, select, input')) el.disabled = on; };
         const run = async (start) => {
           busy(true);
@@ -253,83 +251,114 @@ App.pages.system = {
           } catch (e) { p.show(e.message, 0, true); }
           busy(false);
         };
-        let oseq = 0;
+        // The optional apps of the test version installed, else of the latest release.
+        let oseq = 0, latest = null, optTag = null;
         const lookOptional = async () => {
           const mine = ++oseq;
           also.textContent = '';
-          optional.replaceChildren(h('div', { class: 'small muted' }, 'Looking up the optional apps…'));
+          optional.replaceChildren(h('div', { class: 'small muted' }, 'Looking them up…'));
+          const from = { tag: optTag };
           try {
-            let o = await App.api('/api/update/optional', { json: chosen() });
+            let o = await App.api('/api/update/optional', { json: from });
             while (o.pending && mine === oseq) { await sleep(1000); o = await App.api('/api/update/optional'); }
             if (mine !== oseq) return;
             if (o.error) throw new Error(o.error);
             const apps = App.arr(o.apps);
             const mine2 = apps.filter((a) => a.installed).map((a) => a.title);
             also.textContent = mine2.length ? 'Also updates: ' + mine2.join(', ') + '.' : '';
-            optional.replaceChildren(h('div', { class: 'group-head' }, 'Optional apps (from ' + o.tag + ')'));
-            if (!apps.length) optional.append(h('div', {}, h('span', { class: 'small muted grow' }, 'None in this version.')));
+            optional.replaceChildren();
+            if (!apps.length) optional.append(h('div', {}, h('span', { class: 'small muted grow' }, 'None in ' + o.tag + '.')));
             for (const a of apps) {
-              const sel = chosen();
               optional.append(h('div', {},
-                h('span', { class: 'grow' }, h('div', {}, a.title), a.description ? h('div', { class: 'small muted' }, a.description) : null,
-                  h('div', { class: 'small' }, a.installed ? 'Installed' : 'Not installed')),
-                h('button', { class: 'btn small' + (a.installed ? '' : ' primary'), onclick: async () => {
-                  if (!await App.confirm((a.installed ? 'Update ' : 'Install ') + a.title, (a.installed ? 'Update ' : 'Install ') + a.title + ' from ' + o.tag + '? KOReader restarts afterwards.', a.installed ? 'Update' : 'Install')) return;
-                  run(() => App.api('/api/update/install', { json: { ...sel, optional: a.folder } }));
-                } }, a.installed ? 'Update' : 'Install'),
-                a.installed ? h('button', { class: 'btn small danger', onclick: async () => {
-                  if (!await App.confirm('Remove ' + a.title, a.title + ' is taken off the Kindle. Update plugins (below) can bring it back. KOReader restarts afterwards.', 'Remove', true)) return;
-                  run(() => App.api('/api/update/remove', { json: { folder: a.folder } }));
-                } }, 'Remove') : null));
+                h('span', { class: 'grow' }, h('div', {}, a.title), a.description ? h('div', { class: 'small muted' }, a.description) : null),
+                // (Installed but older than the launcher, so it has no tile: Update, not Remove.)
+                a.old
+                  ? h('button', { class: 'btn small primary', onclick: async () => {
+                      if (!await App.confirm('Update ' + a.title, 'This copy of ' + a.title + ' is older than the launcher, so it has no tile. Install it again from ' + o.tag + '? KOReader restarts after.', 'Update')) return;
+                      run(() => App.api('/api/update/install', { json: { ...from, optional: a.folder } }));
+                    } }, 'Update')
+                : a.installed
+                  ? h('button', { class: 'btn small danger', onclick: async () => {
+                      if (!await App.confirm('Remove ' + a.title, a.title + ' is taken off the Kindle; Undo a plugin update can bring it back. KOReader restarts after.', 'Remove', true)) return;
+                      run(() => App.api('/api/update/remove', { json: { folder: a.folder } }));
+                    } }, 'Remove')
+                  : h('button', { class: 'btn small primary', onclick: async () => {
+                      if (!await App.confirm('Install ' + a.title, (a.description ? a.description + ' ' : '') + 'From ' + o.tag + '. KOReader restarts after.', 'Install')) return;
+                      run(() => App.api('/api/update/install', { json: { ...from, optional: a.folder } }));
+                    } }, 'Install')));
             }
           } catch (e) {
             if (mine !== oseq) return;
-            optional.replaceChildren(h('div', {}, h('span', { class: 'small muted grow' }, 'Couldn’t look up the optional apps: ' + e.message)));
+            optional.replaceChildren(h('div', {}, h('span', { class: 'small muted grow' }, 'Couldn’t look them up: ' + e.message)));
           }
         };
-        pick.addEventListener('change', lookOptional);
         let seq = 0;
         const look = async () => {
           const mine = ++seq;
-          pick.disabled = go.disabled = true;
-          pick.replaceChildren(h('option', {}, 'Looking up ' + (repo.value.trim() || u.default) + '…'));
+          for (const el of [version, versionGo]) el.disabled = true;
+          version.replaceChildren(h('option', {}, 'Looking up ' + repoName() + '…'));
           note.textContent = '';
           try {
             let l = await App.api('/api/update/list', { json: { repo: repo.value } });
             while (l.pending && mine === seq) { await sleep(1000); l = await App.api('/api/update/list'); }
             if (mine !== seq) return;
             if (l.error) throw new Error(l.error);
-            const rel = App.arr(l.releases), br = App.arr(l.branches);
-            const latest = (rel.find((r) => !r.pre) || {}).tag;
-            const opts = [];
-            if (rel.length) opts.push(h('optgroup', { label: 'Releases' }, rel.map((r) => h('option', { value: 'tag:' + r.tag },
-              r.tag + (r.tag === latest ? ' · latest' : '') + (r.pre ? ' · test' : '') + (r.tag === u.installed ? ' · installed' : '')))));
-            if (br.length) opts.push(h('optgroup', { label: 'Branches' }, br.map((b) => h('option', { value: 'branch:' + b.name },
-              b.name + ' @ ' + String(b.sha || '').slice(0, 7) + (u.installed && u.installed === b.name + ' @ ' + String(b.sha || '').slice(0, 7) ? ' · installed' : '')))));
-            if (!opts.length) { pick.replaceChildren(h('option', {}, 'Nothing to install')); note.textContent = l.repo + ' has no releases with kindle-plugins.zip and no branches.'; return; }
-            pick.replaceChildren(...opts);
-            pick.disabled = go.disabled = false;
-            note.textContent = 'A branch is the code as it is now, not a release: it may not be finished.';
-            lookOptional();
+            // (Test versions only with Show test versions on, or the one installed.)
+            const all = App.arr(l.releases);
+            const rel = all.filter((r) => !r.pre || u.tests || (!u.branch && r.tag === u.installed));
+            latest = (all.find((r) => !r.pre) || {}).tag || null;
+            optTag = !u.branch && u.installed && u.installed.includes('-') && all.some((r) => r.tag === u.installed) ? u.installed : latest;
+            if (rel.length) {
+              version.replaceChildren(...rel.map((r) => h('option', { value: r.tag },
+                r.tag + (r.tag === latest ? ' · latest' : '') + (r.pre ? ' · test' : '') + (!u.branch && r.tag === u.installed ? ' · installed' : ''))));
+              if (latest) version.value = latest;
+            } else {
+              version.replaceChildren(h('option', {}, 'No releases'));
+              note.textContent = l.repo + ' has no releases with kindle-plugins.zip.';
+            }
+            version.disabled = versionGo.disabled = !rel.length;
+            if (back) back.disabled = !latest;
+            if (optTag) lookOptional();
           } catch (e) {
             if (mine !== seq) return;
-            pick.replaceChildren(h('option', {}, 'Couldn’t look it up'));
+            version.replaceChildren(h('option', {}, 'Couldn’t look it up'));
             note.textContent = e.message;
           }
         };
         let t;
         repo.addEventListener('input', () => { clearTimeout(t); t = setTimeout(look, 800); });
-        go.addEventListener('click', async () => {
-          const [kind, ...rest] = pick.value.split(':');
-          const what = rest.join(':');
-          if (!await App.confirm('Install ' + what, 'Download ' + (kind === 'branch' ? 'the ' + what + ' branch' : what) + ' from ' + (repo.value.trim() || u.default)
-            + ' and install it? KOReader restarts afterwards. Installed now: ' + (u.installed || 'not known') + '.', 'Install')) return;
-          run(() => App.api('/api/update/install', { json: kind === 'branch' ? { branch: what } : { tag: what } }));
+        // (Installed from a branch: back to the latest release.)
+        const back = u.branch ? h('button', { class: 'btn', disabled: true, onclick: async () => {
+          if (!latest) return;
+          if (!await App.confirm('Install ' + latest, 'Back to the releases: ' + latest + ' is installed in place of the ' + u.branch + ' branch, and updates come from the releases again. KOReader restarts after.', 'Install')) return;
+          run(() => App.api('/api/update/install', { json: { tag: latest } }));
+        } }, 'Back to the releases') : null;
+        // Show test versions: on only past a warning, as on the Kindle.
+        const tests = App.toggle(!!u.tests, async (on) => {
+          if (on && !await App.confirm('Show test versions', 'Test versions are for trying changes before they’re released. They may have bugs or be unfinished, and aren’t offered as updates: you pick one in Select version. Select version or Undo a plugin update takes you back to a release.', 'Show them')) {
+            tests.querySelector('input').checked = false;
+            return;
+          }
+          try {
+            u.tests = (await App.api('/api/update/tests', { json: { on } })).tests;
+          } catch (e) { tests.querySelector('input').checked = !on; note.textContent = e.message; return; }
+          look();
         });
-        box.append(
-          h('p', { class: 'muted small' }, 'Installed: ' + (u.installed || 'not known') + '. Type a repo (owner/repo) and its releases and branches show to pick from. '
-            + 'Everything is checked before anything is put in place; the version replaced is kept (Update plugins, below, can go back).'),
-          h('div', { class: 'row' }, repo), h('div', { class: 'row' }, pick, go), also, note, optional, p.panel);
+        versionGo.addEventListener('click', async () => {
+          const tag = version.value;
+          if (!await App.confirm('Install ' + tag, 'Download ' + tag + ' from ' + repoName() + ' and install it? KOReader restarts after. Installed now: ' + (u.installed || 'not known') + '.', 'Install')) return;
+          run(() => App.api('/api/update/install', { json: { tag } }));
+        });
+        box.append(...[
+          h('p', { class: 'muted small' }, 'Installed: ' + (u.installed || 'not known') + '. Everything is checked before anything is put in place; the version replaced is kept (Undo a plugin update can go back).'),
+          App.setting('Repository', repo),
+          back ? App.setting('Branch', back, 'This Kindle has the ' + u.branch + ' branch. Updates come from its newer commits until it goes back to the releases.') : null,
+          App.setting('Select version', h('div', { class: 'row' }, version, versionGo), 'The latest or a previous one.'),
+          App.setting('Show test versions', tests, 'Versions for trying changes before they’re released, in Select version.'),
+          also, note,
+          h('div', { class: 'group-head' }, 'Optional apps'),
+          h('div', { class: 'small muted' }, 'Install optional apps here. Once installed, they update automatically with each new version of the primary apps.'),
+          optional, p.panel].filter(Boolean));
         look();
       }, () => box.append(h('p', { class: 'muted small' }, 'Not available.')));
       return box;

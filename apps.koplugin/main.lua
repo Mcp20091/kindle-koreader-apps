@@ -53,6 +53,11 @@ do
     -- The shared helpers (menus, pop-ups, the light…): the other apps' copies hand over to these.
     PS.ko = setmetatable({}, { __index = function(__, k) return require("appsko")[k] end })
     PS.showControlCenter = function(koMenu) require("appscontrol").show(koMenu) end
+    -- The launcher's own notifications after a restart: { settings = key } opens that Settings page.
+    PS.notifyOpeners = PS.notifyOpeners or {}
+    PS.notifyOpeners.apps = function(route)
+        if type(route) == "table" and route.settings and PS.showSettings then PS.showSettings(route.settings) end
+    end
     -- What the other apps register (read by appshub, appssearch, appssetup).
     PS.settingsApps, PS.searchApps, PS.setupSteps = PS.settingsApps or {}, PS.searchApps or {}, PS.setupSteps or {}
     PS.registerSettings = function(e) if type(e) == "table" and e.key and e.open then PS.settingsApps[e.key] = e end end
@@ -133,6 +138,8 @@ do
     end
     PS.showSwitcher = function() if Apps.instance then Apps.instance:showMode("switcher") end end
     PS.showSettings = function(key)
+        -- (Settings locked in App lock: the passcode first.)
+        if PS.lock.ask("settings", function() PS.showSettings(key) end) then return end
         local e = key and PS.settingsApps[key]
         if e then return e.open() end
         if Apps.instance then Apps.instance:showMode("hub") end
@@ -142,6 +149,12 @@ do
         Apps.instance:showMode("page", function(v) v.pageSpec, v.pagePage, v.pageJump = spec, 1, spec.jump end)
     end
     PS.showSetup = function() require("appssetup").show() end
+    -- App lock (appslock.lua): an app calls PS.lock.ask(key, fn) before it opens (true: the
+    -- passcode is up, fn runs once it's right); PS.lock.run(key, fn) for a quick button.
+    PS.lock = setmetatable({}, { __index = function(__, k) return require("appslock")[k] end })
+    PS.backupApps = PS.backupApps or {}
+    PS.backupApps.lock = { key = "lock", name = "App lock", files = { "^apps_lock%.lua$" },
+        secret_keys = { ["apps_lock.lua"] = { "hash", "salt", "kind", "digits" } } }
     --- The launcher's settings at Sleep (the sleep screen is chosen there, for every app).
     PS.showSleepSettings = function()
         if not Apps.instance then return end
@@ -169,7 +182,7 @@ do
         end
     end
     PS.registerSettings{ key = "fonts", name = _("Fonts"), icon = "type",
-        open = screen("fonts", function(v) v.fontsData = nil end) }
+        open = screen("fonts", function(v) v.fontsData, v.fontsTab, v.fontsPages = nil, nil, nil end) }
     -- AI for every app (appsai.lua): the services, which does each job, and
     -- each feature's instructions. The apps register their jobs and features
     -- here (only kept in lists: appsai loads when first used).
@@ -266,30 +279,16 @@ do
         run = function() NetworkMgr:toggleWifiOn(nil, true, true) end }
     -- Updates, right after Wi-Fi: where they are (Settings > Updates), whether a newer version is
     -- out (looked up when the step shows, on Wi-Fi), and the optional apps with Install.
-    local upd = {}   -- what the step has looked up: { busy, rel, why, optional }
-    local function lookUp()
-        if upd.busy or upd.rel or upd.why or NetworkMgr:isConnected() == false then return end
-        upd.busy = true
-        local U = require("appsupdate")
-        U.latest(function(rel, why)
-            upd.rel, upd.why = rel, why
-            if not rel then
-                upd.busy = nil
-                return require("appssetup").redraw()
-            end
-            U.optionalApps(Apps.instance, rel, function(list)
-                upd.optional, upd.busy = list or {}, nil
-                require("appssetup").redraw()
-            end)
-        end)
-    end
+    -- (What's looked up is the Updates page's too: appsupdate's U.look.)
+    local function lookUp() require("appsupdate").lookUp(Apps.instance, function() require("appssetup").redraw() end) end
     local function newer()
         local U = require("appsupdate")
+        local upd = U.look
         return upd.rel ~= nil and U.newer(upd.rel.tag, U.installed(Apps.instance))
     end
     PS.registerSetup{ key = "updates", order = 12, icon = "download", title = _("Updates"),
-        text = _("New versions of these apps come from GitHub. They're in Settings > Updates, at the top of Settings: Check for updates, Install a version, and Optional apps (extra apps you can add, such as FlashForge). With Check automatically on, a notification tells you when there's a new one."),
-        done = function() return upd.rel ~= nil and not newer() end,
+        text = _("New versions of these apps come from GitHub, in Settings > Updates at the top of Settings: Check for updates, Select version, and the optional apps (such as FlashForge), which aren't in the main install and, once installed, update automatically with each new version of the primary apps. With Check automatically on, a notification tells you when there's a new one."),
+        done = function() return require("appsupdate").look.rel ~= nil and not newer() end,
         doneText = _("Up to date"),
         notDoneText = function() return newer() and _("A new version is out") or _("Not checked yet") end,
         action = _("Check for updates"), run = function() require("appsupdate").check(Apps.instance) end,
@@ -297,6 +296,7 @@ do
         rows = function()
             lookUp()
             local U = require("appsupdate")
+            local upd = U.look
             local plugin = Apps.instance
             local rows = {}
             local have = U.installedText(plugin) or _("not known")
@@ -310,21 +310,17 @@ do
                 rows[#rows + 1] = { title = _("Up to date"), value = have, fn = function() U.check(plugin) end }
             else
                 rows[#rows + 1] = { title = _("Check for updates"), sub = upd.why or _("Once the Kindle is on Wi-Fi."), value = have,
-                    fn = function(refresh) upd.why = nil lookUp() refresh() end }
+                    fn = function(refresh) U.forget() lookUp() refresh() end }
             end
             rows[#rows + 1] = { title = _("Check automatically"), value = U.auto() and _("On") or _("Off"),
                 fn = function(refresh) U.setAuto(not U.auto()) refresh() end }
-            -- The optional apps of the latest release, under their own header: each with Install
-            -- (KOReader asks to restart after).
-            if upd.optional and #upd.optional > 0 then rows[#rows + 1] = { heading = _("OPTIONAL APPS") } end
-            for __, o in ipairs(upd.optional or {}) do
-                rows[#rows + 1] = { title = o.title, sub = o.description and (#o.description > 70 and (o.description:sub(1, 67) .. "…") or o.description) or _("An optional app"),
-                    value = o.installed and _("Installed") or _("Install"),
-                    fn = function()
-                        if o.installed then return U.optionalMenu(plugin) end
-                        require("appsko").confirm{ title = T(_("Install %1"), o.title), text = (o.description or "") .. "\n\n" .. T(_("From %1. KOReader asks to restart after."), upd.rel.tag),
-                            ok = _("Install"), onOk = function() U.run(plugin, U.optionalRelease(upd.rel, o)) end }
-                    end }
+            -- The optional apps of where updates come from: one row (how many
+            -- are installed, and which), opening the list of them, each with Install or Remove (KOReader
+            -- restarts after), as on the Updates page. One row however many there are, so the step fits.
+            if upd.optional and #upd.optional > 0 then
+                local value, line = U.optionalSummary(upd.optional)
+                rows[#rows + 1] = { title = _("Optional apps"), sub = line, value = value,
+                    fn = function() U.optionalList(plugin, upd.optional, upd.optionalRel or upd.rel) end }
             end
             return rows
         end }
@@ -344,9 +340,13 @@ do
             local ui = current and current:ui()
             local function has(name) return ui and ui[name] ~= nil end
             local out = {}
-            if has("notes") then table.insert(out, { icon = "notebook-pen", title = _("Notes"), text = _("Handwritten notebooks") }) end
-            if has("crosswords") then table.insert(out, { icon = "grid-3x3", title = _("Crosswords"), text = _("Daily crosswords to solve with the pen") }) end
-            if has("wikipedia") then table.insert(out, { icon = "wikipedia", title = _("Wikipedia"), text = _("Read articles and save them for offline") }) end
+            -- (The apps that say what they are ready for: their `explore`, appsinfo.lua.)
+            for __, a in ipairs(require("appsinfo").list()) do
+                if a.entry.explore and has(a.plugin) then
+                    local tile = (a.entry.tiles or {})[1]
+                    table.insert(out, { icon = tile and tile.icon or a.entry.icon, title = a.entry.name, text = a.entry.explore })
+                end
+            end
             if has("statistics") then table.insert(out, { icon = "activity", title = _("Reading statistics"), text = _("Reading time, streaks and progress by book") }) end
             table.insert(out, { icon = "type", title = _("Fonts"), text = _("Download fonts from Google Fonts") })
             table.insert(out, { icon = "search", title = _("Search"), text = _("Search books, notes, tasks and settings") })
@@ -557,8 +557,15 @@ function Apps.watchWifi()
     UIManager:scheduleIn(60, Apps.wifiTask)
 end
 
+-- Going to sleep: App lock locks again, and covers a locked app on the screen (appslock.lua).
+function Apps:onSuspend()
+    local ok, err = pcall(function() require("appslock").suspend() end)
+    if not ok then require("logger").warn("Apps: app lock at sleep:", err) end
+end
+
 -- Back from sleep: the time asleep doesn't count as idle.
 function Apps:onResume()
+    pcall(function() require("appslock").resume() end)
     idle.bytes, idle.at = Apps.networkBytes(), os.time()
 end
 
@@ -675,18 +682,12 @@ function Apps:tiles(withHidden)
     return Model.tiles(s.order, s.hidden, Apps.has(ui), withHidden, s.pins, s.groups)
 end
 
---- Whether a tile's plugin (or "@frontlight", "@homeassistant" (set up), or "plugin:call") is there, on `ui`.
+--- Whether a tile's plugin (or "@frontlight", or "plugin:call") is there, on `ui`.
 function Apps.has(ui)
     return function(name)
         if name == "@frontlight" then
             local Device = require("device")
             return Device:hasFrontlight() and true or false
-        end
-        -- Home Assistant set up (its Dashboard is nothing without it).
-        if name == "@homeassistant" then
-            local ha = ui and ui.homeassistant
-            local ok, signed = pcall(function() return ha.api:signedIn() end)
-            return ok and signed == true
         end
         -- "plugin:call": the plugin, new enough to have that call.
         local plugin, call = name:match("^([^:]+):(.+)$")
@@ -809,7 +810,7 @@ function Apps:setupRows()
             end }
         end },
         -- Ready-made groups (Settings, Reading, Home...), from those that can be made (the launcher's own).
-        { title = _("Suggested groups"), sub = _("Ready-made folders of apps: Settings, Reading, Home, Writing, Tools"),
+        { title = _("Suggested groups"), sub = _("Ready-made folders of apps: Settings, Reading, Home, Writing, Tools. Settings is grouped the same way."),
             value = current == nil and _("Open the launcher first") or nil, fn = function(r)
             refresh = r
             if current then current:suggestGroups() else KO.toast(_("Open the launcher first, then come back here.")) end

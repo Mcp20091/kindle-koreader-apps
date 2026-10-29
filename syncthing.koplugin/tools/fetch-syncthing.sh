@@ -6,10 +6,10 @@
 # (the KOReader emulator on a PC).
 set -e
 
-VERSION=v2.1.2
+VERSION=v2.1.7
 # SHA-256 of the release archives (from the release's sha256sum.txt.asc).
-SHA_arm=600f7d37f174825df55df619ef3e90a11f13ea4f4a5ca2a506461772ba9865e9
-SHA_amd64=0cea24660ac7d8df19f01da979827b5c9463a8a60042e296829293cf80213ee4
+SHA_arm=d8b59029e25992bc0d280fccc5626e5dca743b285fca1a36db1148fcf871b639
+SHA_amd64=2edc416e7ed136b7c858ed5f3f02a3b8316589605e54c380228ceea7acbf0142
 
 dest=${1:-$(cd "$(dirname "$0")/.." && pwd)}
 arch=${2:-arm}

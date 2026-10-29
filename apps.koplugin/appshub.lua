@@ -48,9 +48,6 @@ local C = Canvas
 
 local Hub = {}
 
--- The order of the list; what is registered but not here comes after, by name.
-local ORDER = { "apps", "apps_tiles", "ai", "microsoft", "homeassistant", "todo", "notes", "crosswords", "wikipedia", "syncthing", "sshclient", "flashforge", "pangolin", "webpage", "koreader" }
-
 -- (Kept in PluginShare: apps register at start, before this module is loaded.)
 local PS0 = require("pluginshare")
 PS0.settingsApps = PS0.settingsApps or {}
@@ -64,18 +61,50 @@ end
 
 -- The list in groups to start with, as the home screen's suggested groups have it (Model.
 -- SUGGESTED_GROUPS), with Getting started on top and Accounts for the sign-ins and keys
--- the other apps use. What's registered but in no group comes last (OTHER).
+-- the other apps use. The launcher's own rows are here; each app's row (its settings key is
+-- its plugin's name) goes in the group its entry names (appsinfo.lua: `group`), in the apps'
+-- order. What's registered but in no group comes last (OTHER).
 Hub.DEFAULT_GROUPS = {
     { id = "start", name = "Getting started", keys = { "updates", "setup" } },
     { id = "settings", name = "Settings", keys = { "apps", "apps_tiles", "fonts", "gestures", "battery", "koreader" } },
     { id = "accounts", name = "Accounts", keys = { "ai", "microsoft" } },
-    { id = "reading", name = "Reading", keys = { "library", "wikipedia" } },
-    { id = "home", name = "Home", keys = { "homeassistant" } },
-    { id = "writing", name = "Writing", keys = { "notes", "crosswords" } },
-    { id = "tools", name = "Tools", keys = { "todo", "sshclient", "syncthing", "webpage", "flashforge", "pangolin" } },
+    { id = "reading", name = "Reading", keys = {} },
+    { id = "home", name = "Home", keys = {} },
+    { id = "writing", name = "Writing", keys = {} },
+    { id = "tools", name = "Tools", keys = {} },
+    -- (The optional apps, those not in the main install: FlashForge, Pangolin, NextDNS.)
+    { id = "optional", name = "Optional apps", keys = {} },
 }
--- (One list: today's order, Getting started's two first.)
-local LIST_ORDER = { "updates", "setup", "apps", "apps_tiles", "ai", "microsoft", "homeassistant", "todo", "notes", "crosswords", "wikipedia", "syncthing", "sshclient", "flashforge", "pangolin", "webpage", "koreader" }
+
+--- The apps' rows that go in group `id` to start with (their entries' `group`), in order.
+local function appKeys(id)
+    local out = {}
+    for __, a in ipairs(require("appsinfo").list()) do
+        if a.entry.group == id then out[#out + 1] = a.plugin end
+    end
+    return out
+end
+
+--- The default groups with the apps' rows in them.
+function Hub.defaultGroups()
+    local out = {}
+    for __, g in ipairs(Hub.DEFAULT_GROUPS) do
+        local keys = {}
+        for __, k in ipairs(g.keys) do keys[#keys + 1] = k end
+        for __, k in ipairs(appKeys(g.id)) do keys[#keys + 1] = k end
+        out[#out + 1] = { id = g.id, name = g.name, keys = keys }
+    end
+    return out
+end
+
+--- One list's order: Getting started's two, the launcher's own, the apps in their order, then
+-- KOReader's (what's registered but not here comes after, by name).
+local function listOrder()
+    local out = { "updates", "setup", "apps", "apps_tiles", "ai", "microsoft" }
+    for __, k in ipairs(require("appsinfo").order()) do out[#out + 1] = k end
+    out[#out + 1] = "koreader"
+    return out
+end
 
 -- What the user changed, in the launcher's settings (`hub`): { layout = "list", groups (once
 -- edited: a copy of the defaults, changed), order (One list, once moved), hidden = { key = true } }.
@@ -101,8 +130,8 @@ local function copyGroups(groups)
 end
 local function groups(view, edit)
     local h = state(view)
-    if edit and not h.groups then h.groups = copyGroups(Hub.DEFAULT_GROUPS) end
-    return h.groups or Hub.DEFAULT_GROUPS
+    if edit and not h.groups then h.groups = copyGroups(Hub.defaultGroups()) end
+    return h.groups or Hub.defaultGroups()
 end
 
 --- Whether `key`'s row is hidden from the list (search still finds it).
@@ -144,13 +173,39 @@ function Hub.sections(view)
         return list
     end
     if h.layout == "list" then
-        local list = take(h.order or LIST_ORDER)
+        local list = take(h.order or listOrder())
         for __, e in ipairs(rest()) do list[#list + 1] = e end
         out[1] = { entries = list }
     else
+        -- (An app added after the groups were changed goes in its own group when that's
+        -- still there and the app's row is in no group yet.)
+        local inGroup = {}
+        for __, g in ipairs(groups(view)) do for __, k in ipairs(g.keys) do inGroup[k] = true end end
         for __, g in ipairs(groups(view)) do
             local list = take(g.keys)
+            for __, k in ipairs(appKeys(g.id)) do
+                if not inGroup[k] then for __, e in ipairs(take({ k })) do list[#list + 1] = e end end
+            end
             if #list > 0 then out[#out + 1] = { group = g, entries = list } end
+        end
+        -- A suggested group the changed groups don't have (one added since, as Optional apps)
+        -- joins them once an app's row would go in it, rather than its rows going to Other.
+        if h.groups then
+            local have = {}
+            for __, g in ipairs(h.groups) do have[g.id] = true end
+            for __, d in ipairs(Hub.DEFAULT_GROUPS) do
+                if not have[d.id] then
+                    local keys = {}
+                    for __, k in ipairs(appKeys(d.id)) do
+                        if byKey[k] and not placed[k] and not inGroup[k] then keys[#keys + 1] = k end
+                    end
+                    if #keys > 0 then
+                        local g = { id = d.id, name = d.name, keys = keys }
+                        h.groups[#h.groups + 1] = g
+                        out[#out + 1] = { group = g, entries = take(keys) }
+                    end
+                end
+            end
         end
         local other = rest()
         if #other > 0 then out[#out + 1] = { group = { id = "other", name = "Other" }, entries = other } end
@@ -266,11 +321,11 @@ end
 function Hub.entries(view)
     local out = {}
     local rank = {}
-    for i, k in ipairs(ORDER) do rank[k] = i end
+    for i, k in ipairs(listOrder()) do rank[k] = i end
     local list = {}
     for __, e in pairs(registry) do table.insert(list, e) end
     table.sort(list, function(a, b)
-        local ra, rb = rank[a.key] or 99, rank[b.key] or 99
+        local ra, rb = rank[a.key] or 999, rank[b.key] or 999
         if ra ~= rb then return ra < rb end
         return a.name < b.name
     end)

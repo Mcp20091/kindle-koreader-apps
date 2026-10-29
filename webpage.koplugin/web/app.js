@@ -101,7 +101,7 @@ App.microsoftCard = function () {
     const signIn = async () => {
       await saveClient().catch(App.fail);
       const st = await App.api('/api/microsoft/signin', { json: {} }).catch(App.fail);
-      if (st) App.pages.notes.showCode(codeBox, st, '/api/microsoft/signin', 'Signed in to Microsoft.');
+      if (st) App.showCode(codeBox, st, '/api/microsoft/signin', 'Signed in to Microsoft.');
     };
     const signOut = async () => {
       if (!await App.confirm('Sign out', 'Sign out of Microsoft on the Kindle? To Do and OneNote stop syncing; To Do keeps its lists on this Kindle.', 'Sign out', true)) return;
@@ -472,11 +472,51 @@ App.applyTabs = function (tabs) {
   });
 };
 
+// A sign-in code to type on another page (Microsoft's device sign-in): the link, the code, and
+// the page asked again every 3 s until it's done (statusUrl answers { status: waiting, ok, expired }).
+App.showCode = function (box, st, statusUrl, doneText) {
+  box.innerHTML = '';
+  box.append(h('div', { class: 'card', style: 'background:var(--soft)' },
+    h('div', {}, 'Open ', h('a', { href: st.url, target: '_blank' }, st.url), ' and enter'),
+    h('div', { class: 'code-box', style: 'margin:10px 0' }, st.code),
+    h('div', { class: 'small muted' }, 'This page updates automatically when you’re done.')));
+  const poll = async () => {
+    const now = await App.api(statusUrl).catch(() => null);
+    if (!now || now.status === 'waiting') return setTimeout(poll, 3000);
+    if (now.status === 'ok') { App.toast(doneText); App.route(); return; }
+    box.innerHTML = '';
+    App.toast(now.status === 'expired' ? 'The code expired. Sign in again.' : 'Could not sign in: ' + (now.message || ''), true);
+  };
+  setTimeout(poll, 3000);
+};
+
+// The apps' tabs (Home Assistant, To Do, Notes...), as each app on the Kindle says (/api/home's
+// apps): a link after the Launcher's, and the tab's script from the app's own folder. One whose
+// script doesn't load is left out.
+App.addApps = async function (apps) {
+  App.webApps = App.arr(apps);
+  const nav = document.getElementById('nav');
+  let after = nav.querySelector('a[data-page="apps"]');
+  for (const a of App.webApps) {
+    const link = h('a', { href: '#' + a.page, 'data-page': a.page, 'data-plugin': a.plugin }, a.name);
+    if (after) after.after(link); else nav.append(link);
+    after = link;
+  }
+  await Promise.all(App.webApps.filter((a) => a.script).map((a) => new Promise((done) => {
+    const s = document.createElement('script');
+    s.src = a.script;
+    s.onload = done;
+    s.onerror = () => { console.warn('No tab script for ' + a.plugin); done(); };
+    document.body.append(s);
+  })));
+};
+
 App.start = async function () {
   App.shortcuts();
   try {
     const home = await App.api('/api/home');
     App.plugins = home.plugins;
+    await App.addApps(home.apps);
     for (const a of document.querySelectorAll('#nav a[data-plugin]')) {
       a.classList.toggle('off', !home.plugins[a.dataset.plugin]);
     }

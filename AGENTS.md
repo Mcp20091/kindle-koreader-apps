@@ -26,7 +26,7 @@ Then go through this list. Each line is Scribe-specific, with where it lives and
 | Layouts in units of the screen: one unit is the shorter side / 620 (3 px on the Scribe) | `apps.koplugin/appscanvas.lua` and each app's canvas | Scales by itself; look at every screen at the device's size in the emulator for anything cramped. |
 | The emulator at the Scribe's size | the Testing section, each plugin's AGENTS.md (`EMULATE_READER_W/H/DPI`) | Use the device's width, height and dpi. |
 | The guide PDF at the Scribe's page size, and written for it (the pen, its screen) | `apps.koplugin/docs/guide/build.py` (`PAGE`), `guide/` | Set `PAGE` to the device's screen; reword or drop the pen parts. |
-| Updates come from this repo | Settings > Launcher > Update from (`apps.koplugin/appsupdate.lua`, `DEFAULT_REPO`) | In a fork, set `DEFAULT_REPO` to it (or the user sets Update from), or this repo's releases overwrite their changes. |
+| Updates come from this repo | Settings > Updates > Repository (`apps.koplugin/appsupdate.lua`, `DEFAULT_REPO`) | In a fork, set `DEFAULT_REPO` to it (or the user sets Update from), or this repo's releases overwrite their changes. |
 
 The rest (the power manager, the sleep cover, lipc, the firewall, Syncthing's 32-bit ARM program) is the same on the Kindles KOReader runs on. As anywhere here, prove device behaviour with a log-only probe on the device before building on it.
 
@@ -40,19 +40,23 @@ When it's done, build the zip the way the README says and keep the changes on a 
 
 ## Layout
 
+(A new app: [MAKING-AN-APP.md](MAKING-AN-APP.md).)
+
 ```
 apps.koplugin/          the launcher, and the shared pieces every app uses (through PluginShare)
 homeassistant.koplugin  todo.koplugin  notes.koplugin  crosswords.koplugin (needs Notes)
 wikipedia.koplugin  syncthing.koplugin  sshclient.koplugin  webpage.koplugin (the web server)
 library.koplugin        books and folders (stands in for KOReader's file browser; the reader stays KOReader's)
-optional/               extra apps you can add, not in the main install zip: each folder and its own
+optional/               apps not everyone needs, not in the main install zip: each folder and its own
                         zip (build-zip.py). flashforge.koplugin: a FlashForge 3D printer over the Wi-Fi;
-                        pangolin.koplugin: a Pangolin server's sites, resources and clients (its Integration API)
+                        pangolin.koplugin: a Pangolin server's sites, resources and clients (its Integration API);
+                        nextdns.koplugin: a NextDNS profile (its API: blocked queries, the log, lists, switches);
+                        pfsense.koplugin: a pfSense firewall (its REST API package)
 guide/                  the user guide: one Markdown chapter per app, img/, build.py, chapters.txt
 Kindle Apps Guide.pdf   the guide, built from guide/
 ```
 
-A plugin folder is what gets copied to `koreader/plugins/` on the Kindle. An optional app (in `optional/`) follows every rule here; the launcher and the web page show it only when it's installed (a tile's `plugin`, the web page's `plugins.<name>`), and nothing else may depend on it. `sshclient.koplugin` has that name because KOReader ships its own `SSH.koplugin` (an SSH server).
+A plugin folder is what gets copied to `koreader/plugins/` on the Kindle. An optional app (in `optional/`) follows every rule here; the launcher and the web page show it only when it's installed (it says what it is in `PS.appInfo`, below), and nothing else may depend on it. `sshclient.koplugin` has that name because KOReader ships its own `SSH.koplugin` (an SSH server).
 
 ## Design principles
 
@@ -82,13 +86,13 @@ A plugin folder is what gets copied to `koreader/plugins/` on the Kindle. An opt
 - **Pop-ups only as wide as what's in them** (the shared box sizes itself; buttons keep their size). A panel at the bottom (the handwriting strip, the Undo bar) passes taps above it to the box under it.
 - **Something running shows it.** Anything left running (the web server) has an ongoing notification (`PS.notify{ ongoing = true }`) and its icon in every app's clock corner, until it stops.
 - **The Kindle and the web page do the same things.** A setting or action added on one is added on the other, in the same words. On the web page a service named in a description is a link (`App.link`); on the Kindle it stays plain text (no browser there).
-- **No personal data anywhere**: code, comments, tests, fixtures, docs and screenshots use made-up values only (example addresses such as 192.168.1.50, paths such as `/mnt/us/documents`, invented names and devices).
+- **No personal data anywhere**: code, comments, tests, fixtures, docs and screenshots use made-up values only (example addresses such as 192.168.1.50, paths such as `/mnt/us/documents`, invented names and devices). The same goes for everything else that reaches GitHub: commit messages, branch names, pull requests, comments and release notes (see "Branches, commits and pull requests").
 - **Never slow the pen.** Nothing of ours runs in the input path of the Notes and Crosswords drawing areas. `apps.koplugin/tests/check_input_path.py` checks that no plugin replaces a function of KOReader's input path.
 - **Never block KOReader's loop.** Everything runs on one UIManager loop. Network or slow work goes to a child process (`ffiutil.runInSubProcess`, poll with `getNonBlockingReadSize` and `isSubProcessDone`, with a deadline, then `terminateSubProcess`), like To Do's sync.
 - **Each app works without the others**, except Crosswords, which needs Notes. Every shared call is guarded: `if PS.notify then … end`.
 - **Secrets stay put.** Keys, passwords and sign-ins go in a backup only with **Include keys and sign-ins**, never into logs or the diagnostics file, and are blanked (along with key blocks and tokens in text) before anything is sent to an AI.
 - **AI only suggests.** Whatever the AI proposes (a command, a task, a name) is shown first, with Edit, and runs only when the user taps it, with a warning where it matters. Every AI feature registers with `PS.ai.registerFeature` so its wording and what it sends show in AI settings > Advanced (Preview what's sent).
-- **A new app or integration has the full set:** a launcher tile and a Settings entry (`PS.registerSettings`), search (`PS.registerSearch`), a setup step with what skipping it means (`PS.registerSetup`), its part of the backup (`PS.backupApps`), a connection test where it connects to something (`PS.registerTest`, each address on its own), quick buttons where it has quick things (`PS.registerQuick`), the clock corner (`PS.statusIcons`), the shared menus (`PS.ko`), a web page tab or card, and its guide chapter.
+- **A new app follows [MAKING-AN-APP.md](MAKING-AN-APP.md).** It says what it is in `PS.appInfo` (its tiles, Settings group, gestures, notifications, web tab: `apps.koplugin/appsinfo.lua` has every field), so the launcher and the web server don't change for it, and it has the full set: Settings, search, a setup step, its part of the backup, App lock (`PS.lock.ask` where it opens), a connection test where it connects to something, quick buttons where it has quick things, its own icons, a web page tab and its guide. What's left in the launcher by name is what only it does with an app's data: pins (Pin to home screen) and the web page's Dashboard parts.
 
 ## The shared UI
 
@@ -123,6 +127,9 @@ The launcher provides these through `local PS = require("pluginshare")`. Referen
 - **The clock corner:** every app's title bar draws `PS.statusIcons()` (what's running now, from ongoing notifications, such as the web server's globe) just left of its clock. Ongoing notifications: `PS.notify{ ongoing = true, key, ... }` and `PS.unnotify(key)`.
 - **Setup steps:** `PS.registerSetup` takes `skipped` (what you get without it) and `help` (short steps and a QR code of the guide in the public repo, `Setup.GUIDE_URL`).
 - **Visual editors on the web page:** what the Kindle lays out (tiles, quick buttons, Home Assistant's Home, the widgets sleep screen, To Do's Home tiles, Notes' toolbar) is drawn as it looks there, to drag into order; `App.visualZones` in `webpage.koplugin/web/app.js`. Every one also has a tap menu (Move up, Move down, To...), since drag and drop doesn't work on phones.
+- **App lock:** one passcode or password, set in Settings > Launcher > App lock, for the apps the user ticks (`apps.koplugin/appslock.lua`). Every app with a tile in its `PS.appInfo` entry is listed there (not one whose tile only switches something; `lock = false` leaves one out). An app adds one thing: at the top of each function that opens it from outside (its `show`, and any that open straight to a place: a route, an item, a command run from a gesture), `local lock = require("pluginshare").lock` and `if lock and lock.ask("<its tile's key>", function() self:show(...) end) then return end`. KOReader's Tools menu and gestures reach the app without the launcher, so only this makes them ask. `apps.koplugin/tests/check_app_lock.py` (run by the Checks workflow) fails an app KOReader can open (a "Show…" action) without it.
+
+  The launcher does the rest: its tile and Recent apps, its notifications (by `app`), its search (by its `PS.registerSearch` key), its quick buttons and its Settings entry ask first; while the Kindle sleeps a locked app on the screen is covered. Guard the first function only: one that opens it and then something else must ask before either, or the second asks again. A quick thing that shouldn't open the app (a toggle) uses `PS.lock.run(key, fn)`. The passcode is a salted hash in `koreader/settings/apps_lock.lua`, in the backup only with Include keys and sign-ins, never logged.
 - **Shared helpers live in the launcher.** Anything more than one app needs is written once in apps.koplugin and published on KOReader's PluginShare: menus and pop-ups (`PS.ko`, with `back` for menus opened from a menu), the title bar's clock corner (`PS.statusIcons`), notifications, the Settings list, search, setup steps, quick buttons, connection tests (`PS.registerTest`), AI (`PS.ai`), the Microsoft account (`PS.microsoft`), backups (`PS.backupApps`) and fonts. An app uses those when they're there. Its own copy, if it has one, is only the fallback for when the launcher isn't installed, and hands over to the shared one when it is (todo.koplugin/todoko.lua's wrapper at its end). A new app starts from the shared pieces, and a new helper goes into apps.koplugin first, never into one app only.
 - **One copy of shared logic:** when the Kindle and the web page do the same thing, the code lives once and both call it (reading sessions: `apps.koplugin/appssessions.lua`, used by Reading statistics and the web page's Reading tab; group icons: `appsicons.lua`'s list).
 - **Standard wording:** say what everyone else says ("Move up", "Move down", "Delete", "Reset statistics"), not invented phrases.
@@ -158,15 +165,31 @@ Each of these shipped once. The fix is in the code; the note is so a later chang
 - **A stray "null" on the web page.** `element.append(a, null)` turns `null` into text. Filter out empty parts before appending.
 - **A stray tap closed a waiting box** (a download in progress). Waiting boxes ignore taps; only Cancel or Back stops them.
 - **Garbled symbols in Lua strings** after editing with a script: Python escapes like `"\xE2…"` in a script's own source turned into mojibake. Write UI text as real UTF-8, and grep after scripted edits.
+- **An icon missing from an app's own icons/** showed as a grey box (Pangolin's Recent apps button: its copy of the title bar draws "history", and it had neither that nor the fallback "star"). Each app draws only from its own icons/; when it copies a module from another app, it copies the icons that module draws too, and always the fallback "star" (and "star-w" when it has white icons). `dev/icons.py` (in `dev/check.sh`) checks it.
 - **A symbol missing from the Kindle's fonts** showed as a box. KOReader's UI fonts lack many symbols: use the bundled Lucide icons instead of Unicode symbols in the UI, and check any new glyph.
 - **Tests left behind** after a feature changed (a new launcher tile broke the tile-order tests). Update the expected values in the same change.
 - **Notes for coding agents on the Kindle.** AGENTS.md, CLAUDE.md and the docs, tests and tools folders ended up in the install zip when a plugin folder was copied whole. The install folder and the zip hold only what runs on the Kindle; build the zip with the one script that leaves those out.
-- **Personal data in screenshots and test fixtures** (real device names, task titles, paths). Screenshots and fixtures use made-up data; the export's check blocks real values.
+- **Personal data in screenshots and test fixtures** (real device names, task titles, paths). Screenshots and fixtures use made-up data; the privacy check (`tools/privacy_check.py`) blocks real values.
+
+## Branches, commits and pull requests
+
+This repo is public, and so is everything sent to GitHub: files, commit messages, branch names, pull requests and their comments, release notes and pictures. Deleting it later doesn't take it back (forks and caches keep it), so nothing personal goes in at all.
+
+- **One branch per task**, merged into `main` through a pull request.
+- **Turn on the privacy check once per clone**: `git config core.hooksPath .githooks`. Its hooks run `tools/privacy_check.py` on what's staged (pre-commit), on the commit message (commit-msg) and on every commit a push sends, with its author and the branch name (pre-push). GitHub's Privacy workflow checks pushes and pull requests again, a pull request's title and description too.
+- **Never get around it** (no `--no-verify`). If it flags a made-up example, add that to the allowed examples in the script; if it flags something real, change it to a made-up value.
+- **Check text before it goes up**: a pull request's title and description, a comment or release notes go through `python tools/privacy_check.py --text -` (on stdin) first.
+- **Commit by path** (`git add <files>`), never `git add -A` or `git commit -a`, and look at `git diff --cached` before committing. Files that stay on the PC are never staged: `*.local.*`, `todo.koplugin/client_id.txt`, `notes.koplugin/notes_defaults.lua`, `.env` (`.gitignore` has them, and the check blocks them).
+- **Commits are made under the account's GitHub noreply address** (`git config user.email`), never a personal one.
+- **Pictures** use made-up data only, carry no metadata (the check blocks EXIF and PNG text chunks) and are looked at by eye before committing: the check lists them.
+- **On the user's PC the check also knows the user's own values**, read from files that never go into git (`private-words.local.txt` in the main checkout: a word per line, or `re:` and a regular expression). Never copy those values anywhere else, a test or a commit message included.
+- **If something personal was pushed**, stop and tell the user before anything else; a new commit that removes it leaves it in the history.
 
 ## Testing
 
 - Each plugin has `tests/run.lua`, plain Lua, run with KOReader's LuaJIT from the plugin folder: `luajit tests/run.lua`.
 - The KOReader emulator (the Linux AppImage, extracted) runs the plugins on a PC: link the plugin folders into its `plugins/` and start it with `EMULATE_READER_W=1240 EMULATE_READER_H=1654 EMULATE_READER_DPI=200` for the Scribe's shape. `SDL_VIDEODRIVER=offscreen` with `Screen:shot()` takes screenshots.
+- A test release (to install on the Kindle before a real one): `bash tools/test-release.sh [notes.md]` from a branch other than main. It runs the tests, pushes the branch, tags the next `vX.Y.Z-testN` and waits for GitHub to build it as a pre-release, which only shows under Settings > Updates > Select version, with Show test versions on.
 - Behaviour that only exists on a Kindle (power manager, sleep cover, lipc, firewall) can't be tested on the emulator: prove it on the device with a log-only probe before building on it.
 
 ## The guide

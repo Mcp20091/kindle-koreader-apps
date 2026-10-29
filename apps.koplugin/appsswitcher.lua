@@ -19,13 +19,19 @@ local C = Canvas
 
 local Switcher = {}
 
--- Tiles that switch something rather than open an app.
-local NOT_APPS = { wifi = true, light = true, night = true, refresh = true, web = true, exit = true, restart = true,
+-- Tiles that switch something rather than open an app (and the apps' tiles that say `switches`).
+local NOT_APPS = { wifi = true, light = true, night = true, refresh = true, exit = true, restart = true,
     reading = true, kosettings = true }
+
+local function notApp(key)
+    if NOT_APPS[key] then return true end
+    local t = require("appsinfo").tile(key)
+    return t ~= nil and t.switches == true
+end
 
 --- Notes `key` as opened just now (newest first, at most 12).
 function Switcher.note(settings, key)
-    if not key or NOT_APPS[key] then return end
+    if not key or notApp(key) then return end
     local list = { key }
     for __, k in ipairs(settings.recent_apps or {}) do
         if k ~= key and #list < 12 then table.insert(list, k) end
@@ -35,6 +41,8 @@ end
 
 --- What a tile's app has open now (a screen still under the launcher), or nil.
 local function openWidget(view, tile)
+    -- (A tile that opens its own screen each time, as Home Assistant's Dashboard.)
+    if tile.fresh then return nil end
     local name = (tile.plugin or tile.key):match("^[^:@]+")
     local p = name and view:plugin(name)
     if type(p) ~= "table" then return nil end
@@ -46,6 +54,9 @@ end
 
 --- Goes to a tile: an app open underneath is brought back (what is over it closed), else opened.
 function Switcher.go(view, tile)
+    -- (A locked app: the passcode first, then here again.)
+    local PS = require("pluginshare")
+    if PS.lock and PS.lock.ask(tile.key, function() Switcher.go(view, tile) end) then return end
     local w = not tile.pin and openWidget(view, tile)
     if w then
         local stack = UIManager._window_stack or {}

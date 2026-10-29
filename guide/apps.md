@@ -22,7 +22,7 @@ To leave the launcher, open **Library** or a book, or tap **Exit KOReader**. Bac
 - **Search**: books, notebooks, tasks, Home Assistant's devices and more (see "Search").
 - **Refresh**: the tiles' lines worked out again, and the screen flashed clean.
 - **The bell**: Notifications from every app (see Finding your way around), with how many are new.
-- **⋮** has **Open on the web page**, **Restart KOReader** (after asking), **Help**, **Light** (on a Kindle with a front light), **Night mode**, **Refresh screen** and **Settings** (every app's).
+- **⋮** has **Open on the web page**, **Restart KOReader** (after asking), **Help**, **Recent apps**, **Light** (on a Kindle with a front light), **Night mode**, **Refresh screen** and **Settings** (every app's). **Help** is a short page on the home screen, the bar at the top of every app, Settings and Updates, and the gestures; its **User guide** button shows this guide's QR code, and downloads or opens its PDF on the Kindle.
 
 ### At a glance
 
@@ -135,7 +135,7 @@ A group is a tile that opens a page of its own, like a folder on a phone.
 
 To leave a group's page, tap its name at the top, press Back, or swipe in from the left edge. To take a tile out of a group, hold it and choose **Move to a group… > Main page**. Hold a group's tile to **Rename group**, **Sort…** (**Custom**, the order you put them in, or **A–Z**, by name, which stays sorted as you add tiles), **Change icon** (pick one from the grid; the folder is the first) or **Delete group** (its tiles go back to the main page).
 
-**Suggested groups** (in **Move to a group…**, at the end of **Edit home screen**, and in Set up your Kindle > Your home screen) offers ready-made groups: **Settings** (Fonts, Gestures, Battery, KOReader settings, Restart KOReader), **Reading** (Library, Reading statistics, Wikipedia), **Home** (Home Assistant, Dashboard, Weather), **Writing** (Notes, Crosswords), **Tools** (SSH, Syncthing, Web server) and **Device** (Wi-Fi, Light, Night mode, Exit KOReader). Each lists only the apps you have that aren't in a group yet, and shows when at least two are left. Tap one, then **Make group**; hidden tiles in it show again, and the group starts sorted **A–Z**.
+**Suggested groups** (in **Move to a group…**, at the end of **Edit home screen**, and in Set up your Kindle > Your home screen) offers ready-made groups: **Settings** (Fonts, Gestures, Battery, KOReader settings, Restart KOReader), **Reading** (Library, Reading statistics, Wikipedia), **Home** (Home Assistant, Dashboard, Weather), **Writing** (Notes, Crosswords), **Tools** (SSH, Syncthing, Web server) and **Device** (Wi-Fi, Light, Night mode, Exit KOReader). Each lists only the apps you have that aren't in a group yet, and shows when at least two are left. Tap one, then **Make group**; hidden tiles in it show again, and the group starts sorted **A–Z**. The **Settings** list is grouped the same way to start with, plus **Optional apps** for the apps that aren't in the main install (see Settings below).
 
 ![Picking a group's icon](img/apps/apps-group-icon.png)
 
@@ -208,20 +208,35 @@ A book's page ends with **SESSIONS**: each time you read it, newest first, with 
 
 ## Fonts
 
-The **Fonts** tile (also in **Settings** and search) has everything about the fonts books use:
+The **Fonts** tile (also in **Settings** and search) has everything about the fonts books use, in three tabs along the top. Each tab keeps its own page.
 
-- **Get more fonts** at the top opens the **Get fonts** page, with free fonts from Google Fonts over Wi-Fi:
-  - The box at the top: type any Google Fonts family's name (such as Lora or Source Serif 4) and tap **Get**.
-  - **SUGGESTIONS**: good reading fonts, each with what it's like: Literata (made for e-books), Merriweather, Lora, EB Garamond, Crimson Pro, Source Serif 4, Alegreya, Bitter, Atkinson Hyperlegible (made for low vision) and Lexend. **Get** next to one gets it.
-  - The Kindle downloads the family's regular, bold and italic styles in the background, and says when it has them.
-- **YOUR FONTS**: every font KOReader can use, each name drawn in its own typeface. The one new books open in says **Default**, and ones you added say **Added**. Tap a font for **Set as default for new books**, or **Remove** for one you added (with **Undo**; KOReader's own fonts stay).
-- **FONT SETTINGS**: the font size for new books, the fallback font, more fallback fonts, the book's own fonts, the font weight, hinting and kerning, as in KOReader's own menus.
+- **Your fonts**: every font KOReader can use, each name drawn in its own typeface.
+  - The box at the top says which font **new books open in**, on every page. Tap it for that font's menu.
+  - In the list, that font says **✓ Default**, and fonts you added say **Added**.
+  - Tap a font for **Set as default for new books**, or **Remove** for one you added. Both come with **Undo** for a few seconds (KOReader's own fonts stay).
+- **Get more**: every family on Google Fonts (about 2,000), free over Wi-Fi.
+  - **Search** at the top: tap it and type part of a name. **✕** clears it.
+  - The chips pick what's listed: **Suggested** (good reading fonts, each with what it's like: Literata, made for e-books, Merriweather, Lora, EB Garamond, Crimson Pro, Source Serif 4, Alegreya, Bitter, Atkinson Hyperlegible, made for low vision, and Lexend), **All**, **Serif**, **Sans**, **Mono**, **Handwriting** and **Display**.
+  - Under them, the order: **Popular first**, **A–Z** or **Newest first**.
+  - Each family says its kind and its styles (**4 styles** is regular, bold, italic and bold italic). **Get** downloads it; one you have says **Installed**.
+  - A name that isn't in the list can still be got: search for it and tap **Get** on the row that says **Get it by its name from Google Fonts**.
+  - The list itself comes from Google Fonts the first time you open the tab, and again after a month. The line on the right says when (**List from Oct 28**); **⟳** gets it again now.
+- **Settings**: KOReader's font settings, in groups.
+  - **NEW BOOKS**: the font, **Font size for new books**, **Font weight** and **Use the book's own fonts**. A book you've already opened keeps its own.
+  - **FALLBACK FONTS**: **Fallback font** (for characters the book's font doesn't have) and **Use more fallback fonts**. These apply to every book, the open one too.
+  - **ADVANCED**: **Hinting** and **Kerning**.
 
-Books see added or removed fonts after KOReader restarts: a box at the top says so, with **Restart**.
+Books see added or removed fonts after KOReader restarts: a box on **Your fonts** says so, with **Restart**.
 
-![Fonts](img/apps/apps-fonts.png)
+Long lists have pages. When there are too many pages for a part each (all of Google Fonts), the bar at the bottom is one bar filled up to the page you're on; tap along it to go that far through.
 
-![Get fonts: any family by name, or a suggestion](img/apps/apps-fonts-get.png)
+![Fonts: the font new books open in, then your fonts](img/apps/apps-fonts.png)
+
+![Get more: suggestions to start with](img/apps/apps-fonts-get.png)
+
+![Get more: all of Google Fonts, popular first, with search, kinds and pages](img/apps/apps-fonts-browse.png)
+
+![Fonts' settings, in groups](img/apps/apps-fonts-settings.png)
 
 ## The Battery screen
 
@@ -267,11 +282,11 @@ Both are part of every app's bar; see "Finding your way around" in Getting start
 
 ## Settings
 
-**⋮ > Settings** lists every app's settings in one place (see Getting started), in groups to start with: **Getting started** (**Updates**, **Set up your Kindle**), **Settings** (Launcher, Edit home screen, Fonts, Gestures, Battery, KOReader), **Accounts** (AI, Microsoft), **Reading**, **Home**, **Writing** and **Tools**, the same as the home screen's suggested groups. An app installed later goes under **Other** until you place it.
+**⋮ > Settings** lists every app's settings in one place (see Getting started), in groups to start with (the same as the home screen's suggested groups): **Getting started** (**Updates**, **Set up your Kindle**), **Settings** (Launcher, Edit home screen, Fonts, Gestures, Battery, KOReader), **Accounts** (AI, Microsoft), **Reading**, **Home**, **Writing**, **Tools** and **Optional apps** (FlashForge, Pangolin, NextDNS and pfSense, once installed). An app installed later goes in its own group, or under **Other** when it has none.
 
 Hold a row for **Move up**, **Move down**, **Move to a group…** (or **New group…**) and **Hide**; hold a group's name to **Rename**, move or **Delete** it (its rows go to **Other**), or make a **New group…**. At the end, under **THIS LIST**: **Layout** (**Groups**, or **One list** without headings) and **Reset this list** (back to the suggested groups, nothing hidden). A hidden row is still found by search, marked **hidden from Settings**: hold it there and choose **Show in Settings**; the list says how many are hidden.
 
-**Updates** has its own page: **Check for updates**, **Update from**, **Install a version**, **Optional apps**, **Check automatically** and **Undo a plugin update** (see "Updates" below); on the list it shows the version installed, or **Update available**. **Web server** there opens its settings as a page: on or off, its address, **Keep the Kindle awake while on**, **Stop after 30 minutes unused**, the **Port**, the **Password** and **Undo a plugin update**. **KOReader** opens KOReader's most-used settings on one page (see "KOReader settings" below).
+**Updates** has its own page: **Check for updates**, **Repository**, **Select version**, **Show test versions**, **Check automatically**, **Undo a plugin update** and the optional apps (see "Updates" below); on the list it shows the version installed, or **Update available**. **Web server** there opens its settings as a page: on or off, its address, **Keep the Kindle awake while on**, **Stop after 30 minutes unused**, the **Port**, the **Password** and **Undo a plugin update**. **KOReader** opens KOReader's most-used settings on one page (see "KOReader settings" below).
 
 ### KOReader settings
 
@@ -314,6 +329,7 @@ The web page's Launcher tab has the same, drawn as the home screen: drag tiles i
 - **Columns**: 1, 2 or 3 tiles across (two more when turned on its side).
 - **24-hour clock**: KOReader's own setting (the same as in its **Time and date** menu), so every clock follows it: the launcher, every app's bar, a book's status bar and the sleep screens.
 - **Button labels**: the buttons in every app's pop-ups and text boxes (Cancel, Save, Search…) show an icon over a word; off, just the icon, in smaller squares. Its page has the switch for every app, then each app on its own: **Default** (as for every app), **On** or **Off**.
+- **Page bar**: what's at the foot of a page in every app when it has more than one page (the title bar's ‹ 1/4 › is there as well). **Numbered parts**: one part for each page with its number, the page you're on in black; tap a part to go to that page. **Parts and Next**: "Page 1 of 4" over thinner parts you can tap, and a **Next** button. **Words**: one button, "Page 1 of 4 · Next page", on every page but the last.
 
 For a dark screen, use **Night mode** (the quick button, the control center or **⋮**): KOReader's own, for every app.
 
@@ -344,6 +360,28 @@ For a dark screen, use **Night mode** (the quick button, the control center or *
 
 - **Open at startup**: the launcher opens when KOReader starts.
 
+### App lock
+
+A passcode (4 to 8 digits, on a keypad) or a password before the apps you choose, so someone who picks up your Kindle can't open them. **App lock** opens its own page (it asks first, once there's a passcode):
+
+![App lock](img/apps-lock.png)
+
+- **Passcode**: **Off** to start with. Tap it, choose **Passcode (digits)** or **Password**, then enter it twice. Once set, the same row (**On · Change**) changes it.
+- **Stay unlocked**: once the passcode is right, every locked app stays open until the Kindle sleeps (the default), or for 5 minutes, 15 minutes or 1 hour (sleep locks them again too).
+- **Turn off passcode**: every app opens without asking. The apps you ticked stay ticked, for when you set one again.
+- **LOCKED APPS**: a switch for each app (optional apps too, once installed), and **Settings**, which locks the Settings list and every app's settings (where your keys and sign-ins are).
+- **Web page password**: the web page reaches every app's data from your phone or computer, so give it its own password (see "The web page").
+
+A locked app asks however it's opened: its tile, Recent apps, KOReader's Tools menu, a gesture, a notification, search (a locked app's results show as **Locked** until you unlock it) and its quick buttons. Tap the digits with a finger or the pen (a firm press works too); it opens at the last digit. After 3 wrong tries, wait 30 seconds. **Cancel** or Back leaves it shut.
+
+If a locked app is on the screen when the Kindle sleeps, the keypad covers it when it wakes, so the app doesn't show until the passcode is right. **Cancel** there goes to the launcher.
+
+![The keypad after the Kindle wakes](img/apps-lock-keypad.png)
+
+The web page's Launcher tab has the same settings; there, each change asks for your passcode first. A backup has the passcode only with **Include keys and sign-ins**; restored without it, the apps stay ticked but nothing asks until you set a passcode again. Forgot it? Connect the Kindle to a computer and delete `koreader/settings/apps_lock.lua`; every app then opens without asking.
+
+> App lock keeps people out of the apps on the Kindle; it doesn't encrypt anything. What the apps save is still in the Kindle's files, and At a glance, the sleep screen and notifications can still show a line from a locked app.
+
 ### Wi-Fi
 
 - **Turn off when idle**: **Off**, or after 5, 15 or 30 minutes with no network use. Downloads, syncing and Home Assistant's updates count as use. It never turns Wi-Fi off while the web server is on, and time asleep doesn't count. A notice says when it happens.
@@ -354,11 +392,13 @@ For a dark screen, use **Night mode** (the quick button, the control center or *
 Settings > **Updates**:
 
 - **Check for updates**: shows the version installed. Tap it to look for a newer release; when there is one, you see its notes and **Update**, which downloads it, checks it, installs it and offers to restart KOReader. If anything goes wrong, nothing changes. When you're up to date it offers **Reinstall**, to install the same version again.
-- **Update from**: where updates come from, as owner/repo on GitHub (this project's own, github.com/Mcp20091/kindle-koreader-apps, to start with). Change it to follow a fork; leave it empty to go back.
-- **Install a version**: the releases to pick from, the installed one and the latest marked, then the repo's branches (**Branch: main**, …). Picking an older release goes back to it. A branch installs the code as it is on it now (not a release, so it may not be finished); after that, **Check for updates** and the daily check look for newer commits on that branch instead of releases, until you install a release again.
+- **Repository**: where updates come from, as owner/repository on GitHub (this project's own, Mcp20091/kindle-koreader-apps, to start with). Change it to follow a fork; leave it empty to go back.
+- **Select version**: the releases to pick from, the installed one and the latest marked. Picking a previous one goes back to it.
+- **Show test versions**: off to start with. Test versions are for trying changes before they're released: they may have bugs or be unfinished. Turned on (past a warning), they show in **Select version**, marked **test**; they're never offered as updates. **Select version** or **Undo a plugin update** takes you back to a release.
+- **Back to the releases**: only on a Kindle that was installed from a branch (an option of earlier versions). It installs the latest release, and updates come from the releases again.
 
-While an update installs, a pop-up says how far it is: **Downloading… 40%** (or how many MB, for a branch), then **Checking the update: notes (5 of 10)** and **Installing notes (5 of 10)**, a plugin at a time. The Kindle keeps answering meanwhile, so there's no need to restart it.
-- **Optional apps**: extra apps you can add (FlashForge, for a FlashForge 3D printer; Pangolin, for a Pangolin server), kept out of the main install. The list comes from where your updates come from (the latest release, or the branch you installed): each app with **installed** or **not installed**. Tap one to **Install** it, or to **Update** or **Remove** it. Once installed, an optional app is updated along with the rest. Removing one keeps it under **Undo a plugin update**, which can bring it back. KOReader restarts after each.
+While an update installs, a pop-up says how far it is: **Downloading… 40%**, then **Checking the update: notes (5 of 10)** and **Installing notes (5 of 10)**, a plugin at a time. The Kindle keeps answering meanwhile, so there's no need to restart it.
+- **OPTIONAL APPS**: apps that aren't in the main install (FlashForge, for a FlashForge 3D printer; Pangolin, for a Pangolin server; NextDNS, for a NextDNS profile; pfSense, for a pfSense firewall), in one **Optional apps** row (how many are installed, and which) that opens the list, from the latest release (or from the test version installed, which can have newer ones) once the Kindle is on Wi-Fi. Each shows **Install**, or **Remove** once it's installed. Once installed, they update automatically with each new version of the primary apps. **Update** shows only when the copy on the Kindle is too old for the launcher (it has no tile then): it installs it again. If one can't be updated with the rest, a notification says so. Removing one keeps it under **Undo a plugin update**, which can bring it back. KOReader restarts after each.
 - **Check automatically**: on to start with. Once a day, only while the Kindle is already on Wi-Fi, a notification says when there's a newer release; tap it to see what's new and update. Until it's installed, the launcher's **Settings** tile says **Update available**.
 
 After an update, its notes show once when KOReader starts again (**What's new in …**).
@@ -389,13 +429,14 @@ With **Sleep screen** set to **Summary**, the sleeping Kindle shows:
 - The date, "Sleeping since 3:05 PM" and the battery (with the charging sign on the charger).
 - The weather with today's high and low.
 - **NEXT**: the next event or reminder.
-- **TODAY**: today's and overdue tasks, with boxes.
+- **TODAY**: today's and overdue tasks, with boxes; an overdue one with the day it was due.
 
 With **Widgets** it shows the parts you pick (Settings > **Launcher** > **Widgets**), each in a box:
 
-- **Clock**: the time, the date and the battery.
-- **Current book**: its cover, title and how far you are.
-- **To Do today**: today's and overdue tasks.
+- **Clock and weather**: the time, the date and the battery, and beside them the weather now with today's high and low.
+- **Weather forecast**: the next hours, then the next days from tomorrow, each with its icon, the temperature (the high and low for a day) and the chance of rain. It's the forecast the Kindle last got (Home Assistant's or Open-Meteo's).
+- **Current book**: its cover, title and how far you are. While it's open: its chapter and the pages left in it, the page you're on, about how long the rest takes at your pace and how long you've read it (from KOReader's reading statistics).
+- **To Do today**: today's and overdue tasks; an overdue one with the day it was due.
 - **Home Assistant alerts**: whether the doors are locked and the garage shut, and the alerts you chose in Home Assistant's settings.
 - **Latest notifications**: the newest four.
 

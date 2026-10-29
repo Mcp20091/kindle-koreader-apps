@@ -9,7 +9,7 @@ local Common = require("webcommon")
 local Web = {}
 
 -- Settings the page may change, and their kinds.
-local SETTINGS = { layout = "string", clock = "string", columns = "number", clock_24h = "boolean", button_labels = "boolean", button_labels_app = "table", at_start = "boolean",
+local SETTINGS = { layout = "string", clock = "string", columns = "number", clock_24h = "boolean", button_labels = "boolean", button_labels_app = "table", page_bar = "string", at_start = "boolean",
     today = "boolean", toggles = "boolean", recent = "boolean", recent_notes = "boolean", recent_crosswords = "boolean", recent_together = "boolean", quick_off = "table", wifi_idle = "number",
     weather = "string", weather_units = "string", weather_place = "table", sleep_widgets = "table", sleep_widgets_order = "table" }
 local WEATHER = { auto = true, ha = true, openmeteo = true, off = true }
@@ -25,12 +25,14 @@ local function state(a)
     -- The clock: KOReader's own setting, the same for every app.
     out.settings.clock_24h = not G_reader_settings:isTrue("twelve_hour_clock")
     out.settings.button_labels = G_reader_settings:readSetting("apps_button_labels") ~= false
+    -- The bar at the foot of every app's pages (appscanvas.lua's Canvas.pageBar).
+    out.settings.page_bar = require("appscanvas").pageBar()
     -- Each app's own (Default, On, Off), as on the Kindle's Button labels page.
     local okP, Popup = pcall(require, "appspopup")
-    if okP and Popup.LABEL_APPS then
+    if okP and Popup.labelApps then
         out.buttonLabelApps = {}
         local by = G_reader_settings:readSetting("apps_button_labels_by_app") or {}
-        for __, ap in ipairs(Popup.LABEL_APPS) do
+        for __, ap in ipairs(Popup.labelApps()) do
             if ap.key == "apps" or (a.plugin and a:plugin(ap.plugin)) then
                 local v = by[ap.key]
                 table.insert(out.buttonLabelApps, { key = ap.key, name = ap.name, value = v == nil and "default" or (v and "on" or "off") })
@@ -56,6 +58,15 @@ local function state(a)
             table.insert(list, { key = Model.pinKey(p), name = p.group and (p.group .. " \u{00B7} " .. p.name) or p.name, icon = p.icon })
         end
         out.choices[kind] = list
+    end
+    -- App lock (appslock.lua): whether it's on, its kind, how long it stays unlocked and the apps.
+    local okL, Lock = pcall(require, "appslock")
+    if okL then
+        local l = Lock.get()
+        out.lock = { available = true, set = l:isSet(), kind = l:kind(), stay = l:stay(), apps = {} }
+        for __, ap in ipairs(Lock.apps()) do
+            table.insert(out.lock.apps, { key = ap.key, name = ap.name, on = l:apps()[ap.key] == true })
+        end
     end
     -- The quick buttons (appsquick.lua): the list as set, and the built-ins there are.
     local okQ, Quick = pcall(require, "appsquick")
@@ -214,6 +225,47 @@ function Web.routes(server)
         res:json({ icons = list })
     end)
 
+    -- App lock, as Settings > Launcher > App lock: { current, kind, secret, stay, apps = { key = bool },
+    -- off }. With a passcode set, every change needs it (`current`); wrong tries count and wait as on
+    -- the Kindle. Neither is ever logged.
+    server:route("POST", "^/api/apps/lock$", function(req, res)
+        local okL, Lock = pcall(require, "appslock")
+        if not okL then return res:error(404, "The launcher isn't installed") end
+        local l = Lock.get()
+        local b = req.json() or {}
+        if l:isSet() then
+            local right, why, left = l:check(type(b.current) == "string" and b.current or "")
+            if not right then return res:error(403, Lock.why(l:kind(), why, left)) end
+        end
+        if b.off then
+            l:clear()
+            return res:json({ ok = true })
+        end
+        if b.secret ~= nil then
+            local kind = b.kind == "password" and "password" or "passcode"
+            local secret = type(b.secret) == "string" and b.secret or ""
+            local valid = Lock.valid(kind, secret)
+            if valid ~= true then return res:error(400, valid) end
+            -- (Set from here, the Kindle stays locked or unlocked as it was.)
+            local was = l.unlockedAt
+            l:set(kind, secret)
+            l.unlockedAt = was
+        end
+        if b.stay ~= nil then
+            local known = false
+            for __, v in ipairs(Lock.STAYS) do if v == b.stay then known = true end end
+            if not known then return res:error(400, "Unknown time") end
+            l:setStay(b.stay)
+        end
+        if type(b.apps) == "table" then
+            for k, v in pairs(b.apps) do
+                local ap = Lock.appOf(k)
+                if ap then l:setLocked(ap.key, v == true) end
+            end
+        end
+        res:json({ ok = true })
+    end)
+
     server:route("POST", "^/api/apps/settings$", function(req, res)
         local a = apps()
         if not a then return res:error(404, "The launcher isn't installed") end
@@ -225,6 +277,11 @@ function Web.routes(server)
             local v = b.button_labels_app.value
             if okP then Popup.setLabelsOf(b.button_labels_app.key, Popup.labelsValue(v)) end
             b.button_labels_app = nil
+        end
+        if b.page_bar ~= nil then
+            if b.page_bar ~= "parts" and b.page_bar ~= "next" and b.page_bar ~= "words" then return res:error(400, "Unknown page bar") end
+            G_reader_settings:saveSetting("apps_page_bar", b.page_bar)
+            b.page_bar = nil
         end
         if b.button_labels ~= nil then
             G_reader_settings:saveSetting("apps_button_labels", b.button_labels and true or false)
@@ -273,7 +330,7 @@ function Web.routes(server)
         elseif type(b.key) == "string" and b.hidden ~= nil then
             s.hidden = s.hidden or {}
             local tile
-            for __, t in ipairs(Model.TILES) do if t.key == b.key then tile = t end end
+            for __, t in ipairs(Model.allTiles()) do if t.key == b.key then tile = t end end
             -- (Shown: false for one hidden to start with, no entry for the others.)
             if b.hidden == true then s.hidden[b.key] = true
             elseif tile and tile.offByDefault then s.hidden[b.key] = false

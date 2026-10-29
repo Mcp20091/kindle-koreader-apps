@@ -80,25 +80,20 @@ local function openApp(page)
     if st then st:show(page) end
 end
 
---- The ongoing notification while Syncthing runs: its icon shows in every app's clock
--- corner (shared notifications, when the launcher is there).
-local function runningNote(on)
-    local PS = require("pluginshare")
-    if on then
-        if PS.notify then
-            pcall(PS.notify, { app = "syncthing", key = "syncthing:running", ongoing = true, icon = "folder-sync",
-                name = _("Syncthing"), text = _("Syncthing is on. Tap to open it."), open = openApp, route = {} })
-        end
-    elseif PS.unnotify then
-        pcall(PS.unnotify, "syncthing:running")
-    end
-end
-
 function Syncthing:init()
     Canvas.setDir(self.path)
     local PS = require("pluginshare")
     PS.notifyOpeners = PS.notifyOpeners or {}
     PS.notifyOpeners.syncthing = function() openApp() end
+    -- What it is for the launcher and the web page: its tile, Settings group, web tab
+    -- (apps.koplugin/appsinfo.lua).
+    PS.appInfo = PS.appInfo or {}
+    PS.appInfo.syncthing = { name = _("Syncthing"), icon = "folder-sync", dir = self.path, order = 60, group = "tools",
+        -- "On · Up to date", "On · Syncing · 3 files left", "Off".
+        tiles = { { key = "syncthing", event = "ShowSyncthing", line = function(s) return s:appsLine() end } },
+        gestures = { "^syncthing_", "^toggle_syncthing_server$" },
+        web = { page = "syncthing", routes = "websyncthing", script = "web/syncthing.js",
+            card = "Folders, devices and requests." } }
     -- The web page's backup: the settings always; Syncthing's own folder (its
     -- config, this Kindle's keys and so its device ID, its database) only with
     -- "Include keys and sign-ins".
@@ -129,7 +124,7 @@ function Syncthing:init()
     if PS.registerSearch then
         PS.registerSearch{ key = "syncthing", name = _("Syncthing"), icon = "folder-sync", search = function(q)
             local st = current()
-            return st and st:search(q) or {}
+            return st and st:searchFolders(q) or {}
         end }
     end
     -- A launcher quick button: tap turns Syncthing on or off, hold opens the app.
@@ -180,8 +175,6 @@ function Syncthing:init()
     self.api = API.new(self.dir, self:port())
     self.ui.menu:registerToMainMenu(self)
     self:onDispatcherRegisterActions()
-    -- (Syncthing keeps running when KOReader restarts: its icon is back)
-    if self:isRunning() then runningNote(true) end
     if self:withWifi() and not state.stopped and not self:isRunning() and NetworkMgr:isConnected() then
         UIManager:nextTick(function() self:start(true) end)
     end
@@ -339,7 +332,6 @@ function Syncthing:start(quiet)
     logger.dbg("Syncthing: starting", cmd)
     os.execute(cmd .. " > /dev/null 2>&1 &")
     state.snap, state.starting, state.cancel = nil, os.time(), nil
-    runningNote(true)
     self:changed()
     self:waitUntilReady(quiet)
     return true
@@ -367,7 +359,6 @@ function Syncthing:waitUntilReady(quiet, tries)
             if tries < 30 then return self:waitUntilReady(quiet, tries + 1) end
             state.starting = nil
             if not alive(readPid()) then
-                runningNote(false)
                 firewall(self:port(), false)
                 if not quiet then require("stko").toast(_("Couldn't start Syncthing")) end
             end
@@ -394,7 +385,6 @@ function Syncthing:stopNow()
     local pid = readPid()
     if not alive(pid) then return end
     state.stopping, state.snap = pid, nil
-    runningNote(false)
     local function signal(sig)
         os.execute(string.format("pkill -%s -P %d; kill -%s %d", sig, pid, sig, pid))
     end
@@ -413,7 +403,6 @@ function Syncthing:stop(quiet, byHand)
     if byHand then state.stopped = true end
     if state.starting then
         state.cancel, state.starting = true, nil
-        runningNote(false)
         firewall(self:port(), false)
         self:changed()
         return true
@@ -421,14 +410,12 @@ function Syncthing:stop(quiet, byHand)
     local pid = readPid()
     if not alive(pid) then
         os.remove(PID_FILE)
-        runningNote(false)
         return true
     end
     local function signal(sig)
         os.execute(string.format("pkill -%s -P %d; kill -%s %d", sig, pid, sig, pid))
     end
     state.stopping, state.snap = pid, nil
-    runningNote(false)
     signal("TERM")
     firewall(self:port(), false)
     self:changed()
@@ -625,40 +612,20 @@ function Syncthing:act(name, a, done)
     return true
 end
 
---- Folders (by name or path) and devices (by name) with q in them (lower case), for
--- the launcher's search; a result opens that folder's or device's menu.
-function Syncthing:search(q)
+--- Folders whose name or path has q in it (lower case), for the launcher's search.
+function Syncthing:searchFolders(q)
     local out = {}
-    local running = self:isRunning() and state.snap ~= nil
-    local folders, devices = {}, {}
+    local folders = {}
     -- (from memory: the last status read, or config.xml as last read)
     if state.snap then
-        folders, devices = state.snap.folders or {}, state.snap.devices or {}
+        for __, f in ipairs(state.snap.folders) do table.insert(folders, f.folder) end
     else
-        local cfg = self.api.cfg
-        for __, f in ipairs(cfg and cfg.folders or {}) do table.insert(folders, { folder = f }) end
-        for __, d in ipairs(cfg and cfg.devices or {}) do table.insert(devices, { device = d, name = d.name }) end
-    end
-    -- (the app first, then its menu on top of it)
-    local function openMenu(menu, entry)
-        return function()
-            openApp()
-            UIManager:nextTick(function()
-                if state.view then state.view[menu](state.view, entry, running) end
-            end)
-        end
+        folders = self.api.cfg and self.api.cfg.folders or {}
     end
     for __, f in ipairs(folders) do
-        local label, path = tostring(f.folder.label or ""), tostring(f.folder.path or "")
+        local label, path = tostring(f.label or ""), tostring(f.path or "")
         if label:lower():find(q, 1, true) or path:lower():find(q, 1, true) then
-            table.insert(out, { title = label, sub = path, open = openMenu("folderMenu", f) })
-            if #out >= 20 then return out end
-        end
-    end
-    for __, d in ipairs(devices) do
-        local name = tostring(d.name or "")
-        if name:lower():find(q, 1, true) then
-            table.insert(out, { title = name, sub = _("Device"), open = openMenu("deviceMenu", d) })
+            table.insert(out, { title = label, sub = path, open = function() openApp() end })
             if #out >= 20 then break end
         end
     end
@@ -675,6 +642,9 @@ end
 --- The app (page "settings": its settings, back from them closes the app, for
 -- the launcher's Settings list). An app already open is brought back on top.
 function Syncthing:show(page)
+    -- App lock (the launcher's): its passcode first, when this app is locked.
+    local lock = require("pluginshare").lock
+    if lock and lock.ask("syncthing", function() self:show(page) end) then return end
     local PS = require("pluginshare")
     if PS.noteRecent then pcall(PS.noteRecent, "syncthing") end
     if state.view then UIManager:close(state.view) end

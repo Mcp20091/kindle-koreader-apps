@@ -676,7 +676,7 @@ App.pages.notes = {
       async function signIn() {
         await saveClient();
         const r = await App.api('/api/notes/onenote/signin', { json: {} }).catch(App.fail);
-        if (r) App.pages.notes.showCode(codeBox, r, '/api/notes/onenote/signin', 'Signed in to OneNote');
+        if (r) App.showCode(codeBox, r, '/api/notes/onenote/signin', 'Signed in to OneNote');
       }
       async function signOut() {
         if (!await App.confirm('Sign out', 'Sign out of OneNote? Pages already sent stay in OneNote.', 'Sign out', true)) return;
@@ -692,21 +692,5 @@ App.pages.notes = {
         'When adding to To Do: “Fri”, “10/30”, “9am”, “remind Mon 7pm”.') : null));
     if (!box.children.length) box.append(h('div', { class: 'empty' }, 'This version of Notes has no OneNote or AI settings.'));
     return box;
-  },
-
-  showCode(box, st, statusUrl, doneText) {
-    box.innerHTML = '';
-    box.append(h('div', { class: 'card', style: 'background:var(--soft)' },
-      h('div', {}, 'Open ', h('a', { href: st.url, target: '_blank' }, st.url), ' and enter'),
-      h('div', { class: 'code-box', style: 'margin:10px 0' }, st.code),
-      h('div', { class: 'small muted' }, 'This page updates automatically when you’re done.')));
-    const poll = async () => {
-      const now = await App.api(statusUrl).catch(() => null);
-      if (!now || now.status === 'waiting') return setTimeout(poll, 3000);
-      if (now.status === 'ok') { App.toast(doneText); App.route(); return; }
-      box.innerHTML = '';
-      App.toast(now.status === 'expired' ? 'The code expired. Sign in again.' : 'Could not sign in: ' + (now.message || ''), true);
-    };
-    setTimeout(poll, 3000);
   },
 };

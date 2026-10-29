@@ -105,6 +105,9 @@ function FlashForge:onToggleFlashForgeLight()
 end
 
 function FlashForge:show(page)
+    -- App lock (the launcher's): its passcode first, when this app is locked.
+    local lock = require("pluginshare").lock
+    if lock and lock.ask("flashforge", function() self:show(page) end) then return end
     return require("ffui").show(self, page)
 end
 
@@ -399,6 +402,15 @@ end
 function FlashForge:shareWithApps()
     local PS = require("pluginshare")
     PS.notifyOpeners = PS.notifyOpeners or {}
+    -- What it is for the launcher and the web page: its tile (only there while it's installed:
+    -- an optional app), Settings group (Optional apps; its tile in the suggested Tools group), web tab
+    -- (apps.koplugin/appsinfo.lua).
+    PS.appInfo = PS.appInfo or {}
+    PS.appInfo.flashforge = { name = _("FlashForge"), icon = "printer", dir = self.path, order = 80, group = "optional",
+        -- "Printing 42% · 1 h 5 min left", "Ready".
+        tiles = { { key = "flashforge", group = "tools", event = "ShowFlashForge", line = function(f) return f:appsLine() end } },
+        web = { page = "flashforge", routes = "webflashforge", script = "web/flashforge.js",
+            card = "Your 3D printer: the print, pause and cancel, the light and settings." } }
     PS.notifyOpeners.flashforge = function()
         local ff = current()
         if ff then ff:show() end

@@ -75,6 +75,10 @@ function Library:init()
     if PS.registerSettings then
         PS.registerSettings{ key = "library", name = _("Library"), icon = "library", open = function() V().settings() end }
     end
+    -- What it is for the launcher (apps.koplugin/appsinfo.lua): no tile of its own (the
+    -- launcher's Library tile opens it), its Settings row in Reading, no gestures over the apps.
+    PS.appInfo = PS.appInfo or {}
+    PS.appInfo.library = { name = _("Library"), icon = "library", dir = self.path, order = 45, group = "reading", gestures = {} }
     if PS.registerSearch then
         PS.registerSearch{ key = "library", name = _("Library"), icon = "library", search = function(q) return Library.search(self, q) end }
     end

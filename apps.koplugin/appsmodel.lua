@@ -7,9 +7,9 @@ screen, a To Do list or a notebook, opened straight there.
 
 local Model = {}
 
--- key, name, icon, the plugin it needs (nil: always there; "@homeassistant":
--- Home Assistant set up; "@frontlight": a
--- Kindle with a front light).
+-- key, name, icon, the plugin it needs (nil: always there; "@frontlight": a
+-- Kindle with a front light). The apps' own tiles come from what they register
+-- (appsinfo.lua), where `{ apps = true }` is.
 Model.TILES = {
     { key = "reading", name = "Continue reading", icon = "book-open" },
     { key = "library", name = "Library", icon = "library" },
@@ -18,21 +18,9 @@ Model.TILES = {
     { key = "readingtime", name = "Reading statistics", icon = "activity", plugin = "statistics" },
     -- Now, alerts, 24 hours and 7 days (Open-Meteo), or Home Assistant's weather screen.
     { key = "weather", name = "Weather", icon = "cloud-sun" },
-    { key = "ha", name = "Home Assistant", icon = "house", plugin = "homeassistant", event = "ShowHomeAssistant" },
-    { key = "dashboard", name = "Dashboard", icon = "layout-dashboard", plugin = "@homeassistant", event = "ShowHomeAssistantDashboard" },
-    { key = "todo", name = "To Do", icon = "list-checks", plugin = "todo", event = "ShowTodo" },
-    { key = "notes", name = "Notes", icon = "notebook-pen", plugin = "notes", event = "ShowNotes" },
-    -- The Crosswords app (its own plugin since 2026-10-24): its list of puzzle books.
-    { key = "crosswords", name = "Crosswords", icon = "grid-3x3", plugin = "crosswords", event = "ShowCrosswords" },
-    { key = "wikipedia", name = "Wikipedia", icon = "wikipedia", plugin = "wikipedia", event = "ShowWikipedia" },
-    { key = "syncthing", name = "Syncthing", icon = "folder-sync", plugin = "syncthing", event = "ShowSyncthing" },
-    -- (The SSH plugin's folder is sshclient.koplugin: KOReader's own SSH server is SSH.koplugin.)
-    { key = "ssh", name = "SSH", icon = "terminal", plugin = "sshclient", event = "ShowSSH" },
-    -- A FlashForge 3D printer (optional/flashforge.koplugin: only there when it's installed).
-    { key = "flashforge", name = "FlashForge", icon = "printer", plugin = "flashforge", event = "ShowFlashForge" },
-    -- A Pangolin server (optional/pangolin.koplugin: only there when it's installed).
-    { key = "pangolin", name = "Pangolin", icon = "shield-check", plugin = "pangolin", event = "ShowPangolin" },
-    { key = "web", name = "Web server", icon = "globe", plugin = "webpage" },
+    -- The apps' tiles (Home Assistant, To Do, Notes, ... the web server), as each app registers
+    -- them (appsinfo.lua: PS.appInfo), in the apps' order.
+    { apps = true },
     -- Screens set up once or looked at now and then: off to start with (each is in
     -- Settings and search too); Edit home screen shows them.
     { key = "gestures", name = "Gestures", icon = "hand", plugin = "gestures", offByDefault = true },
@@ -101,21 +89,42 @@ function Model.removePin(pins, key)
     return out
 end
 
+--- Every tile as listed, the apps' own where `{ apps = true }` is. `info`: the
+-- apps' entries (appsinfo.lua; left out: PluginShare's).
+function Model.allTiles(info)
+    local out = {}
+    for __, t in ipairs(Model.TILES) do
+        if t.apps then
+            for __, a in ipairs(require("appsinfo").tiles(info)) do table.insert(out, a) end
+        else
+            table.insert(out, t)
+        end
+    end
+    return out
+end
+
+--- Whether an app's tile says it's shown now (its `shown`; none: shown).
+local function shownNow(t)
+    if not t.shown then return true end
+    local ok, v = pcall(t.shown)
+    return ok and v == true
+end
+
 --- The tiles (the apps, then the pins) in the saved order (any not in it
 -- after, in the usual order), leaving out those whose plugin is missing
--- (has(plugin) false) and, unless withHidden, the hidden ones.
-function Model.tiles(order, hidden, has, withHidden, pins, groups)
+-- (has(plugin) false), those an app says aren't shown now and, unless
+-- withHidden, the hidden ones.
+function Model.tiles(order, hidden, has, withHidden, pins, groups, info)
     local rank = {}
     for i, k in ipairs(order or {}) do rank[k] = i end
     local list = {}
-    local all = {}
-    for __, t in ipairs(Model.TILES) do table.insert(all, t) end
+    local all = Model.allTiles(info)
     for __, p in ipairs(pins or {}) do table.insert(all, Model.pinTile(p)) end
     for __, g in ipairs(groups or {}) do
         table.insert(all, { key = "group:" .. g.id, name = g.name, icon = g.icon or "folder", groupTile = g.id })
     end
     for i, t in ipairs(all) do
-        if (not t.plugin or has(t.plugin)) and (withHidden or not Model.isHidden(hidden, t)) then
+        if (not t.plugin or has(t.plugin)) and shownNow(t) and (withHidden or not Model.isHidden(hidden, t)) then
             table.insert(list, { tile = t, i = i, r = rank[t.key] })
         end
     end
@@ -151,6 +160,25 @@ function Model.duration(seconds)
     local m = math.floor((seconds or 0) / 60 + 0.5)
     if m < 60 then return m .. " min" end
     return math.floor(m / 60) .. " h" .. (m % 60 > 0 and (" " .. m % 60 .. " min") or "")
+end
+
+--- The book's lines under its title on the widgets sleep screen, from what the reader has in memory:
+-- b = { chapter, chapterLeft (pages), page, pages, avg (seconds a page), read (seconds) }.
+-- { "Chapter 3 · 12 pages left in the chapter", "Page 120 of 340 · About 3 h left · 5 h read" }.
+function Model.bookLines(b)
+    local out = {}
+    local chapter = b.chapter and b.chapter ~= "" and b.chapter or nil
+    local n = b.chapterLeft
+    local left = n and n >= 0 and (n == 0 and "Last page of the chapter" or n == 1 and "1 page left in the chapter"
+        or n .. " pages left in the chapter") or nil
+    if chapter or left then table.insert(out, chapter and left and (chapter .. " · " .. left) or chapter or left) end
+    if b.page and b.pages and b.pages > 0 then
+        local line = "Page " .. b.page .. " of " .. b.pages
+        if b.avg and b.avg > 0 and b.pages > b.page then line = line .. " · About " .. Model.duration((b.pages - b.page) * b.avg) .. " left" end
+        if b.read and b.read >= 60 then line = line .. " · " .. Model.duration(b.read) .. " read" end
+        table.insert(out, line)
+    end
+    return out
 end
 
 --- The most days read in a row, ever: `days` the days with reading ("2026-10-21"), any order.
@@ -306,13 +334,14 @@ function Model.quickPut(list, key, groupKey)
 end
 
 --- Groups the launcher suggests (Suggested groups, on Edit home screen and in Set up your
--- Kindle): a name, an icon and the tiles that go in it (those installed).
+-- Kindle): a name, an icon and the tiles that go in it (those installed): these, then
+-- the apps' tiles that say they go in it (their `group`).
 Model.SUGGESTED_GROUPS = {
     { key = "settings", name = "Settings", icon = "settings", tiles = { "settings", "fonts", "gestures", "battery", "kosettings", "restart" } },
-    { key = "reading", name = "Reading", icon = "book-open", tiles = { "library", "readingtime", "wikipedia" } },
-    { key = "home", name = "Home", icon = "house", tiles = { "ha", "dashboard", "weather" } },
-    { key = "writing", name = "Writing", icon = "notebook-pen", tiles = { "notes", "crosswords" } },
-    { key = "tools", name = "Tools", icon = "terminal", tiles = { "todo", "ssh", "syncthing", "web", "flashforge", "pangolin" } },
+    { key = "reading", name = "Reading", icon = "book-open", tiles = { "library", "readingtime" } },
+    { key = "home", name = "Home", icon = "house", tiles = { "weather" } },
+    { key = "writing", name = "Writing", icon = "notebook-pen", tiles = {} },
+    { key = "tools", name = "Tools", icon = "terminal", tiles = {} },
     { key = "device", name = "Device", icon = "power", tiles = { "wifi", "light", "night", "exit" } },
 }
 
@@ -329,7 +358,12 @@ function Model.suggestions(all, groups, grouped)
     for __, sg in ipairs(Model.SUGGESTED_GROUPS) do
         if not names[sg.name:lower()] then
             local tiles = {}
-            for __, k in ipairs(sg.tiles) do
+            local keys = {}
+            for __, k in ipairs(sg.tiles) do table.insert(keys, k) end
+            for __, t in ipairs(all) do
+                if t.group == sg.key then table.insert(keys, t.key) end
+            end
+            for __, k in ipairs(keys) do
                 local gid = grouped and grouped[k]
                 if byKey[k] and not (gid and exists[gid]) then table.insert(tiles, byKey[k]) end
             end

@@ -1,6 +1,6 @@
-2026-10-25 19:06
+2026-10-27 23:58
+Oct 27  Wikipedia: App lock (Settings > Launcher > App lock) asks before it opens, from the Tools menu and gestures too
+Oct 27  Wikipedia: says what it is to the launcher and the web page (its tile, its web tab, now in this folder)
 Oct 25  Lists with more pages end in a "More on page 2 of 3" bar (every app); Library Home: servers and folders first, with a setting
 Oct 25  A firm pen press (a hold) on the reader toolbar and the Contents and link-preview panels acts as a tap
 Oct 25  Every button row is the launcher's now (it greys enabled = false ones); ours only without it
-Oct 25  Buttons hand over to the launcher's PS.popup.iconButtons (apps 10fbf13); ours without it and for a row with a greyed button
-Oct 25  Every screen, every app: the language lists and Save to as Wikipedia screens with the title bar, the launcher's button row, and Copy

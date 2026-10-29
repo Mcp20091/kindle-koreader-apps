@@ -9,6 +9,28 @@ local Device = require("device")
 
 local Home = {}
 
+-- { name = true } for the launcher and each app running that says what it is (PS.appInfo).
+local function plugins()
+    local out = { apps = Common.plugin("apps") ~= nil }
+    local ok, PS = pcall(require, "pluginshare")
+    for name in pairs(ok and PS.appInfo or {}) do
+        if Common.plugin(name) then out[name] = true end
+    end
+    return out
+end
+
+-- The apps' web page tabs (Common.webApps), as the page needs them.
+local function tabs()
+    local out = {}
+    for __, a in ipairs(Common.webApps()) do
+        if a.page then
+            table.insert(out, { page = a.page, name = a.name, card = a.card, plugin = a.plugin,
+                script = a.script and a.dir and ("/static/app/" .. a.plugin .. "/" .. a.script:match("[^/]+$")) or nil })
+        end
+    end
+    return out
+end
+
 function Home.routes(server, plugin)
     server:route("GET", "^/api/home$", function(req, res)
         local util = require("util")
@@ -23,21 +45,10 @@ function Home.routes(server, plugin)
             storage = { total = disk.total, available = disk.available },
             koreader = ok and version or "",
             time = os.time(),
-            plugins = {
-                apps = Common.plugin("apps") ~= nil,
-                homeassistant = Common.plugin("homeassistant") ~= nil,
-                todo = Common.plugin("todo") ~= nil,
-                notes = Common.plugin("notes") ~= nil,
-                -- Crosswords: its own plugin now (inside Notes before).
-                crosswords = Common.plugin("crosswords") ~= nil or (Common.plugin("notes") or {}).crosswordSources ~= nil,
-                wikipedia = Common.plugin("wikipedia") ~= nil,
-                syncthing = Common.plugin("syncthing") ~= nil,
-                sshclient = Common.plugin("sshclient") ~= nil,
-                -- FlashForge: an optional app (optional/ in the repo).
-                flashforge = Common.plugin("flashforge") ~= nil,
-                -- Pangolin: an optional app too.
-                pangolin = Common.plugin("pangolin") ~= nil,
-            },
+            -- Which plugins are there: the launcher, and every app that registers (PS.appInfo).
+            plugins = plugins(),
+            -- The apps' tabs, in order: { page, name, card, plugin, script (its URL) }.
+            apps = tabs(),
             -- Notes can take typed text (a newer Notes).
             sendNotes = (Common.plugin("notes") or {}).addTextPage ~= nil,
             awake = plugin:keepsAwake(),

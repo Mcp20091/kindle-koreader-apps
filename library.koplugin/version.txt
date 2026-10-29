@@ -1,6 +1,6 @@
-2026-10-25 20:31
+2026-10-27 20:18
+Oct 27  Library: says what it is to the launcher (its Settings row in Reading)
 Oct 25  Library: its KOReader menu item under a menu the file browser has (the reader's filemanager tab isn't there; opening KOReader settings from the file browser crashed)
 Oct 25  Library tests: an example address the personal-data check allows
 Oct 25  Setup: a step can show only when it applies (when); the Library's servers step only with the Library picked
 Oct 25  Library: a setup step for book servers and catalogs (Add a server)
-Oct 25  Lists with more pages end in a "More on page 2 of 3" bar (every app); Library Home: servers and folders first, with a setting
