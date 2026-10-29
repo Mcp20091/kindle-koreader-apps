@@ -771,7 +771,7 @@ end
 -- with Wi-Fi on (it is never turned on), at most once an hour.
 function Notes:autoCrosswords(force)
     local keys = Settings.get("crossword_auto") or {}
-    if #keys == 0 or not NetworkMgr:isOnline() then return end
+    if #keys == 0 or not NetworkMgr:isConnected() then return end
     if not force and os.time() - (Settings.get("crossword_auto_at") or 0) < AUTO_EVERY then return end
     if self.crosswordAutoRunning then return end
     Settings.set("crossword_auto_at", os.time())

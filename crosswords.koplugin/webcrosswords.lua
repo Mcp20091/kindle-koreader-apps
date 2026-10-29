@@ -43,7 +43,7 @@ function Web.routes(server)
         local src, kind = req.query.src, req.query.kind
         if not SOURCES[src] then return res:error(400, "Unknown source") end
         if src == "guardian" and not KINDS[kind] then kind = "quick" end
-        if not require("ui/network/manager"):isOnline() then return res:error(503, "The Kindle isn't online") end
+        if not require("ui/network/manager"):isConnected() then return res:error(503, "The Kindle isn't online") end
         local items, more = n:crosswordChoices(src, kind, math.max(0, math.floor(tonumber(req.query.from) or 0)))
         -- The Guardian's list is fetched in the background: asked for again.
         if not items and more == "loading" then return res:json({ loading = true }) end
@@ -66,7 +66,7 @@ function Web.routes(server)
             end
         end
         if #items == 0 then return res:error(400, "Nothing to get") end
-        if not require("ui/network/manager"):isOnline() then return res:error(503, "The Kindle isn't online") end
+        if not require("ui/network/manager"):isConnected() then return res:error(503, "The Kindle isn't online") end
         if n.getCrosswordsLater then return res:json({ job = n:getCrosswordsLater(b.src, items) }) end
         local got, missed, why = n:getCrosswordsFor(b.src, items)
         if why == "open" then return res:error(409, "That book is open on the Kindle: close it there first") end

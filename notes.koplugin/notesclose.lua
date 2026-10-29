@@ -187,7 +187,7 @@ return function(Notes)
     --- After a notebook still named by date is closed: the AI's name for it,
     -- offered (Suggest names (AI) on, AI set up, Wi-Fi on).
     function Notes:offerName(id)
-        if not Settings.get("suggest_names") or not self:claudeReady("read") or not NetworkMgr:isOnline() then return end
+        if not Settings.get("suggest_names") or not self:claudeReady("read") or not NetworkMgr:isConnected() then return end
         local nb = self.store:read(id)
         if not nb or not Notes.isDefaultName(nb.name) then return end
         -- Asked in the background (KOReader goes on); offered when it answers.

@@ -671,7 +671,7 @@ function Notes:sendToOneNote(id, quiet)
         end)
     end
     if quiet then
-        if NetworkMgr:isOnline() then go() end
+        if NetworkMgr:isConnected() then go() end
     else
         NetworkMgr:runWhenOnline(go)
     end
@@ -697,7 +697,7 @@ function Notes:sendAllToOneNote(quiet)
         end)
     end
     if quiet then
-        if NetworkMgr:isOnline() then go() end
+        if NetworkMgr:isConnected() then go() end
     else
         NetworkMgr:runWhenOnline(go)
     end

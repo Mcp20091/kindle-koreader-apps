@@ -303,7 +303,7 @@ App.pages.notes = {
         h('button', { class: 'btn small', onclick: async () => { for (const i of list) await png(i); } }, 'Save PNGs'),
         h('button', { class: 'btn small', onclick: () => pagesOp(allStarred ? 'unstar' : 'star', list) }, allStarred ? 'Remove bookmarks' : 'Bookmark'),
         h('button', { class: 'btn small danger', disabled: list.length >= data.pages.length, onclick: async () => {
-          if (await App.confirm('Delete pages', 'Delete ' + list.length + ' page(s)? This cannot be undone.', 'Delete pages', true)) pagesOp('delete', list);
+          if (await App.confirm('Delete pages', 'Delete ' + list.length + ' page(s)? You can restore them on the Kindle for 30 days.', 'Delete pages', true)) pagesOp('delete', list);
         } }, 'Delete pages'),
         h('button', { class: 'btn small', onclick: () => { picked.clear(); for (const cb of pages.querySelectorAll('input[type=checkbox]')) cb.checked = false; drawBar(); } }, 'Clear'));
     };
