@@ -58,5 +58,16 @@ do
     check("unknown: both, as before", both:find("For a straight clue", 1, true) ~= nil, true)
 end
 
+do
+    -- Source checks: nothing here may call NetworkMgr:isOnline() (a DNS lookup that can hang the loop).
+    local function slurp(name) local f = io.open(name, "rb") local s = f and f:read("*a") or "" if f then f:close() end return s end
+    local bad = {}
+    for __, name in ipairs({ "crosswordsui.lua", "webcrosswords.lua" }) do
+        if slurp(name):find(":isOnline()", 1, true) then table.insert(bad, name) end
+    end
+    check("no isOnline()", table.concat(bad, ","), "")
+    check("web settings: puzzle_buttons", slurp("webcrosswords.lua"):find('puzzle_buttons = "table"', 1, true) ~= nil, true)
+end
+
 print(string.format("%d passed, %d failed", passed, failed))
 os.exit(failed == 0 and 0 or 1)

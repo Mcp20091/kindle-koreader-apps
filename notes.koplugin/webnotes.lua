@@ -21,6 +21,7 @@ local SETTINGS = {
     eraser_hl = "boolean", pen_feel = "string", spread_turn = "boolean", name_date = "string", sort_default = "string", recent_mode = "string", show_recent = "boolean", hidden = "table", page_buttons = "table",
     onenote_auto = "boolean", onenote_picked_only = "boolean", onenote_text = "boolean",
     todo_dates = "boolean",
+    page_header = "boolean", swipe_pages = "string", start_pen = "string", finger_undo = "boolean", open_last = "boolean",
     groups = "table",
 }
 

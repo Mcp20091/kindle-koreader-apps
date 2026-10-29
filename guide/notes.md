@@ -457,7 +457,7 @@ A OneNote sign-in from before this moved to the shared account by itself. Withou
 - **⋯ > Send to OneNote** sends the notebook you're in. Hold a notebook in the list for **Send to OneNote now**, or use **Send all now** in the OneNote settings.
 - Sending happens in the background: you can keep writing or reading, and a notice says when it's done (for example "OneNote: 2 new, 1 changed, 0 removed").
 - Each notebook becomes a OneNote section, and each page a OneNote page holding the page as a picture (OneNote can search handwriting in pictures). Changed pages are updated and deleted pages removed; nothing comes back from OneNote.
-- **Send automatically when Wi-Fi is on** sends a notebook when you close it, and everything when Wi-Fi comes on (Notes never turns Wi-Fi on itself).
+- **Send automatically when Wi-Fi is on** sends a notebook when you close it, and everything when Wi-Fi comes on (Notes never turns Wi-Fi on itself). If that automatic send fails, a line in the bell says so and opens OneNote's settings; it goes away after the next good send.
 - **Notebooks sent: Ones I pick** sends only the notebooks you mark: hold a notebook in the list and tap **Sent to OneNote by itself** to switch it.
 - **Typed text of each page (read by AI)** adds the page's text under each page sent.
 
@@ -500,6 +500,8 @@ Exports are saved in the **notes/export** folder inside the koreader folder on t
 ## Open on the web page
 
 With the Web server plugin installed, **⋯ > Open on the web page** in a notebook shows a QR code. Scan it with your phone's camera and that notebook opens on the web page, where you can look through its pages and download them. In the notebook list, **⋮ > Open on the web page** opens the Notes page. The web server is started if it isn't running.
+
+The Notes tab's **Settings** has the same settings as on the Kindle, in the same words, including the toolbar's buttons. Pages deleted on the web page are kept for 30 days like those deleted on the Kindle: restore them from the bin in a notebook.
 
 ## Settings
 
