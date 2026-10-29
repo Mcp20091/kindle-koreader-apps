@@ -818,6 +818,7 @@ function Notes:open(id, page)
         on_draw = function(what, apply) self:drawWithClaude(what, apply) end,
         -- (Crosswords: from the Crosswords plugin, when installed.)
         on_crossword = cw and function(src) self:getCrossword(src) end or nil,
+        on_random = cw and self.randomPuzzle and function() self:randomPuzzle() end or nil,
         on_answer = cw and function(ed, area) self:crosswordAnswer(ed, area) end or nil,
         on_reveal = cw and self.crosswordReveal and function(ed, area) self:crosswordReveal(ed, area) end or nil,
         on_check = cw and function(ed, area) self:checkCrossword(ed, area) end or nil,

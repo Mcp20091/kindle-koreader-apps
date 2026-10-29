@@ -88,6 +88,21 @@ function Crosswords:init()
                 return notes:crosswordsTestRows(Test)
             end }
     end
+    -- A launcher quick button: a random puzzle (listed under Crossword… when adding a button).
+    if PS.registerQuick then
+        PS.registerQuick{ key = "notes", name = _("Crossword"),
+            choices = function() return { { id = "random", name = _("Random puzzle"), icon = "shuffle" } } end,
+            item = function()
+                local notes = self.ui.notes
+                if not (notes and notes.randomPuzzle) then return nil end
+                return { label = _("Random puzzle"), icon = "shuffle",
+                    tap = function(done)
+                        done()
+                        notes:randomPuzzle()
+                    end,
+                    hold = function() self:show() end }
+            end }
+    end
     if PS.registerSearch then
         PS.registerSearch{ key = "crosswords", name = _("Crosswords"), icon = "newspaper", search = function(q)
             local notes = self.ui.notes

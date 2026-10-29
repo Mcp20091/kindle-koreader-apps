@@ -13,6 +13,7 @@ App.pages.crosswords = {
     s.books = App.arr(s.books);
     s.sources = App.arr(s.sources);
     s.settings = App.obj(s.settings);
+    s.puzzleButtons = App.arr(s.puzzleButtons);
     const page = this;
     if (params.book && params.book !== page.linked) {
       page.linked = params.book;
@@ -25,7 +26,7 @@ App.pages.crosswords = {
       h('div', { class: 'spread' },
         h('div', {}, h('h1', {}, 'Crosswords'), h('p', { class: 'sub' }, 'Your crossword books on the Kindle. Downloads are done by the Kindle.')),
         h('div', { class: 'row' }, page.importButton())),
-      page.books(s), page.getter(s), page.settings(s));
+      page.books(s), page.getter(s), page.settings(s), page.toolbar(s));
   },
 
   reload() { App.route(); },
@@ -173,6 +174,36 @@ App.pages.crosswords = {
     return h('span', {}, input, h('button', { class: 'btn', onclick: () => input.click() }, 'Import PDF, .puz or .ipuz'));
   },
 
+  // A puzzle's toolbar buttons (Toolbar buttons in the Kindle's Crossword settings), drawn as they look
+  // there under the tools, to drag into order or to Not shown; a tap menu does the same.
+  toolbar(s) {
+    const st = s.settings;
+    const box = h('div', { class: 'stack' });
+    const by = {};
+    s.puzzleButtons.forEach((b) => { by[b.key] = b; });
+    const on = App.arr(st.puzzle_buttons).filter((k) => by[k]);
+    const draw = (svgs) => {
+      const btn = (b) => {
+        const sp = h('span', { class: 'tile-icon' });
+        if (svgs[b.icon]) sp.innerHTML = svgs[b.icon];
+        return h('div', { class: 've-tile', style: 'width:290px;height:48px;flex-direction:row;align-items:center;justify-content:flex-start;gap:12px' }, sp, h('b', {}, b.label));
+      };
+      const items = (keys) => keys.map((k) => ({ key: k, name: by[k].label, label: by[k].label, icon: by[k].icon }));
+      box.replaceChildren(App.visualZones([
+        { id: 'on', title: 'On the toolbar', short: 'Shown', empty: 'Drop buttons here to add them', items: items(on), render: btn },
+        { id: 'off', title: 'Not shown', short: 'Not shown', className: 'tray', empty: 'Every button is on the toolbar', items: items(s.puzzleButtons.map((b) => b.key).filter((k) => !on.includes(k))), render: btn },
+      ], { onChange: (z) => {
+        App.api('/api/crosswords/settings', { json: { puzzle_buttons: z.on } }).then(() => { st.puzzle_buttons = z.on; }, App.fail);
+      } }));
+    };
+    draw({});
+    App.api('/api/notes/icons?names=' + encodeURIComponent(s.puzzleButtons.map((b) => b.icon).join(',')))
+      .then((r) => draw((r && r.icons) || {}), () => {});
+    return h('div', { class: 'card stack' }, h('h2', {}, 'Toolbar buttons'),
+      h('p', { class: 'muted small' }, 'Things from a puzzle’s ⋯ menu to add to its toolbar, under the tools. Drag one to move it, or click it to move or remove it.'),
+      box);
+  },
+
   settings(s) {
     const st = s.settings;
     const save = async (k, v) => {
@@ -204,7 +235,7 @@ App.pages.crosswords = {
         'Each puzzle times itself while it is open and being written on.'),
       App.setting('Finished puzzles', App.select([['keep', 'Keep'], ['hide', 'Hide after 7 days'], ['remove', 'Remove after 30 days']], st.crossword_finished || 'keep', (v) => save('crossword_finished', v))),
       h('h3', {}, 'Get new ones automatically'),
-      h('p', { class: 'small muted' }, 'When Crosswords opens and Wi-Fi is on. Up to the last 3 days.'),
+      h('p', { class: 'small muted' }, 'When Crosswords opens or Wi-Fi comes on. Up to the last 3 days.'),
       autoBoxes);
   },
 };

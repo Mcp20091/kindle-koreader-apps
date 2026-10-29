@@ -655,6 +655,18 @@ function Notes:sendInBackground(ids, done)
     end, 15 * 60)
 end
 
+--- The bell: an automatic send that failed (one entry, opening OneNote's settings),
+-- cleared after a good send. (Not named oneNote…: KOReader treats "on…" as events.)
+function Notes:sendBell(failed)
+    if failed then
+        KO.notify{ key = "notes:onenote", icon = "send", text = _("OneNote: could not send your notebooks. Check OneNote's settings."),
+            open = function() self:oneNoteSettings() end }
+    else
+        local PS = require("pluginshare")
+        if PS.unnotify then PS.unnotify("notes:onenote") end
+    end
+end
+
 --- Sends one notebook (the editor's menu). Quiet: no questions, no
 -- message unless it went wrong. In the background (KOReader goes on).
 function Notes:sendToOneNote(id, quiet)
@@ -662,6 +674,7 @@ function Notes:sendToOneNote(id, quiet)
     local function go()
         if not quiet then notify(_("Sending to OneNote…")) end
         self:sendInBackground({ id }, function(counts, why)
+            if quiet then self:sendBell(not counts or why) end
             if counts and not why then
                 if not quiet or counts.created + counts.updated + counts.deleted > 0 then notify(T(_("OneNote: %1"), summary(counts))) end
             else
@@ -671,7 +684,7 @@ function Notes:sendToOneNote(id, quiet)
         end)
     end
     if quiet then
-        if NetworkMgr:isOnline() then go() end
+        if NetworkMgr:isConnected() then go() end
     else
         NetworkMgr:runWhenOnline(go)
     end
@@ -688,6 +701,7 @@ function Notes:sendAllToOneNote(quiet)
         if #ids == 0 then return end
         if not quiet then notify(T(_("Sending %1 notebooks to OneNote…"), #ids)) end
         self:sendInBackground(ids, function(total, why)
+            if quiet then self:sendBell(not total or why) end
             if why then
                 logger.warn("Notes: OneNote send failed", why)
                 if quiet then notify(_("OneNote: could not send")) else info(T(_("Could not send to OneNote:\n%1"), tostring(why))) end
@@ -697,7 +711,7 @@ function Notes:sendAllToOneNote(quiet)
         end)
     end
     if quiet then
-        if NetworkMgr:isOnline() then go() end
+        if NetworkMgr:isConnected() then go() end
     else
         NetworkMgr:runWhenOnline(go)
     end
@@ -710,6 +724,10 @@ function Notes:autoSendNotebook(id)
 end
 
 function Notes:onNetworkConnected()
+    -- Crosswords (when it's there) looks for new puzzles too, at most once an hour.
+    if self.autoCrosswords then
+        UIManager:scheduleIn(10, function() self:autoCrosswords() end)
+    end
     if not Settings.get("onenote_auto") then return end
     if self.autoTask then UIManager:unschedule(self.autoTask) end
     self.autoTask = function()

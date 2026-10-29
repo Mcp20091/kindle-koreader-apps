@@ -21,6 +21,7 @@ local SETTINGS = {
     eraser_hl = "boolean", pen_feel = "string", spread_turn = "boolean", name_date = "string", sort_default = "string", recent_mode = "string", show_recent = "boolean", hidden = "table", page_buttons = "table",
     onenote_auto = "boolean", onenote_picked_only = "boolean", onenote_text = "boolean",
     todo_dates = "boolean",
+    page_header = "boolean", swipe_pages = "string", start_pen = "string", finger_undo = "boolean", open_last = "boolean",
     groups = "table",
 }
 
@@ -542,7 +543,12 @@ function Web.routes(server)
         table.sort(list)
         if b.op == "delete" then
             if #list >= #nb.pages then return res:error(400, "A notebook keeps at least one page") end
-            for k = #list, 1, -1 do table.remove(nb.pages, list[k]) end
+            -- Kept for 30 days like the Kindle's (Editor:deletePageAt), to restore there.
+            nb.deleted = nb.deleted or {}
+            for k = #list, 1, -1 do
+                local page = table.remove(nb.pages, list[k])
+                table.insert(nb.deleted, { at = os.time(), index = list[k], page = page })
+            end
         elseif b.op == "star" or b.op == "unstar" then
             for __, i in ipairs(list) do nb.pages[i].star = b.op == "star" or nil end
         else

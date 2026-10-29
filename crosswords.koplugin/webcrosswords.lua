@@ -18,7 +18,7 @@ end
 local SOURCES = { guardian = true, usa = true, universal = true, wapo = true, tny = true }
 local KINDS = { quick = true, cryptic = true, quiptic = true, prize = true }
 local SETTINGS = { crossword_today = "string", crossword_clues = "string", crossword_boxes = "boolean", crossword_find = "boolean", crossword_card = "string", crossword_undo = "string", crossword_timer = "boolean",
-    crossword_finished = "string", crossword_auto = "table" }
+    crossword_finished = "string", crossword_auto = "table", puzzle_buttons = "table" }
 
 -- A puzzle's key from the browser: "quick/17616", "usa/20261021", "imp/2026102112000001".
 local function validKey(key)
@@ -33,7 +33,16 @@ function Web.routes(server)
         local Settings = require("notessettings")
         local settings = {}
         for k in pairs(SETTINGS) do settings[k] = Settings.get(k) end
-        res:json({ installed = true, books = n:crosswordState(), sources = n:crosswordSources(), settings = settings })
+        -- The buttons a puzzle's toolbar can have (the AI ones only with an AI service), and the ones it has.
+        local Editor = require("noteseditor")
+        local choices = {}
+        for __, b in ipairs(Editor.PUZZLE_BUTTONS) do
+            if not ((b.key == "check" or b.key == "ask") and Settings.noAI and Settings.noAI()) then
+                table.insert(choices, { key = b.key, label = b.label, icon = b.icon })
+            end
+        end
+        settings.puzzle_buttons = Settings.get("puzzle_buttons") or Editor.PUZZLE_DEFAULT
+        res:json({ installed = true, books = n:crosswordState(), sources = n:crosswordSources(), settings = settings, puzzleButtons = choices })
     end)
 
     -- Five (or seven) puzzles to pick: ?src=usa&from=0, ?src=guardian&kind=quick&from=5.
@@ -43,7 +52,7 @@ function Web.routes(server)
         local src, kind = req.query.src, req.query.kind
         if not SOURCES[src] then return res:error(400, "Unknown source") end
         if src == "guardian" and not KINDS[kind] then kind = "quick" end
-        if not require("ui/network/manager"):isOnline() then return res:error(503, "The Kindle isn't online") end
+        if not require("ui/network/manager"):isConnected() then return res:error(503, "The Kindle isn't online") end
         local items, more = n:crosswordChoices(src, kind, math.max(0, math.floor(tonumber(req.query.from) or 0)))
         -- The Guardian's list is fetched in the background: asked for again.
         if not items and more == "loading" then return res:json({ loading = true }) end
@@ -66,7 +75,7 @@ function Web.routes(server)
             end
         end
         if #items == 0 then return res:error(400, "Nothing to get") end
-        if not require("ui/network/manager"):isOnline() then return res:error(503, "The Kindle isn't online") end
+        if not require("ui/network/manager"):isConnected() then return res:error(503, "The Kindle isn't online") end
         if n.getCrosswordsLater then return res:json({ job = n:getCrosswordsLater(b.src, items) }) end
         local got, missed, why = n:getCrosswordsFor(b.src, items)
         if why == "open" then return res:error(409, "That book is open on the Kindle: close it there first") end
@@ -167,7 +176,15 @@ function Web.routes(server)
         local Settings = require("notessettings")
         local relay = false
         for k, v in pairs(req.json()) do
-            if SETTINGS[k] and type(v) == SETTINGS[k] then
+            if k == "puzzle_buttons" and type(v) == "table" then
+                -- Only the buttons there are, each once, in the order sent.
+                local known, seen, keys = {}, {}, {}
+                for __, b in ipairs(require("noteseditor").PUZZLE_BUTTONS) do known[b.key] = true end
+                for __, key in ipairs(v) do
+                    if known[key] and not seen[key] then seen[key] = true table.insert(keys, key) end
+                end
+                Settings.set(k, keys)
+            elseif SETTINGS[k] and type(v) == SETTINGS[k] then
                 if k == "crossword_clues" and (Settings.get(k) == "large") ~= (v == "large") then relay = true end
                 if k == "crossword_boxes" and (Settings.get(k) ~= false) ~= v then relay = true end
                 if k == "crossword_auto" then Settings.set("crossword_auto_at", 0) end

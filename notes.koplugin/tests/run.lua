@@ -1307,5 +1307,19 @@ do
     check("carry: grid text", C.gridText(dst, to) ~= "" and C.gridText(dst, to) ~= C.gridText(src, from), true)
 end
 
+do
+    -- Source checks: nothing here may call NetworkMgr:isOnline() (a DNS lookup that can hang the loop).
+    local function slurp(name) local f = io.open(name, "rb") local s = f and f:read("*a") or "" if f then f:close() end return s end
+    local bad = {}
+    for __, name in ipairs({ "notesclose.lua", "notesonenoteui.lua", "notestextui.lua", "webnotes.lua" }) do
+        if slurp(name):find(":isOnline()", 1, true) then table.insert(bad, name) end
+    end
+    check("no isOnline()", table.concat(bad, ","), "")
+    local web = slurp("webnotes.lua")
+    for __, k in ipairs({ "page_header", "swipe_pages", "start_pen", "finger_undo", "open_last" }) do
+        check("web settings: " .. k, web:find(k .. " = ", 1, true) ~= nil, true)
+    end
+end
+
 print(string.format("%d passed, %d failed", passed, failed))
 os.exit(failed == 0 and 0 or 1)

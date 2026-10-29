@@ -875,7 +875,7 @@ function Notes:handwrite(opts, done)
                 local t = tasks[1]
                 finish(t.title, (t.due or t.remind) and { due = t.due, remind = t.remind } or nil, tasks)
             end
-            if NetworkMgr:isOnline() then return read() end
+            if NetworkMgr:isConnected() then return read() end
             NetworkMgr:runWhenOnline(read)
             -- Wi-Fi declined (or never came): back with nothing after a while.
             UIManager:scheduleIn(45, function() if not reading then finish(nil) end end)

@@ -60,7 +60,7 @@ Crosswords can fetch new puzzles for you.
 2. Tap **Get new ones automatically**.
 3. Tick the sources you want (Guardian Quick, Guardian Cryptic, Guardian Quiptic, Guardian Prize, USA Today, Universal, Washington Post, New Yorker).
 
-When you open Crosswords and Wi-Fi is already on, puzzles from the last 3 days that aren't in your books are added, at most once an hour. This happens quietly in the background while you carry on, and a notice such as "Added 3 new crosswords" says when they're in. With the launcher installed, it also goes in your notifications: "3 new crosswords are ready", and tapping it opens the first. It goes away once you open a crossword. It never turns Wi-Fi on for this. With Guardian Prize ticked, Prize puzzles also get their answers once they're out. A book you have open at the time is left alone until the next try.
+When you open Crosswords and Wi-Fi is already on, or when Wi-Fi comes on, puzzles from the last 3 days that aren't in your books are added, at most once an hour. This happens quietly in the background while you carry on, and a notice such as "Added 3 new crosswords" says when they're in. With the launcher installed, it also goes in your notifications: "3 new crosswords are ready", and tapping it opens the first. It goes away once you open a crossword. It never turns Wi-Fi on for this. With Guardian Prize ticked, Prize puzzles also get their answers once they're out; with the launcher installed, the bell then says "A Prize crossword has its answers" and tapping it opens that puzzle. A book you have open at the time is left alone until the next try.
 
 ### Today's crossword
 
@@ -73,6 +73,10 @@ You can open it three ways:
 - **Today's** at the top of the Crosswords list.
 - A gesture: in KOReader, go to **Settings > Taps and gestures > Gesture manager**, pick a gesture, then **General > Today's crossword**.
 - A shortcut on the launcher for one source: **Add shortcut > Crossword**, then pick the source. Each source can have its own tile, showing whether today's puzzle is started or done.
+
+### Random puzzle
+
+A **Random puzzle** button on a puzzle's toolbar (a shuffle, next to **Hint** and **Check my answers**; it's one of **Toolbar buttons** in Crossword settings, also on the web page) switches to a random puzzle. **⋮ > Random puzzle** on the Crosswords list does the same. It opens a puzzle you haven't started yet, picked at random. When every puzzle is started, it downloads a random one from the sources you get puzzles from, with a waiting box and **Cancel**. Without Wi-Fi it says so. The same button can go on the launcher's quick buttons: **Add a button > Crossword… > Random puzzle**.
 
 ### Recent crosswords on the launcher
 
@@ -90,7 +94,7 @@ The Guardian Prize answers are published a week after the puzzle. Get the same p
 
 ## Solving
 
-Write the letters in the squares with the pen, as on paper. The toolbar down the left starts with **Home** (the house, back to the launcher, when it's installed) and the book (closes the puzzle book, back to where you opened it). Then come the pen (tap it again for its tips and sizes), eraser, lasso, zoom, Undo, Redo and **Done** (the ✓), and under them the buttons you've pinned: **Hint** and **Check my answers** to start with. Lower down are the page arrows, the puzzle list, **⋯** and the button that folds the toolbar away, and at the very bottom, always: **Refresh screen**, the **bell** (notifications, with the launcher installed) and **Settings**, which opens Crossword settings.
+Write the letters in the squares with the pen, as on paper. The toolbar down the left starts with **Home** (the house, back to the launcher, when it's installed) and the book (closes the puzzle book, back to where you opened it). Then come the pen (tap it again for its tips and sizes), eraser, lasso, zoom, Undo, Redo and **Done** (the ✓), and under them the buttons you've pinned: **Hint**, **Check my answers** and **Random puzzle** to start with. Lower down are the page arrows, the puzzle list, **⋯** and the button that folds the toolbar away, and at the very bottom, always: **Refresh screen**, the **bell** (notifications, with the launcher installed) and **Settings**, which opens Crossword settings.
 
 ![A crossword being solved: letters written in the squares, finished clues ticked, "3 of 24 clues" at the top](img/crosswords/cw-solve.png)
 
@@ -310,6 +314,7 @@ Crosswords has its own settings, full screen like the other apps' settings: tap 
   - **Clue size**: **Normal** or **Large**. Large clues that don't fit carry on to more clue pages; the grid stays put.
   - **Clue boxes**: the tick box before each clue. **On** to start with.
   - **Clue card**: when you tap a number in the grid, a card for **Every clue** (to start with) or for **Clues on other pages** only.
+  - **Undo after a tick**: how long Undo shows after you tick a clue on its card: **Off**, **2**, **3** (to start with), **5** or **8 seconds**.
   - **Swipes change the light**: off to start with, so a hand brushing the screen's edge while you solve doesn't change the brightness or warmth (KOReader's light swipes). The same switch as in Notes > Settings.
   - **Notes settings** (at the bottom): crosswords are Notes pages, so the pen, the toolbar, gestures and the rest are set in Notes' settings; this opens them without leaving the puzzle.
   - **Toolbar side**: **Left** or **Right**.
@@ -338,7 +343,7 @@ With the Web page plugin running, the **Crosswords** tab in your browser lets yo
   - **Remove** takes it out of the book.
 - **Get crosswords**: pick a source (and for The Guardian, the kind), tick the days you want (**Older ›** and **‹ Newer** move through them), then tap the **Get** button. Days already in the book say "(in the book)". The Kindle downloads them in the background: the button says "Getting 3…" until they're in, then a message says how many were added. For The Guardian, the list of days can take a moment to appear while the Kindle fetches it.
 - **Import PDF, .puz or .ipuz**: upload a file from your computer. A PDF becomes a puzzle book; a .puz or .ipuz goes into Imported crosswords.
-- **Crossword settings**: the same settings as on the Kindle.
+- **Crossword settings**: the same settings as on the Kindle, including **Toolbar buttons**, which you drag into order or to **Not shown**.
 
 ![The web page's Crosswords tab](img/crosswords/cw-web.png)
 

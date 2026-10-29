@@ -303,7 +303,7 @@ App.pages.notes = {
         h('button', { class: 'btn small', onclick: async () => { for (const i of list) await png(i); } }, 'Save PNGs'),
         h('button', { class: 'btn small', onclick: () => pagesOp(allStarred ? 'unstar' : 'star', list) }, allStarred ? 'Remove bookmarks' : 'Bookmark'),
         h('button', { class: 'btn small danger', disabled: list.length >= data.pages.length, onclick: async () => {
-          if (await App.confirm('Delete pages', 'Delete ' + list.length + ' page(s)? This cannot be undone.', 'Delete pages', true)) pagesOp('delete', list);
+          if (await App.confirm('Delete pages', 'Delete ' + list.length + ' page(s)? You can restore them on the Kindle for 30 days.', 'Delete pages', true)) pagesOp('delete', list);
         } }, 'Delete pages'),
         h('button', { class: 'btn small', onclick: () => { picked.clear(); for (const cb of pages.querySelectorAll('input[type=checkbox]')) cb.checked = false; drawBar(); } }, 'Clear'));
     };
@@ -595,11 +595,13 @@ App.pages.notes = {
     return h('div', {},
       h('div', { class: 'card' }, h('h2', {}, 'Toolbar'),
         App.setting('Side', App.select([['left', 'Left'], ['right', 'Right']], st.side, set('side'))),
+        App.setting('Two-finger tap to undo (hold to redo)', App.toggle(on('finger_undo', true), set('finger_undo'))),
         App.setting('Start with toolbar hidden', App.toggle(st.folded, set('folded'))),
         App.setting('Quick note buttons by the handle', App.toggle(st.quick_buttons !== false, set('quick_buttons')), 'Peek, Swap, Discard and Save beside the quick note pad’s handle (the toolbar has them too).')),
       this.toolbarCard(s, st, set),
       h('div', { class: 'card' }, h('h2', {}, 'Writing'),
         App.setting('Pen side button', App.select([['eraser', 'Eraser'], ['lasso', 'Lasso'], ['hl', 'Highlighter'], ['ruler', 'Ruler (straight lines)'], ['none', 'Nothing']], st.side_button, set('side_button'))),
+        App.setting('Turn pages with a finger', App.select([['vertical', 'Swipe up and down'], ['horizontal', 'Swipe left and right'], ['off', 'Off']], st.swipe_pages || 'vertical', set('swipe_pages'))),
         App.setting('Eraser', App.select([['false', 'Partial'], ['true', 'Whole stroke']], String(!!st.whole_eraser), (v) => set('whole_eraser')(v === 'true'))),
         App.setting('Eraser: highlighter only', App.toggle(!!st.eraser_hl, set('eraser_hl')), 'The ink, text boxes and pictures stay.'),
         App.setting('Pen pressure', App.select([['soft', 'Soft'], ['normal', 'Normal'], ['firm', 'Firm']], st.pen_feel || 'normal', set('pen_feel')),
@@ -609,6 +611,7 @@ App.pages.notes = {
         App.setting('Stroke smoothing', App.select([['0', 'Off'], ['1', 'Light'], ['2', 'Strong']], st.smooth || 0, (v) => set('smooth')(Number(v)))),
         App.setting('When closing', App.select([['auto', 'Save automatically'], ['ask', 'Ask']], st.close_action || 'auto', set('close_action')),
           'Ask: Save, Rename or Don\u2019t save when you close a notebook you changed.'),
+        App.setting('Starting pen', App.select([['last', 'Last used']].concat(Array.from({ length: st.favorites || 0 }, (__, i) => ['fav' + (i + 1), 'Favorite ' + (i + 1)])), st.start_pen || 'last', set('start_pen'))),
         App.setting('Favorite pens', h('div', { class: 'row' }, favCount, h('button', { class: 'btn small', onclick: () => {
           set('favorites')([]).then((ok) => { if (ok) { st.favorites = 0; favCount.textContent = '0'; } });
         } }, 'Clear')))),
@@ -629,8 +632,10 @@ App.pages.notes = {
         App.setting('Recent notebooks', App.select([['folder', 'As a folder'], ['top', 'At the top'], ['off', 'Off']], st.recent_mode || (st.show_recent === false ? 'off' : 'folder'), set('recent_mode')),
           'The notebooks opened last: a Recent folder first in the list, at the top of the list, or not shown.'),
         App.setting('Sort by', App.select([['name', 'Name'], ['created', 'Date created'], ['modified', 'Date modified'], ['custom', 'My order']], st.sort, set('sort')),
-          'The Order tab puts them in your own order.')),
+          'The Order tab puts them in your own order.'),
+        App.setting('Open the last notebook when Notes opens', App.toggle(!!st.open_last, set('open_last')))),
       h('div', { class: 'card' }, h('h2', {}, 'Screen'),
+        App.setting('Page header (date and page number)', App.toggle(!!st.page_header, set('page_header'))),
         App.setting('Template lines', App.select([['light', 'Light'], ['medium', 'Medium'], ['dark', 'Dark']], st.paper_lines || 'medium', set('paper_lines'))),
         App.setting('Full refresh', App.select([['6', 'Every 6 pauses'], ['3', 'Every 3 pauses'], ['1', 'Every pause'], ['0', 'Never']], on('deghost', 6), (v) => set('deghost')(Number(v)))),
         App.setting('KOReader gestures', App.toggle(on('ko_gestures', true), set('ko_gestures')), 'Two fingers, edge swipes and multiswipes work in Notes.'),

@@ -762,7 +762,7 @@ function Notes:crosswordAutoSettings(done)
             self:crosswordAutoSettings(done)
         end })
     end
-    require("notesko").list(_("Get new crosswords automatically\nWhen Crosswords opens and Wi-Fi is on. Up to the last 3 days."), items,
+    require("notesko").list(_("Get new crosswords automatically\nWhen Crosswords opens or Wi-Fi comes on. Up to the last 3 days."), items,
         function() if done then done() end end)
 end
 
@@ -771,7 +771,7 @@ end
 -- with Wi-Fi on (it is never turned on), at most once an hour.
 function Notes:autoCrosswords(force)
     local keys = Settings.get("crossword_auto") or {}
-    if #keys == 0 or not NetworkMgr:isOnline() then return end
+    if #keys == 0 or not NetworkMgr:isConnected() then return end
     if not force and os.time() - (Settings.get("crossword_auto_at") or 0) < AUTO_EVERY then return end
     if self.crosswordAutoRunning then return end
     Settings.set("crossword_auto_at", os.time())
@@ -804,6 +804,16 @@ function Notes:autoCrosswords(force)
             end
         elseif added and (r.answerCount or 0) > 0 then
             require("notesko").toast(_("Added answers for Prize crosswords"))
+            -- In the notifications too, tapped to open the first of those puzzles.
+            local PS = require("pluginshare")
+            local nb = self:crosswordBook("guardian", true)
+            local at = nb and r.answerKeys and r.answerKeys[1] and Crossword.pageOf(nb, r.answerKeys[1], "1")
+            if PS.notify then
+                PS.notify{ app = "crosswords", name = _("Crosswords"), icon = "newspaper", key = "crosswords:answers",
+                    text = r.answerCount == 1 and _("A Prize crossword has its answers") or T(_("%1 Prize crosswords have their answers"), r.answerCount),
+                    route = at and { book = nb.id, page = at } or nil,
+                    open = at and function() self:open(nb.id, at) end or nil }
+            end
         end
     end, 300)
 end
@@ -813,6 +823,7 @@ end
 function Notes:autoCrosswordsFetch(keys)
     local now = today()
     local bySrc, newCount, answerCount = {}, 0, 0
+    local answerKeys = {}
     local function want(src, p)
         bySrc[src] = bySrc[src] or {}
         table.insert(bySrc[src], p.key)
@@ -846,13 +857,15 @@ function Notes:autoCrosswordsFetch(keys)
                         if p and p.answers then
                             want("guardian", p)
                             answerCount = answerCount + 1
+                            answered[key] = true
+                            table.insert(answerKeys, key)
                         end
                     end
                 end
             end
         end
     end
-    return { bySrc = bySrc, newCount = newCount, answerCount = answerCount }
+    return { bySrc = bySrc, newCount = newCount, answerCount = answerCount, answerKeys = answerKeys }
 end
 
 -- ------------------------------------------------------------------ in a book
@@ -1383,6 +1396,46 @@ local function sourceAndKind(which)
     return src, src == "guardian" and kind or nil
 end
 
+--- A random puzzle, opened: one not started yet in the books; else a random
+-- one from the sources this Kindle gets puzzles from, downloaded (a waiting
+-- box with Cancel). Offline, it says so.
+function Notes:randomPuzzle()
+    -- App lock (the launcher's): its passcode first, when this app is locked.
+    local lock = require("pluginshare").lock
+    if lock and lock.ask("crosswords", function() self:randomPuzzle() end) then return end
+    if not self.randomSeeded then
+        math.randomseed(os.time())   -- else the same picks after every start
+        self.randomSeeded = true
+    end
+    local fresh = {}
+    -- (Not the puzzle open now.)
+    local ed = self.editor
+    local here = ed and UIManager:isWidgetShown(ed) and ed.notebook and ed.notebook.pages[ed.page] and Crossword.keyPart(ed.notebook.pages[ed.page])
+    for __, nb in ipairs(self:crosswordBooks()) do
+        for i, page in ipairs(nb.pages) do
+            local key, part = Crossword.keyPart(page)
+            local current = here and key == here and ed.notebook.id == nb.id
+            if key and part == "1" and not page.hide and not current and Crossword.state(nb, key) == "new" then
+                table.insert(fresh, { book = nb.id, page = i })
+            end
+        end
+    end
+    if #fresh > 0 then
+        local pick = fresh[math.random(1, #fresh)]
+        return self:open(pick.book, pick.page)
+    end
+    if not NetworkMgr:isConnected() then
+        return message(_("No puzzles left to start, and the Kindle isn't online. Turn on Wi-Fi to get one."))
+    end
+    local list = self:crosswordsSourcesUsed()
+    if not list then
+        local src, kind = sourceAndKind()
+        list = { { src = src, kind = kind } }
+    end
+    local pick = list[math.random(1, #list)]
+    self:randomCrossword(pick.src, pick.kind or "quick")
+end
+
 --- The sources Today's crossword can open (for the launcher's tiles):
 -- { { key = "usa", name = "USA Today" }... }.
 function Notes:crosswordSources()
@@ -1853,6 +1906,7 @@ function Notes:crosswordTitleMenu(withSettings)
             fn()
         end } })
     end
+    add(_("Random puzzle"), function() self:randomPuzzle() end)
     if self:crosswordsOnWebReady() then add(_("Open on the web page"), function() self:crosswordsOnWeb() end) end
     if KO.hasLight() then add(_("Light"), function() KO.light() end) end
     add(KO.nightMode() and _("Night mode: On") or _("Night mode: Off"), function() KO.toggleNightMode(self.ui) end)
@@ -2153,7 +2207,7 @@ function Notes:noteCrosswordSeen(ed, closed)
     -- (The launcher's recent apps; the "new crosswords" notice done with.)
     local PS = require("pluginshare")
     if not closed and PS.noteRecent then pcall(PS.noteRecent, "crosswords") end
-    if not closed and nb.feed and PS.unnotify then pcall(PS.unnotify, "crosswords:new") end
+    if not closed and nb.feed and PS.unnotify then pcall(PS.unnotify, "crosswords:new") pcall(PS.unnotify, "crosswords:answers") end
     local page = nb.pages[ed.page]
     local ref = page and puzzleRef(nb, page)
     if not ref then return end
