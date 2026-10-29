@@ -245,7 +245,7 @@ Helpers more than one app needs live in the launcher (apps.koplugin) and are rea
 - KOReader's on-screen keyboard stays above other windows. Close it before
   showing a pop-up over the live session, or taps land on the keys underneath.
 - The live session's buttons: Keys, Commands, Edit, AI (or Paste) and Disconnect are the
-  apps' icon row (`sshbuttons`), put in with KOReader's `dialog:addWidget`, which keeps it
+  apps' icon buttons, icons only in a short row (`sshbuttons` with `compact`), put in with KOReader's `dialog:addWidget`, which keeps it
   when the dialog lays itself out again (keyboard shown or hidden). The keys row (Tab, Esc,
   Ctrl, Ctrl-C, ↑, ↓) stays KOReader's buttons, in the keyboard's font, so Ctrl can show
   black through `getButtonById("ctrl")`.

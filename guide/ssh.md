@@ -243,14 +243,14 @@ The row of keys just above the keyboard:
 - **↹** (Tab, to complete names), **Esc**, **Ctrl** (then a letter, for example Ctrl then D; it stays black until the letter, or tap it again to let go), **Ctrl-C** (stops what's running).
 - **↑** and **↓** move up and down the screen; hold them to scroll.
 
-The buttons under the terminal:
+The icons under the terminal, from left to right:
 
-- **Keys**: keys and combinations by what they do, sent at once: Stop what's running (Ctrl-C), Log out (Ctrl-D), Clear the screen, Search earlier commands, ↑ The command before, ←, →, Start and End of the line, Quit a pager (q), nano's Save, Exit, Find, Cut and Paste, and vi's Save and quit and Quit without saving. Its last entry, **Dark terminal**, turns the terminal dark (white on black) or light again. The Kindle remembers your choice, and command output pages follow it too. SSH's lists keep the normal look; KOReader's **Night mode** (in ⋮) is the one for everything.
-- **Commands** pastes a command (or the clipboard).
-- **Edit**: a file's path (or **Files** to find it), then **Edit** opens it in the Kindle's text editor (see **Files**). Back in the session when you close it.
-- **AI** (with an AI set up): tap it for the session's AI chat (see below). Hold it for **AI for this**: which AI service, and which of its models, the chat uses. Without an AI, **Paste** is in its place: it types what's on the clipboard.
+- **Keys** (a keyboard): keys and combinations by what they do, sent at once: Stop what's running (Ctrl-C), Log out (Ctrl-D), Clear the screen, Search earlier commands, ↑ The command before, ←, →, Start and End of the line, Quit a pager (q), nano's Save, Exit, Find, Cut and Paste, and vi's Save and quit and Quit without saving. Its last entry, **Dark terminal**, turns the terminal dark (white on black) or light again. The Kindle remembers your choice, and command output pages follow it too. SSH's lists keep the normal look; KOReader's **Night mode** (in ⋮) is the one for everything.
+- **Commands** (>_) pastes a command (or the clipboard).
+- **Edit** (a pencil): a file's path (or **Files** to find it), then **Edit** opens it in the Kindle's text editor (see **Files**). Back in the session when you close it.
+- **AI** (sparkles, with an AI set up): tap it for the session's AI chat (see below). Hold it for **AI for this**: which AI service, and which of its models, the chat uses. Without an AI, **Paste** (a clipboard) is in its place: it types what's on the clipboard.
 - **Copy text**: hold on a word to select it, or hold and drag over a part. It's copied to KOReader's clipboard at once, and shows with **Paste** (types it at the prompt), **Copy all** (the whole screen), **Done** and, with an AI set up, **Ask AI** (see below). What you copy pastes into the apps' text boxes too: hold the text in a box for **Paste**, **Copy all** and **Clear**.
-- **Disconnect** asks **Disconnect?** (the keyboard hides while it asks, and comes back on **Cancel**). Typing `exit` also ends the session (**[Session ended]**).
+- **Disconnect** (✕) asks **Disconnect?** (the keyboard hides while it asks, and comes back on **Cancel**). Typing `exit` also ends the session (**[Session ended]**).
 
 Programs that draw the whole screen (top, nano, htop) don't draw well on the Kindle: it is a simple terminal. Use `top -bn1 | head -20` instead of `top`, for example, and **Edit** instead of nano (when nano starts anyway, SSH says so; **Keys** has its keys, by name, to save and leave).
 

@@ -73,13 +73,37 @@ local Foot = InputContainer:extend{
     turn = nil,
     bare = false,     -- the buttons only (no page counter), in `height` pixels
     center = false,   -- the buttons in the middle (a pop-up's), not on the right
+    compact = false,  -- icons only, in a short row across the whole width (the live session's)
     height = nil,
 }
+
+-- The compact row's height, in canvas units.
+Foot.COMPACT_H = 48
+
+-- A compact row: icons only (no labels), each button an equal part of the width, so it
+-- takes little height (the live session keeps more of its terminal).
+local function compactButtons(c, K, bw, buttons, act)
+    local gap, side = 10, 14
+    local n = math.max(1, #buttons)
+    local w = (bw - 2 * side - gap * (n - 1)) / n
+    local bx = side
+    for __, b in ipairs(buttons) do
+        c:box(bx, 6, w, 36, { r = 12, fill = K.WHITE, border = K.BLACK, bw = 1.2 })
+        c:icon(b.icon, bx + w / 2 - 11, 13, 22)
+        c:hit(bx, 2, w, 44, function() act(b) end, b.aiJob and function()
+            local ai = require("pluginshare").ai
+            if ai and ai.quickPick then ai.quickPick(b.aiJob) end
+        end or nil)
+        bx = bx + w + gap
+    end
+end
 
 function Foot:init()
     self.u = math.min(Screen:getWidth(), Screen:getHeight()) / 620
     self.page, self.pages = 1, 1
-    if not (self.bare and self.height) then
+    if self.compact then
+        self.height = math.floor(Foot.COMPACT_H * self.u + 0.5)
+    elseif not (self.bare and self.height) then
         self.height = math.floor(((self.bare and 0 or PAGES_H) + 76) * self.u + 0.5)
     end
     self.dimen = Geom:new{ x = 0, y = 0, w = self.width, h = self.height }
@@ -99,6 +123,10 @@ function Foot:draw()
     local K = shared and require("appscanvas") or Canvas
     local c = K.new(Screen:getWidth(), Screen:getHeight())
     local bw = self.width / c.u
+    if self.compact then
+        compactButtons(c, K, bw, self.buttons or {}, function(b) if b.fn then b.fn() end end)
+        return c
+    end
     if self.bare then
         -- (the buttons in the middle of the height given)
         local top = math.max(0, (self.height / c.u - 76) / 2)

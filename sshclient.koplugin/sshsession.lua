@@ -600,9 +600,9 @@ function Session:makeDialog(TermInputText)
     }
     -- (KOReader's dialog makes the terminal shorter for it, and keeps it when it lays
     -- itself out again with the keyboard shown or hidden)
-    local u = math.min(Device.screen:getWidth(), Device.screen:getHeight()) / 620
-    dialog:addWidget(require("sshbuttons"):new{ width = dialog.width, bare = true,
-        height = math.floor(76 * u + 0.5), show_parent = dialog, buttons = actions })
+    -- (icons only, in a short row: more of the terminal shows)
+    dialog:addWidget(require("sshbuttons"):new{ width = dialog.width, compact = true,
+        show_parent = dialog, buttons = actions })
     return dialog
 end
 
