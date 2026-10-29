@@ -54,7 +54,7 @@ the stand-in in the tests and the emulator. Check these on a real account before
 - `ndbg.lua`, `ndko.lua`, `ndpage.lua`: Pangolin's pgbg/pgko/pgpage (from FlashForge's, from SSH's), renamed.
 - `ndtitle.lua`, `ndcanvas.lua`: **copies** of the launcher's `appsbar.lua` and `appscanvas.lua`. Re-copy
   them when those change; don't edit them here.
-- `icons/` (Lucide, ISC), `tests/run.lua`, `docs/guide.md` (the user guide chapter).
+- `icons/` (Lucide, ISC), `tests/run.lua`; the user guide chapter is `guide/nextdns.md` (repository root).
 
 ## Rules
 

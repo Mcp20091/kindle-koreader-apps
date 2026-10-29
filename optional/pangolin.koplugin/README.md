@@ -16,6 +16,6 @@ Lists the key can't read are left out and say which permission they need. Nothin
 
 ## Install
 
-An optional app: it isn't in the main install zip. Settings > Launcher > **Optional apps** on the Kindle, or unzip `kindle-pangolin.zip` (from a release) into `koreader/plugins/` and restart KOReader. It works without the launcher, with KOReader's own dialogs.
+An optional app: it isn't in the main install zip. Settings > Updates > **Optional apps** on the Kindle, or unzip `kindle-pangolin.zip` (from a release) into `koreader/plugins/` and restart KOReader. It works without the launcher, with KOReader's own dialogs.
 
 The API's field names and quirks follow the Home Assistant integration (ha-pangolin, MIT). Icons: [Lucide](https://lucide.dev) (ISC).

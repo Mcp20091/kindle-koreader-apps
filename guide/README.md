@@ -185,5 +185,54 @@ The same guide as [Kindle Apps Guide.pdf](../Kindle%20Apps%20Guide.pdf), one pag
 - [System](webserver.md#system)
 - [Notes, Crosswords, Wikipedia, Syncthing and SSH](webserver.md#notes-crosswords-wikipedia-syncthing-and-ssh)
 
+## [FlashForge](flashforge.md)
+
+- [Installing it](flashforge.md#installing-it)
+- [What you need](flashforge.md#what-you-need)
+- [Opening it](flashforge.md#opening-it)
+- [Setting it up](flashforge.md#setting-it-up)
+- [The app](flashforge.md#the-app)
+- [The menu](flashforge.md#the-menu)
+- [Settings](flashforge.md#settings)
+- [Notifications and the backup](flashforge.md#notifications-and-the-backup)
+- [On the web page](flashforge.md#on-the-web-page)
+- [Good to know](flashforge.md#good-to-know)
+
+## [Pangolin](pangolin.md)
+
+- [Installing it](pangolin.md#installing-it)
+- [What you need](pangolin.md#what-you-need)
+- [Opening it](pangolin.md#opening-it)
+- [Setting it up](pangolin.md#setting-it-up)
+- [The app](pangolin.md#the-app)
+- [The menu](pangolin.md#the-menu)
+- [Settings](pangolin.md#settings)
+- [On the web page](pangolin.md#on-the-web-page)
+- [Good to know](pangolin.md#good-to-know)
+
+## [pfSense](pfsense.md)
+
+- [Installing it](pfsense.md#installing-it)
+- [What you need](pfsense.md#what-you-need)
+- [Opening it](pfsense.md#opening-it)
+- [Setting it up](pfsense.md#setting-it-up)
+- [The app](pfsense.md#the-app)
+- [The menu](pfsense.md#the-menu)
+- [Settings](pfsense.md#settings)
+- [On the web page](pfsense.md#on-the-web-page)
+- [Good to know](pfsense.md#good-to-know)
+
+## [NextDNS](nextdns.md)
+
+- [Installing it](nextdns.md#installing-it)
+- [What you need](nextdns.md#what-you-need)
+- [Opening it](nextdns.md#opening-it)
+- [Setting it up](nextdns.md#setting-it-up)
+- [The app](nextdns.md#the-app)
+- [The menu](nextdns.md#the-menu)
+- [Settings](nextdns.md#settings)
+- [On the web page](nextdns.md#on-the-web-page)
+- [Good to know](nextdns.md#good-to-know)
+
 ## [Credits](credits.md)
 

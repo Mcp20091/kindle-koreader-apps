@@ -96,7 +96,7 @@ pfsapi.lua and its tests together when it changes.
 - `pfstitle.lua`, `pfscanvas.lua`: **copies** of the launcher's `appsbar.lua` and `appscanvas.lua`. Re-copy
   them when those change; don't edit them here.
 - `icons/` (Lucide, ISC; every icon it draws, `router` for the app, `star` for the fallback), `tests/run.lua`,
-  `version.txt` (its What changed), `README.md` (its guide: what it does, what it needs, setting it up).
+  `version.txt` (its What changed), `README.md` (what it does, what it needs, setting it up); the user guide chapter is `guide/pfsense.md` (repository root).
 - `webpfsense.lua`, `web/pfsense.js`: its web page tab (routes and the tab, in this folder: the web server has nothing of it).
 
 ## Rules
