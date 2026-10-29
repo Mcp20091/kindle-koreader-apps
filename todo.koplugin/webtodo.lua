@@ -15,7 +15,7 @@ local OPTIONS = {
     starred_first = "boolean", group_by_due = "boolean", show_hidden = "boolean", sync_interval = "number",
     send_now = "boolean", send_delay = "number", download_only = "boolean", sleep_screen = "boolean", sleep_content = "string",
     week_start = "string", tap_opens = "string", push_days = "number", reminders = "boolean", two_panes = "boolean",
-    local_lists = "boolean",
+    local_lists = "boolean", deghost = "number",
 }
 
 local signIn  -- the sign-in under way
@@ -45,7 +45,12 @@ function Web.state(t)
     local lists = {}
     for __, l in ipairs(t:orderedLists(true)) do
         local tasks = {}
-        for __, task in ipairs(l.tasks or {}) do table.insert(tasks, taskJson(task, store, Dates, Model)) end
+        for __, task in ipairs(l.tasks or {}) do
+            if not task.completed then table.insert(tasks, taskJson(task, store, Dates, Model)) end
+        end
+        -- Done tasks: Completed (n), as on the Kindle.
+        local completed = {}
+        for __, task in ipairs(store:completedTasks(l.id)) do table.insert(completed, { id = task.id, title = task.title }) end
         -- Deleted tasks wait until the next sync (store:deletedTasks), to put back.
         local deleted = {}
         for __, d in ipairs(store.deletedTasks and store:deletedTasks(l.id) or {}) do
@@ -53,7 +58,7 @@ function Web.state(t)
         end
         table.insert(lists, {
             id = l.id, name = l.name, hidden = hidden[l.id] or false, pinned = pinned == l.id,
-            default = default == l.id, flagged = l.wellknown == "flaggedEmails", tasks = tasks, deleted = deleted,
+            default = default == l.id, flagged = l.wellknown == "flaggedEmails", tasks = tasks, completed = completed, deleted = deleted,
             onKindle = l.isLocal == true,
         })
     end
@@ -198,7 +203,7 @@ function Web.routes(server)
             local set = t:hiddenSet()
             set[b.id] = b.on and true or nil
             t:setOpt("hidden_lists", set)
-        elseif b.op == "pin" then t:setOpt("pinned_list", b.on and b.id or false)
+        elseif b.op == "pin" then t:setOpt("pinned_list", b.on and b.id ~= "" and b.id or false)
         elseif b.op == "default" then t:setOpt("default_list", b.id)
         else return res:error(400, "Unknown change") end
         t:changed()
@@ -216,6 +221,24 @@ function Web.routes(server)
         end
         t.settings:saveSetting("tiles", list)
         t.settings:flush()
+        t:render()
+        res:json({ ok = true })
+    end)
+
+    -- The lists' order and which show: { lists = { { id, on } } } in their order.
+    server:route("POST", "^/api/todo/listorder$", function(req, res)
+        local t = todo()
+        if not t then return res:error(404, "The To Do plugin isn't installed") end
+        local keys, hidden, known = {}, {}, {}
+        for __, l in ipairs(t.store:lists()) do known[l.id] = true end
+        for __, x in ipairs(type((req.json() or {}).lists) == "table" and req.json().lists or {}) do
+            if type(x) == "table" and known[x.id] then
+                table.insert(keys, x.id)
+                if x.on == false then hidden[x.id] = true end
+            end
+        end
+        t:saveOrder("lists", keys)
+        t:setOpt("hidden_lists", hidden)
         t:render()
         res:json({ ok = true })
     end)

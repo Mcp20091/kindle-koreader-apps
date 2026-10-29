@@ -61,7 +61,6 @@ local DEFAULTS = {
     week_start = "sunday",
     tap_opens = "task",
     push_days = 7,
-    confirm_delete = true,
     deghost = 6,                 -- a flashing refresh every this many screen changes (0: never)
     reminders = true,            -- a message at a task's reminder while KOReader is open
     two_panes = true,            -- on its side: the lists at the left, the open one at the right
@@ -1054,6 +1053,19 @@ function Todo:showDeleted(listId)
         end })
     end
     choose(_("Deleted: tap one to put it back"), choices)
+end
+
+--- A list's done tasks: tap one to make it not done.
+function Todo:showCompleted(listId)
+    local choices = {}
+    for _i, task in ipairs(self.store:completedTasks(listId)) do
+        table.insert(choices, { text = task.title, fn = function()
+            self.store:toggleDone(listId, task.id)
+            notify(T(_("Not done: %1"), task.title))
+            self:changed()
+        end })
+    end
+    choose(_("Completed: tap one for Not done"), choices)
 end
 
 --- Deleted lists (until the next sync): tap one to put it back with its tasks.

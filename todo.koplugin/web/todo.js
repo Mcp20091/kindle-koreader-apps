@@ -1,7 +1,7 @@
 // To Do: lists and tasks (sent to Microsoft To Do at the reader's next sync), CSV, options, app ID, sign-in.
 App.pages.todo = {
   listId: null,
-  showDone: false,
+  showDone: false,  // Completed (n) open
   tab: 'tasks',
   async render(main, params) {
     const s = await App.api('/api/todo');
@@ -105,8 +105,8 @@ App.pages.todo = {
     };
     title.addEventListener('keydown', (e) => { if (e.key === 'Enter') add(); });
 
-    const tasks = list.tasks.filter((t) => page.showDone || !t.completed);
-    const done = list.tasks.filter((t) => t.completed).length;
+    const tasks = list.tasks;
+    const done = App.arr(list.completed);
     const listMenu = h('div', { class: 'row' },
       h('button', { class: 'btn small', onclick: async () => {
         const name = await App.prompt('Rename list', list.name);
@@ -133,8 +133,12 @@ App.pages.todo = {
         more),
       h('div', { class: 'card' },
         tasks.length ? tasks.map((t) => page.taskRow(s, list, t)) : h('div', { class: 'empty' }, 'Nothing to do here.'),
-        done ? h('div', { style: 'margin-top:10px' }, h('button', { class: 'btn small', onclick: () => { page.showDone = !page.showDone; App.route(); } },
-          page.showDone ? 'Hide completed' : 'Show ' + done + ' completed')) : null,
+        // Done tasks, as Completed (n) on the Kindle: Not done brings one back.
+        done.length ? h('div', { style: 'margin-top:14px' },
+          h('button', { class: 'btn small', onclick: () => { page.showDone = !page.showDone; App.route(); } },
+            'Completed (' + done.length + ')' + (page.showDone ? ' ▴' : ' ▾')),
+          page.showDone ? done.map((d) => h('div', { class: 'spread', style: 'margin-top:6px' }, h('span', { class: 'muted' }, d.title),
+            h('button', { class: 'btn small', onclick: () => page.change({ op: 'done', list: list.id, id: d.id }) }, 'Not done'))) : null) : null,
         // Deleted tasks wait until the next sync, as on the Kindle.
         App.arr(list.deleted).length ? h('div', { style: 'margin-top:14px' },
           h('div', { class: 'muted small' }, 'Deleted (' + App.arr(list.deleted).length + ') · until the next sync'),
@@ -199,7 +203,7 @@ App.pages.todo = {
         h('button', { class: 'btn small', onclick: () => { close(); page.change({ op: 'removeRepeat', list: list.id, id: t.id }); } }, 'Remove repeat')) : null,
       h('label', { class: 'field' }, h('span', {}, 'Notes'), notes),
       h('div', {}, h('div', { class: 'small muted' }, 'Steps'), stepRows, h('div', { class: 'row', style: 'margin-top:6px' }, newStep, h('button', { class: 'btn small', onclick: addStep }, 'Add'))),
-      App.setting('Private', priv, 'Hidden on the sleep screen and Home.'),
+      App.setting('Hide on sleep', priv, 'Keeps this task off the sleep screen.'),
       h('div', {}, h('button', { class: 'btn danger small', onclick: async () => {
         if (await App.confirm('Delete task', 'Delete “' + t.title + '”?', 'Delete', true)) { close(); page.change({ op: 'delete', list: list.id, id: t.id }); }
       } }, 'Delete task')));
@@ -232,6 +236,17 @@ App.pages.todo = {
       ], { onChange: (z) => App.api('/api/todo/tiles', { json: { tiles: z.on.map((key) => ({ key, on: true })).concat(z.off.map((key) => ({ key, on: false }))) } }).catch(App.fail) }));
   },
 
+  // The lists in their order on the Kindle (Settings > Lists); drag to reorder or to Hidden, or tap one for a menu.
+  listOrder(s) {
+    const items = s.lists.map((l) => ({ key: l.id, name: l.name, on: !l.hidden }));
+    const row = (l) => h('div', { class: 've-tile', style: 'width:290px;height:44px;flex-direction:row;align-items:center;justify-content:flex-start' }, h('b', {}, l.name));
+    return h('div', { class: 'stack', style: 'margin-bottom:12px' },
+      App.visualZones([
+        { id: 'on', title: 'Lists', short: 'Shown', items: items.filter((l) => l.on), render: row },
+        { id: 'off', title: 'Hidden', short: 'Hidden', className: 'tray', empty: 'Drop lists here to hide them', items: items.filter((l) => !l.on), render: row },
+      ], { onChange: (z) => App.api('/api/todo/listorder', { json: { lists: z.on.map((id) => ({ id, on: true })).concat(z.off.map((id) => ({ id, on: false }))) } }).catch(App.fail) }));
+  },
+
   settings(s) {
     const o = s.options;
     const set = (key) => (value) => App.api('/api/todo/options', { json: { [key]: value } }).then(() => { o[key] = value; }, App.fail);
@@ -239,20 +254,36 @@ App.pages.todo = {
     const client = h('input', { type: 'text', value: s.clientId, placeholder: '00000000-0000-0000-0000-000000000000', style: 'flex:1;min-width:260px' });
     const codeBox = h('div');
     // The same sections, in the same order, as To Do's settings on the Kindle.
+    // 1 to 60, as the Kindle's spinner.
+    const pushDays = h('input', { type: 'number', min: 1, max: 60, step: 1, value: o.push_days || 7, style: 'width:90px' });
+    pushDays.addEventListener('change', () => {
+      const n = Math.max(1, Math.min(60, Math.round(Number(pushDays.value)) || 7));
+      pushDays.value = n;
+      num('push_days')(n);
+    });
+    const real = s.lists.filter((l) => !l.flagged);
+    const listPick = (current, none, onPick) => App.select([...(none ? [['', 'None']] : []), ...real.map((l) => [l.id, l.name])], current || '', onPick);
+    const listSet = (op) => (id) => App.api('/api/todo/list', { json: { op, id, on: op === 'pin' ? !!id : true } }).then(() => App.route(), App.fail);
+    const pinned = (real.find((l) => l.pinned) || {}).id;
+    const dflt = (real.find((l) => l.default) || {}).id;
     return h('div', {},
+      h('div', { class: 'card' }, h('h2', {}, 'Display'),
+        App.setting('Week starts on', App.select([['sunday', 'Sunday'], ['monday', 'Monday']], o.week_start, set('week_start'))),
+        App.setting('Split view (landscape)', App.toggle(o.two_panes !== false, set('two_panes')), 'The lists at the left, the open one at the right.'),
+        App.setting('Full refresh', App.select([['6', 'Every 6 changes'], ['3', 'Every 3 changes'], ['1', 'Every change'], ['0', 'Never']], String(o.deghost == null ? 6 : o.deghost), num('deghost')))),
       h('div', { class: 'card' }, h('h2', {}, 'Home'),
         this.homeTiles(s),
+        this.listOrder(s),
         App.setting('Show hidden lists', App.toggle(o.show_hidden, set('show_hidden'))),
-        App.setting('Lists on this Kindle', App.toggle(o.local_lists !== false, set('local_lists')), 'Lists kept only on the Kindle, never synced. Off hides them (they’re kept).')),
+        App.setting('Pinned list', listPick(pinned, true, listSet('pin'))),
+        App.setting('Default list', listPick(dflt, false, listSet('default')))),
       h('div', { class: 'card' }, h('h2', {}, 'Tasks'),
         App.setting('Starred on top', App.toggle(o.starred_first, set('starred_first'))),
         App.setting('Group by due date', App.toggle(o.group_by_due, set('group_by_due'))),
         App.setting('Tap action', App.select([['task', 'Open task'], ['menu', 'Quick actions']], o.tap_opens, set('tap_opens'))),
-        App.setting('Postpone by', App.select([['1', '1 day'], ['2', '2 days'], ['3', '3 days'], ['7', '7 days'], ['14', '14 days']], o.push_days, num('push_days'))),
-        App.setting('Reminder alerts', App.toggle(o.reminders !== false, set('reminders')), 'While KOReader is open.')),
-      h('div', { class: 'card' }, h('h2', {}, 'Display'),
-        App.setting('Split view (landscape)', App.toggle(o.two_panes !== false, set('two_panes')), 'The lists at the left, the open one at the right.'),
-        App.setting('Week starts on', App.select([['sunday', 'Sunday'], ['monday', 'Monday']], o.week_start, set('week_start')))),
+        App.setting('Postpone by (days)', pushDays),
+        App.setting('Reminder alerts', App.toggle(o.reminders !== false, set('reminders')), 'While KOReader is open.'),
+        App.setting('Lists on this Kindle', App.toggle(o.local_lists !== false, set('local_lists')), 'Lists kept only on the Kindle, never synced. Off hides them (they’re kept).')),
       h('div', { class: 'card' }, h('h2', {}, 'Sync'),
         App.setting('Background sync', App.select([['0', 'Off'], ['15', 'Every 15 min'], ['30', 'Every 30 min'], ['60', 'Every hour'], ['120', 'Every 2 hours']], o.sync_interval, num('sync_interval'))),
         App.setting('Sync changes immediately', App.toggle(o.send_now, set('send_now'))),
@@ -260,6 +291,7 @@ App.pages.todo = {
           'How long after your last change they go out (with Sync changes immediately, while Wi-Fi is on).'),
         App.setting('Download only', App.toggle(o.download_only, set('download_only')))),
       h('div', { class: 'card' }, h('h2', {}, 'Sleep screen'),
+        App.setting('Sleep screen content', App.select([['today_next', 'Today + Up next'], ['today', 'Today'], ['starred', 'Starred'], ['pinned', 'Pinned list']], o.sleep_content || 'today_next', set('sleep_content'))),
         h('p', { class: 'muted small' }, 'Which sleep screen the Kindle shows is chosen once for every app: on the Home tab here, or in the launcher’s settings on the Kindle.')),
       // With the launcher: the shared Microsoft account (one App ID and sign-in for To Do and OneNote).
       s.microsoft ? App.microsoftCard() : null,
