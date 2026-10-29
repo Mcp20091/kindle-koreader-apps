@@ -39,6 +39,9 @@ local View = require("haview")
 -- Online enough to try: Wi-Fi has an address. (NetworkMgr:isOnline looks up
 -- a name on the internet, which can hang the screen for many seconds when
 -- Wi-Fi is up but the internet isn't; Home Assistant at home doesn't need it.)
+-- Routines (loaded when first used).
+local RR = setmetatable({}, { __index = function(__, k) return require("haroutines")[k] end })
+
 local function online()
     return NetworkMgr:isConnected() ~= false
 end
@@ -180,6 +183,13 @@ function HomeAssistant:init()
         },
         web = { page = "ha", routes = "webha", script = "web/ha.js",
             card = "Connection, devices, Quick tiles, layout, settings and backup." } }
+    -- Its part of the web page's backup (webpage.koplugin/webbackup.lua); the token and sign-in
+    -- only with Include keys and sign-ins.
+    PS.backupApps = PS.backupApps or {}
+    PS.backupApps.homeassistant = { key = "homeassistant", name = _("Home Assistant"),
+        files = { "^homeassistant%.lua$", "^homeassistant%-token%.txt$" },
+        secret_files = { "homeassistant-token.txt" },
+        secret_keys = { ["homeassistant.lua"] = { "token", "refresh_token", "access_token", "expires_at" } } }
     -- A tap on one of its notifications in the shared list (Apps).
     PS.notifyOpeners = PS.notifyOpeners or {}
     PS.notifyOpeners.homeassistant = function(route)
@@ -192,6 +202,17 @@ end
 function HomeAssistant:onDispatcherRegisterActions()
     Dispatcher:registerAction("homeassistant_show", { category = "none", event = "ShowHomeAssistant", title = _("Home Assistant"), general = true })
     Dispatcher:registerAction("homeassistant_dashboard", { category = "none", event = "ShowHomeAssistantDashboard", title = _("Home Assistant dashboard"), general = true })
+    Dispatcher:registerAction("homeassistant_routine", { category = "string", event = "RunHomeAssistantRoutine",
+        title = _("Home Assistant: run a routine"), general = true,
+        args_func = function()
+            local ha = HomeAssistant.instance
+            local ids, labels = {}, {}
+            for __, r in ipairs(ha and RR.list(ha.prefs) or {}) do
+                ids[#ids + 1] = r.id
+                labels[#labels + 1] = r.name
+            end
+            return ids, labels
+        end })
 end
 
 function HomeAssistant:addToMainMenu(menu_items)
@@ -259,6 +280,9 @@ function HomeAssistant:shareWithApps()
                 if not ha then return out end
                 -- Refresh: the states again now (hold: Home Assistant).
                 table.insert(out, { id = "refresh", name = _("Refresh Home Assistant"), icon = "refresh-cw", group = _("Home Assistant") })
+                for __, r in ipairs(RR.list(ha.prefs)) do
+                    table.insert(out, { id = "routine:" .. r.id, name = r.name, icon = "play", group = _("Routines") })
+                end
                 if not ha.snap then return out end
                 for __, e in ipairs(ha.snap.list) do
                     if HomeAssistant.QUICK[e.domain] and not e.onMainDevice and Model.visible(e, ha.prefs) then
@@ -288,16 +312,24 @@ function HomeAssistant:shareWithApps()
         PS.registerSearch{ key = "homeassistant", name = _("Home Assistant"), icon = "house", search = function(q)
             local ha = HomeAssistant.instance
             local out = {}
-            if not (ha and ha.snap) then return out end
+            if not ha then return out end
+            for __, r in ipairs(RR.list(ha.prefs)) do
+                if (r.name or ""):lower():find(q, 1, true) then
+                    table.insert(out, { title = r.name, sub = _("Routine") .. "  \u{00B7}  " .. HomeAssistant.stepsText(r),
+                        open = function()
+                            local h = HomeAssistant.instance
+                            if h then h:openRoutine(r.id) end
+                        end })
+                end
+            end
+            if not ha.snap then return out end
             for __, e in ipairs(ha.snap.list) do
                 if #out >= 20 then break end
                 if Model.visible(e, ha.prefs) and ((e.name or ""):lower():find(q, 1, true) or (e.area or ""):lower():find(q, 1, true)) then
                     table.insert(out, { title = e.name, sub = (e.area ~= "" and (e.area .. "  \u{00B7}  ") or "") .. Model.stateText(e),
                         open = function()
                             local h = HomeAssistant.instance
-                            if not h then return end
-                            local route = e.area ~= "" and { kind = "room", name = e.area } or { kind = "search", query = e.name }
-                            if h.screen then h.screen:go(route) else h:show(route) end
+                            if h then h:openDevice(e.id) end
                         end })
                 end
             end
@@ -321,6 +353,18 @@ function HomeAssistant:shareWithApps()
                 guide = "setup.md#home-assistant" },
             run = function() local ha = HomeAssistant.instance if ha then ha:askSignIn(function() end) end end }
     end
+end
+
+function HomeAssistant:onRunHomeAssistantRoutine(id)
+    local lock = require("pluginshare").lock
+    if lock and lock.ask("ha", function() self:onRunHomeAssistantRoutine(id) end) then return true end
+    local r = RR.find(self.prefs, id)
+    if not r then
+        require("hako").toast(_("This routine was deleted. Choose another for the gesture."), 3)
+        return true
+    end
+    NetworkMgr:runWhenOnline(function() RR.run(self, r) end)
+    return true
 end
 
 function HomeAssistant:onShowHomeAssistant() self:show("home") return true end
@@ -889,6 +933,17 @@ function HomeAssistant:openDevice(id)
     end)
 end
 
+--- "3 steps", for a routine in search and on its quick button.
+function HomeAssistant.stepsText(r)
+    return #r.steps == 1 and _("1 step") or T(_("%1 steps"), #r.steps)
+end
+
+--- Opens a routine's page, from anywhere.
+function HomeAssistant:openRoutine(id)
+    local route = { kind = "routine", id = id }
+    if self.screen then self.screen:go(route) else self:show(route) end
+end
+
 --- A device as a quick button: { label, icon, on, value, tap(done), hold,
 -- steps, media, chip } (appsquick.lua draws it), or nil when it isn't known
 -- yet (the states are loaded then, quietly).
@@ -900,6 +955,17 @@ function HomeAssistant:quickItem(id)
                 if done then UIManager:scheduleIn(4, function() done() end) end
             end,
             hold = function() self:show() end }
+    end
+    local rid = id:match("^routine:(.+)$")
+    if rid then
+        local r = RR.find(self.prefs, rid)
+        if not r then return nil end
+        return { label = r.name, icon = "play", value = HomeAssistant.stepsText(r),
+            tap = function(done)
+                NetworkMgr:runWhenOnline(function() RR.run(self, r) end)
+                if done then done() end
+            end,
+            hold = function() self:openRoutine(rid) end }
     end
     local e = self.snap and self.snap.byId[id]
     if not e then

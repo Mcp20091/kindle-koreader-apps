@@ -130,7 +130,7 @@ A room's screen shows its temperature and humidity, how much is on (with **All o
 - **Activity**: what changed, newest first.
 - **Batteries**: every battery, lowest first, bold under 20%.
 - **3D printer**: its camera, the print's progress, file, time left and layer; **TEMPERATURES** (nozzle and bed); **CONTROLS**, named as the printer names them (such as **Pause**, **Resume**, **Cancel** or **Stop**); and **DETAILS**.
-- **Search** (the magnifier on Home): find a device by name, room or id.
+- **Search** (the magnifier on Home): find a device by name, room or id. Launcher search also finds devices and routines; a device opens its controls.
 - **Notifications** (the bell): Home Assistant's notifications, each with **Dismiss**, and **Dismiss all**.
 
 ![Security](img/apps/ha-security.png)
@@ -194,7 +194,7 @@ A routine runs several things in one tap, such as "Leaving": lights off, lock th
 3. Add as many steps as you like. Tap a step to remove it.
 4. **Run now** tries it. **Rename** and **Delete** are there too (**Undo** for a few seconds after a delete).
 
-Routines show on Home (tap to run, hold to edit) and in the dashboard's Scenes section. A routine that unlocks a door, opens the garage or runs a script asks first, like those taps do. When it finishes, a notice says it's done, or how many steps didn't work.
+Routines show on Home (tap to run, hold to edit) and in the dashboard's Scenes section. They also work from outside the app: add one as a quick button (in the group **Routines**; tap runs it, hold opens it), find it in Search (it opens the routine's page), or give a gesture the action **Home Assistant: run a routine** and pick the routine. A routine that unlocks a door, opens the garage or runs a script asks first, like those taps do. When it finishes, a notice says it's done, or how many steps didn't work.
 
 ## Alerts
 
