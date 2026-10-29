@@ -40,9 +40,6 @@ local BUILT_IN = {
     { key = "notes", name = "Notes", files = { "^notes_.*%.lua$" }, reader_keys = { "^notes$", "^notes_" },
         secret_files = { "notes_secrets.lua" },
         secret_keys = { ["notes_onenote.lua"] = { "access_token", "refresh_token", "expires_at" } } },
-    { key = "homeassistant", name = "Home Assistant", files = { "^homeassistant%.lua$", "^homeassistant%-token%.txt$" },
-        secret_files = { "homeassistant-token.txt" },
-        secret_keys = { ["homeassistant.lua"] = { "token", "refresh_token", "access_token", "expires_at" } } },
     { key = "apps", name = "Launcher", reader_keys = { "^apps", "^sleep_screen_app$" } },
     { key = "gestures", name = "Gestures", files = { "^gestures%.lua$" } },
     -- (HTTPS's certificates, the Kindle's own and yours, with their keys: only with keys and sign-ins.)
