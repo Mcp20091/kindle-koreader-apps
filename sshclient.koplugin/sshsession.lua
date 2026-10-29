@@ -14,6 +14,7 @@ local Font = require("ui/font")
 local GestureRange = require("ui/gesturerange")
 local InputDialog = require("ui/widget/inputdialog")
 local ScrollTextWidget = require("ui/widget/scrolltextwidget")
+local Size = require("ui/size")
 local TextWidget = require("ui/widget/textwidget")
 local UIManager = require("ui/uimanager")
 local buffer = require("string.buffer")
@@ -29,6 +30,7 @@ local KO = require("sshko")
 local M = require("sshmodel")
 
 local CHUNK_SIZE = 80 * 40
+local KEY_FONT = 22   -- the keys row's labels: the on-screen keyboard's size
 
 local Session = {}
 Session.__index = Session
@@ -61,7 +63,6 @@ function Session.open(plugin, host, password, cmd)
     self.face = Font:getFace("smallinfont", G_reader_settings:readSetting("terminal_font_size", 14))
     self.chunk = buffer.new(CHUNK_SIZE)
     self.dialog = self:makeDialog(TermInputText)
-    self:darkIcon()
     self.input = self.dialog._input_widget
     -- (hold, or hold and drag: a selection, copied; see selectable)
     self:selectable()
@@ -442,6 +443,10 @@ function Session:keysMenu()
             back()
         end }
     end
+    items[#items + 1] = { text = Dark.isOn() and _("Dark terminal: On") or _("Dark terminal: Off"), fn = function()
+        self:toggleDark()
+        back()
+    end }
     KO.list(_("Keys"), items, back)
 end
 
@@ -492,26 +497,11 @@ function Session:setCtrl(on)
     end)
 end
 
---- Dark / Light: the dark terminal on or off (the same as SSH settings' Dark
--- terminal), at once.
+--- Dark terminal on or off (the same as SSH settings' Dark terminal), at once:
+-- the last entry in Keys.
 function Session:toggleDark()
     Dark.set(not Dark.isOn())
-    self:darkIcon()
     UIManager:setDirty("all", "full")
-end
-
---- The key's icon: a moon while the terminal is light (tap for dark), a sun
--- while it's dark. (KOReader's Button finds icons by name in its own
--- folders; these are the plugin's Lucide ones, so its image is swapped.)
-function Session:darkIcon()
-    local btn = self.dialog and self.dialog.button_table and self.dialog.button_table:getButtonById("dark")
-    local w = btn and btn.label_widget
-    if not w then return end
-    local file = self.plugin.path .. "/icons/" .. (Dark.isOn() and "sun" or "moon") .. ".svg"
-    if w.file == file then return end
-    if w.free then w:free() end
-    w.file = file
-    w.alpha = true
 end
 
 --- ✕: Disconnect? (closes at once when it has ended)
@@ -538,7 +528,8 @@ end
 
 function Session:makeDialog(TermInputText)
     local dialog
-    -- Two even rows: the keys first, then what opens something.
+    -- The keys, as one more row of the keyboard (plain labels, the keyboard's font), right
+    -- above it.
     local keys = {
         { text = "↹", callback = function() self:transmit("\009") end },
         { text = _("Esc"), callback = function() self:transmit("\027") end },
@@ -547,39 +538,32 @@ function Session:makeDialog(TermInputText)
             self:transmit("\003")
             if self.ptmx then C.tcflush(self.ptmx, C.TCIFLUSH) end
         end },
-        { text = "⇧", callback = function() self.input:upLine() end,
+        { text = "↑", callback = function() self.input:upLine() end,
             hold_callback = function() self.input:scrollUp() end },
-        { text = "⇩", callback = function() self.input:downLine() end,
+        { text = "↓", callback = function() self.input:downLine() end,
             hold_callback = function() self.input:scrollDown() end },
     }
-    local row = {
-        { text = _("Keys"), callback = function() self:keysMenu() end },
-        { text = _("Commands"), callback = function() self:pickCommand() end },
-        { text = _("Edit"), callback = function() self:editFile() end },
+    -- (a firm pen press lasts long enough to be a hold: it taps too)
+    for __, b in ipairs(keys) do
+        if not b.hold_callback then b.hold_callback = b.callback end
+        b.font_face, b.font_size, b.font_bold = "infont", KEY_FONT, false
+    end
+    -- What opens something: the apps' icon buttons, between the terminal and the keys.
+    local actions = {
+        { icon = "keyboard", text = _("Keys"), fn = function() self:keysMenu() end },
+        { icon = "terminal", text = _("Commands"), fn = function() self:pickCommand() end },
+        { icon = "pencil", text = _("Edit"), fn = function() self:editFile() end },
     }
     if require("sshai").available() then
         -- tap: the AI chat; hold: AI for this (which service and model the chat uses)
-        row[#row + 1] = { text = _("AI"), callback = function() self:aiMenu() end,
-            hold_callback = function()
-                local ai = require("pluginshare").ai
-                if ai and ai.quickPick then ai.quickPick("ssh_session") end
-            end }
+        actions[#actions + 1] = { icon = "sparkles", text = _("AI"), aiJob = "ssh_session", fn = function() self:aiMenu() end }
     else
-        row[#row + 1] = { text = _("Paste"), callback = function()
+        actions[#actions + 1] = { icon = "clipboard-paste", text = _("Paste"), fn = function()
             local clip = Device.input.getClipboardText() or ""
             if clip ~= "" then self:transmit(clip) end
         end }
     end
-    -- (its moon or sun is put in by darkIcon)
-    row[#row + 1] = { icon = "appbar.contrast", id = "dark", icon_width = Device.screen:scaleBySize(26),
-        icon_height = Device.screen:scaleBySize(26), callback = function() self:toggleDark() end }
-    row[#row + 1] = { text = "✕", callback = function() self:askDisconnect() end }
-    -- (a firm pen press lasts long enough to be a hold: it taps too)
-    for __, list in ipairs({ keys, row }) do
-        for __, b in ipairs(list) do
-            if not b.hold_callback then b.hold_callback = b.callback end
-        end
-    end
+    actions[#actions + 1] = { icon = "x", text = _("Disconnect"), fn = function() self:askDisconnect() end }
     -- KOReader's dialog with the apps' title bar (‹ and ⌂ ask Disconnect? first)
     dialog = require("sshbar").dialogClass():new{
         bar_opts = {
@@ -596,8 +580,12 @@ function Session:makeDialog(TermInputText)
         allow_newline = false,
         cursor_at_end = true,
         fullscreen = true,
-        inputtext_class = TermInputText,
-        buttons = { keys, row },
+        -- the terminal as big as it can be: a thin border, and no gaps around it
+        condensed = true,
+        input_margin = Size.margin.default,
+        input_padding = Size.padding.default,
+        inputtext_class = TermInputText:extend{ bordersize = Size.border.default },
+        buttons = { keys },
         del_word_callback = function() self:transmit("\023") end,
         enter_callback = function() self:transmit("\r") end,
         strike_callback = function(chars)
@@ -610,6 +598,11 @@ function Session:makeDialog(TermInputText)
             self:transmit(chars)
         end,
     }
+    -- (KOReader's dialog makes the terminal shorter for it, and keeps it when it lays
+    -- itself out again with the keyboard shown or hidden)
+    local u = math.min(Device.screen:getWidth(), Device.screen:getHeight()) / 620
+    dialog:addWidget(require("sshbuttons"):new{ width = dialog.width, bare = true,
+        height = math.floor(76 * u + 0.5), show_parent = dialog, buttons = actions })
     return dialog
 end
 

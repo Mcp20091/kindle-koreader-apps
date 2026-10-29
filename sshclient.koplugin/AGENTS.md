@@ -217,7 +217,7 @@ Helpers more than one app needs live in the launcher (apps.koplugin) and are rea
   KOReader's widgets without the launcher.
 - Undo after deleting a host, a command or a key (`PS.popup.undo`). Without it,
   a delete asks first.
-- No settings page: the dark terminal is the live session's moon/sun key.
+- Dark terminal: SSH settings, and the last entry of the live session's Keys.
 - AI buttons carry `aiJob` (a feature key: ssh_explain, ssh_summary,
   ssh_write, ssh_session): a hold opens `PS.ai.quickPick` (AI for this). The
   live session's AI key does it from its hold_callback.
@@ -244,8 +244,11 @@ Helpers more than one app needs live in the launcher (apps.koplugin) and are rea
   simple VT52 terminal.
 - KOReader's on-screen keyboard stays above other windows. Close it before
   showing a pop-up over the live session, or taps land on the keys underneath.
-- KOReader's `Button` only finds icons by name in its own folders. The
-  moon/sun key swaps the button's image file for the plugin's Lucide SVG.
+- The live session's buttons: Keys, Commands, Edit, AI (or Paste) and Disconnect are the
+  apps' icon row (`sshbuttons`), put in with KOReader's `dialog:addWidget`, which keeps it
+  when the dialog lays itself out again (keyboard shown or hidden). The keys row (Tab, Esc,
+  Ctrl, Ctrl-C, ↑, ↓) stays KOReader's buttons, in the keyboard's font, so Ctrl can show
+  black through `getButtonById("ctrl")`.
 - `Menu` calls `close_callback` after every tap; `List` overrides
   `onMenuSelect` so it only runs on close.
 - Plugin methods whose names start with "on" are wrapped by KOReader (first

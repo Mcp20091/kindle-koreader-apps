@@ -2021,7 +2021,7 @@ function Screens.settingsItems(plugin, redo)
     end
     t[#t + 1] = { band = _("LIVE SESSION") }
     local Dark = require("sshdark")
-    t[#t + 1] = { toggle = Dark.isOn(), text = _("Dark terminal"), sub = _("Also the moon and sun key in a live session"),
+    t[#t + 1] = { toggle = Dark.isOn(), text = _("Dark terminal"), sub = _("Also in a live session's Keys"),
         callback = function()
             Dark.set(not Dark.isOn())
             redo()
