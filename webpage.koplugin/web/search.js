@@ -1,4 +1,4 @@
-// Search: notebooks (Notes' own search), To Do's tasks and the crosswords, from the box in the header,
+// Search: books, saved Wikipedia articles, notebooks (Notes' own search), To Do's tasks and the crosswords, from the box in the header,
 // and this page's own cards and settings (their names, read from each tab's script).
 
 // The cards and settings on each tab shown: [{ page, tab, label, kind }]. Read once from the tabs'
@@ -51,22 +51,28 @@ App.pages.search = {
     if (box && box.value !== q) box.value = q;
     main.append(h('h1', {}, 'Search'));
     if (q.length < 2) {
-      main.append(h('p', { class: 'sub' }, 'Type at least two letters in the search box: notebooks’ text, To Do tasks, crosswords, and this page’s settings.'));
+      main.append(h('p', { class: 'sub' }, 'Type at least two letters in the search box: books, saved articles, notebooks’ text, To Do tasks, crosswords, and this page’s settings.'));
       return;
     }
     const enc = encodeURIComponent(q);
     const lq = q.toLowerCase();
-    const [kindle, notes, index] = await Promise.all([
+    const [kindle, notes, books, wiki, index] = await Promise.all([
       App.api('/api/search?q=' + enc).catch(() => ({})),
       App.plugins && !App.plugins.notes ? Promise.resolve(null)
         : App.api('/api/notes/search?q=' + enc).catch(() => null),
+      App.plugins && !App.plugins.library ? Promise.resolve(null)
+        : App.api('/api/library/search?q=' + enc).catch(() => null),
+      App.plugins && !App.plugins.wikipedia ? Promise.resolve(null)
+        : App.api('/api/wikipedia/search?q=' + enc).catch(() => null),
       App.pageIndex().catch(() => []),
     ]);
     const here = index.filter((x) => x.label.toLowerCase().includes(lq)).slice(0, 30);
     const todo = kindle.todo == null ? null : App.arr(kindle.todo);
     const crosswords = kindle.crosswords == null ? null : App.arr(kindle.crosswords);
     const nbs = notes == null ? null : App.arr(notes);
-    const total = (todo || []).length + (crosswords || []).length + (nbs || []).length + here.length;
+    const bks = books == null ? null : App.arr(books.results).filter((b) => !b.dir).slice(0, 30);
+    const arts = wiki == null ? null : App.arr(wiki.articles);
+    const total = (bks || []).length + (arts || []).length + (todo || []).length + (crosswords || []).length + (nbs || []).length + here.length;
     main.append(h('p', { class: 'sub' }, total === 0 ? 'Nothing found for “' + q + '”.' : total + ' found for “' + q + '”.'));
     const section = (title, items, row) => {
       if (!items || !items.length) return;
@@ -82,6 +88,9 @@ App.pages.search = {
     section('On this page', here, (x) => h('a', { class: 'result', href: '#' + x.page, onclick: (e) => { e.preventDefault(); App.openAt(x.page, x.label); } },
       h('div', { class: 'grow' }, h('div', {}, h('strong', {}, x.label),
         h('span', { class: 'muted small' }, '  ·  ' + (x.kind === 'Tab' ? 'Tab' : x.kind + ' on ' + x.tab))))));
+    section('Books', bks, (b) => line('#files?path=' + encodeURIComponent(b.path.replace(/\/[^/]+$/, '') || '/') + '&find=' + encodeURIComponent(b.name),
+      b.title || b.name, b.authors || null, b.title ? b.name : null));
+    section('Wikipedia', arts, (a) => line('#wikipedia', a.title, 'saved article', a.description));
     section('Notebooks', nbs, (r) => line('#notes?nb=' + encodeURIComponent(r.nb), r.name, where(r), r.kind === 'name' ? null : r.snippet));
     section('To Do', todo, (r) => line('#todo?list=' + encodeURIComponent(r.listId), (r.done ? '✓ ' : '') + r.title,
       r.list + (r.due ? ' · due ' + r.due : ''), r.snippet));

@@ -509,9 +509,12 @@ function Page:render()
     if self.build then self.build(self) end
     local foot = (self.status and 30 or 0) + (self.buttons and #self.buttons > 0 and 80 or 0)
     local F = c:flow(Bar.H + 4, c.H - 6 - foot, self.page)
+    self.rowPages = {}
     for __, it in ipairs(self.items or {}) do
         local k = kindOf(it)
         if k == "gap" then F:gap(it.gap) else draw[k](self, c, F, it) end
+        local name = it.setting or (it.toggle ~= nil and it.text) or nil
+        if name then self.rowPages[name] = F.page end
     end
     self.pages = F:pages()
     if self.page > self.pages then

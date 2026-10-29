@@ -19,7 +19,7 @@ The **Tools > Web server** menu (the same settings are in the launcher's **Setti
 - **Start web server** / **Stop web server**. While it runs, the menu's own name shows the address: **Web server: http://…**.
 - **Show address**: the address and QR code again.
 - **Keep Kindle awake while running**: on to start with, so it doesn't go to sleep while you use the page. If you put the Kindle to sleep yourself (the power button or the cover), the web server stops; when it wakes, a note says so. Start it again when you need it.
-- **Stop after 30 minutes of inactivity**: on to start with; stops by itself when no browser has used it for half an hour.
+- **Stop after unused**: **15 min**, **30 min** (to start with), **1 hour** or **Never**; it stops by itself when no browser has used it for that long.
 - **HTTPS (encrypted)**: off to start with. On, the page and everything on it (the password too) is encrypted, at **https://…**. An old **http://** address is sent on to it. See [HTTPS](#https).
 - **Certificate**: which certificate HTTPS uses and until when. **Use the Kindle's own**, **Use yours** or **Make a new one**.
 - **Password: On / Off**: set a password (4 characters or more). Browsers then ask for it. **Remove password** takes it off.
@@ -65,6 +65,8 @@ On a computer:
 
 The search box at the top, beside the title, searches everything at once. Type at least two letters and press Enter:
 
+- **Books**: titles, authors and file names. A result opens the book's folder on the Files tab.
+- **Wikipedia**: saved articles, by title. A result opens the Wikipedia tab.
 - **Notebooks**: their names, typed text and handwriting. Each result says the page, and whether it was found in handwriting or in the name.
 - **To Do**: task titles, notes and steps (not tasks marked private).
 - **Crosswords**: puzzle names and clues, such as "12 Across: …".
@@ -77,6 +79,7 @@ Tap a result to open it: a notebook in the Notes tab, a task's list in the To Do
 ![Home](img/apps/web-home.png)
 
 - **The Kindle**: its model, KOReader's version, the **Battery** and the **Storage** left.
+- **Notifications**: the Kindle's notifications (its bell), newest first. **Open on Kindle** does what a tap does there (and takes it out of the list), **Remove** takes one out, and **Clear all** asks first, as on the Kindle. The card isn't there without the launcher.
 - **On this page**: a card for each tab, **Dashboard** first.
 - **Kindle**: the Kindle's own controls:
   - **Light** (a slider and on or off) and **Warmth**.
@@ -115,6 +118,7 @@ The Kindle's storage. It opens in the folder you looked at last (the documents f
 - **List** or **Covers**: the list shows names, sizes and dates; **Covers** shows each book's cover, title, author and how far you've read, like a bookshelf. Titles and covers come from KOReader; for a book it hasn't read yet, they appear a few seconds after you open the folder.
 - **Sort by** name (or title), date or size, and **Filter this folder** to find a book by its name, title or author.
 - **Group by** author, series or status (Reading, On hold, To read, Finished), as the Library groups books on the Kindle. Folders come first and other files last.
+- **Library settings**: the Library's settings, as on the Kindle: **Show books as**, **Open on**, **Home starts with**, **Show hidden files** and **Browse books with**. A change takes effect on the Kindle at once.
 - **Everywhere** (or Enter in the filter box) searches every folder by name, title and author. A result opens its folder with the file picked out. **← Back to this folder** returns to the list.
 - **Recent**: the newest files in every folder, such as what you just uploaded.
 - **Collections**: KOReader's collections, as on the Kindle, each with its files (**✕** takes one out).
@@ -253,6 +257,7 @@ KOReader's own settings, without leaving the launcher on the Kindle:
 - **Logs**: KOReader's own log and the sleep screen updates' log. **Show the end** shows the latest lines; **Download** saves the whole file. Handy when something goes wrong, or to check that sleep screen updates are working.
 - **Gestures**: what each KOReader gesture does, in the library and in a book, the same as the launcher's Gestures screen. To look at only: gestures are changed on the Kindle.
 - **Tabs**: the order of the tabs at the top, and which are hidden. Drag a tab to move it, or into **Hidden**; on a phone, tap one for **Move up**, **Move down** and **To Hidden**. Home and System always show. It's kept on the Kindle, so every phone and computer shows the same tabs. **Reset** puts them all back.
+- **Web server**: **Keep the Kindle awake while on**, **Stop after unused** (**15 min**, **30 min**, **1 hour** or **Never**) and **Port**, as in the Kindle's Tools > Web server. **Stop web server** stops it; the page then says it's stopped, and you start it again on the Kindle. A new port starts the server again and the page follows to it.
 - **Password**: set, change or remove the page's password, and **Sign out**.
 - **HTTPS**: on or off, the Kindle's own certificate or yours (pasted, or from files), **New certificate** and **Remove yours**. See [HTTPS](#https).
 

@@ -11,7 +11,7 @@ updates, backups and every app's setup, with a keyboard and a big screen.
 
 ## How it's built
 
-- `main.lua`: the plugin. It handles start and stop, the QR code, Stop after 30 minutes unused,
+- `main.lua`: the plugin. It handles start and stop, the QR code, Stop after unused (15 min, 30 min, 1 hour or Never; `/api/webserver`, the System tab's Web server card),
   keeping the Kindle awake, the heartbeat, its menu, and sharing with Apps. One server serves all of
   KOReader: the plugin is made again for each book and for the file browser, but the server isn't.
 - `webserver.lua`: the HTTP server. `server:route(method, pattern, handler, stream)`. `req` has
@@ -76,7 +76,7 @@ plugin that owns it (To Do's sync, for example, runs in To Do's own background j
 ## How it uses the shared pieces
 
 - `PS.registerSettings{ key = "webpage", … }` opens the settings as an Apps page (`PS.settingsPage`):
-  on or off, the address, Keep the Kindle awake, Stop after 30 minutes unused, the port, HTTPS and its
+  on or off, the address, Keep the Kindle awake, Stop after unused (15 min, 30 min, 1 hour or Never; `/api/webserver`, the System tab's Web server card), the port, HTTPS and its
   certificate, the password and Undo a plugin update.
 - `PS.registerSetup` adds the web page password step (order 70).
 - The control center's Web server button and the launcher's tile start and stop it.

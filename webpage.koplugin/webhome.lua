@@ -31,7 +31,34 @@ local function tabs()
     return out
 end
 
+-- The Kindle's notifications (the launcher's 🔔 list), on the front page: with Open on Kindle,
+-- Remove and Clear all. The launcher's PS.notifyRows, notifyOpen, notifyRemove and notifyClear; without it, none.
+local function notifications()
+    local ok, PS = pcall(require, "pluginshare")
+    return ok and PS.notifyRows and PS or nil
+end
+
 function Home.routes(server, plugin)
+    server:route("GET", "^/api/notifications$", function(req, res)
+        local N = notifications()
+        res:json({ installed = N ~= nil, list = N and N.notifyRows() or {} })
+    end)
+    -- { id }: what a tap on it does on the Kindle (it is then gone from the list).
+    server:route("POST", "^/api/notifications/open$", function(req, res)
+        local N = notifications()
+        if not N then return res:error(404, "The launcher isn't installed") end
+        local b = req.json()
+        if not N.notifyOpen(tonumber(b.id)) then return res:error(404, "That notification is gone") end
+        res:json({ ok = true })
+    end)
+    -- { id }, or { all = true }.
+    server:route("POST", "^/api/notifications/remove$", function(req, res)
+        local N = notifications()
+        if not N then return res:error(404, "The launcher isn't installed") end
+        local b = req.json()
+        if b.all == true then N.notifyClear() else N.notifyRemove(tonumber(b.id)) end
+        res:json({ ok = true })
+    end)
     server:route("GET", "^/api/home$", function(req, res)
         local util = require("util")
         local Files = require("webfiles")

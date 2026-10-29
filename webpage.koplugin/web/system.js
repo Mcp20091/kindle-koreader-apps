@@ -10,7 +10,7 @@ App.pages.system = {
     main.append(h('h1', {}, 'System'),
       h('p', { class: 'sub' }, 'Keeping the Kindle’s plugins and settings in order. Something wrong? ',
         h('a', { href: '#system', onclick: (e) => { e.preventDefault(); diagnostics.scrollIntoView({ block: 'start' }); } }, 'Diagnostics'), '.'),
-      githubCard(), pluginsCard(), versionsCard(), backupCard(), autoBackupCard(), tabsCard(), passwordCard(), httpsCard(), gesturesCard(),
+      githubCard(), pluginsCard(), versionsCard(), backupCard(), autoBackupCard(), tabsCard(), webServerCard(), passwordCard(), httpsCard(), gesturesCard(),
       diagnostics,
       problemsCard(), healthCard(), networkCard(), sleepCard(), batteryCard(), logsCard());
 
@@ -528,6 +528,33 @@ App.pages.system = {
           body.replaceWith(fresh);
           body = fresh;
         } }, 'Reset')));
+      return box;
+    }
+
+    // The web server's own settings (the Kindle's Tools > Web server), and Stop web server.
+    function webServerCard() {
+      const box = h('div', { class: 'card', style: 'margin-top:16px' }, h('h2', {}, 'Web server'));
+      App.api('/api/webserver').then((s) => {
+        const save = (patch) => App.api('/api/webserver', { json: patch });
+        const names = { 0: 'Never', 60: '1 hour' };
+        const port = h('input', { type: 'number', min: 1024, max: 65535, value: s.port, style: 'width:90px' });
+        box.append(
+          App.setting('Keep the Kindle awake while on', App.toggle(s.awake, (on) => save({ awake: on }).catch(App.fail))),
+          App.setting('Stop after unused', App.select(s.choices.map((m) => [String(m), names[m] || m + ' min']), s.idle_minutes,
+            (v) => save({ idle_minutes: Number(v) }).catch(App.fail))),
+          App.setting('Port', h('div', { class: 'row' }, port, h('button', { class: 'btn', onclick: () => {
+            save({ port: Number(port.value) }).then((r) => {
+              if (!r.address) return;
+              App.toast('Port changed. The web server is starting again…');
+              setTimeout(() => { location.href = r.address + '/' + location.hash; }, 3000);
+            }, App.fail);
+          } }, 'Change'))),
+          h('div', { class: 'row', style: 'margin-top:8px' }, h('button', { class: 'btn danger', onclick: async () => {
+            await App.api('/api/webserver/stop', { json: {} }).catch(() => {});
+            box.replaceChildren(h('h2', {}, 'Web server'),
+              h('p', {}, 'The web server is stopped. Start it again on the Kindle (Tools > Web server, or Web server in the control center).'));
+          } }, 'Stop web server')));
+      }, App.fail);
       return box;
     }
 

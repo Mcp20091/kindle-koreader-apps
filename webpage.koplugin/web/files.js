@@ -115,7 +115,7 @@ App.pages.files = {
           h('button', { class: 'btn', onclick: newFolder }, 'New folder'), withSel)),
       h('div', { class: 'card', style: 'margin-top:16px' }, drop, progress, fileInput,
         h('div', { class: 'spread', style: 'margin:10px 0' }, viewTabs, h('div', { class: 'row' }, search, sortBox, groupBox, tools)), body),
-      ...(App.servers ? [App.servers.card()] : []));
+      ...(App.servers ? [App.servers.card()] : []), App.library.settingsCard());
     draw();
 
     function entries() {

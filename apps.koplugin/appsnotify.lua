@@ -494,6 +494,25 @@ function Notify.install()
         return out
     end
     PS.notifyCount = Notify.count
+    --- The list for the web page's Home: { id, app, name, text, time, when }, newest first (not
+    -- the ongoing ones); PS.notifyOpen(id), PS.notifyRemove(id) and PS.notifyClear() do what the list screen does.
+    -- (PS.notifications itself is the plain copy of the list, set in main.lua.)
+    PS.notifyRows = function()
+        local out = {}
+        for __, e in ipairs(entries()) do
+            table.insert(out, { id = e.id, app = e.app, name = Notify.appName(e), icon = Notify.appIcon(e),
+                text = e.text, time = e.time, when = Notify.when(e.time) })
+        end
+        return out
+    end
+    PS.notifyOpen = function(id)
+        for __, e in ipairs(entries()) do
+            if e.id == id then Notify.open(e) return true end
+        end
+        return false
+    end
+    PS.notifyRemove = function(id) Notify.unnotify(id) end
+    PS.notifyClear = Notify.clear
     PS.showNotifications = Notify.show
     PS.notifyOpeners = PS.notifyOpeners or {}
 end

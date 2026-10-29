@@ -1575,7 +1575,7 @@ function V.toKOReader()
 end
 
 --- The Library's settings (also from the launcher's Settings list).
-function V.settings()
+function V.settings(jump)
     local page
     local function rows()
         local items = {}
@@ -1629,8 +1629,23 @@ function V.settings()
         end,
         menu = function() KO.menu(V.plugin and V.plugin.ui, {}, nil) end,
     }
+    -- From the launcher's search: the page the row is on.
+    if jump and page.rowPages and page.rowPages[jump] and page.rowPages[jump] ~= page.page then
+        page.page = page.rowPages[jump]
+        page:render()
+    end
     UIManager:show(page, "full")
     return page
+end
+
+--- The settings' names, for the launcher's search (in step with V.settings).
+function V.settingNames()
+    local out = {}
+    for __, name in ipairs({ _("Show books as"), _("Open on"), _("Home starts with"), _("Show hidden files"),
+        _("Home folder"), _("Download folder"), _("Browse books with") }) do
+        table.insert(out, { name })
+    end
+    return out
 end
 
 require("libraryserverviews")(V)

@@ -12,10 +12,44 @@ App.pages.wikipedia = {
     s.recent = App.arr(s.recent);
     main.append(...[
       h('div', {}, h('h1', {}, 'Wikipedia'), h('p', { class: 'sub' }, 'Articles saved on the Kindle open there without Wi-Fi.')),
-      this.saved(s), this.search(s), this.recent(s)].filter(Boolean));
+      this.saved(s), this.search(s), this.recent(s), this.settings()].filter(Boolean));
   },
 
   reload() { App.route(); },
+
+  // The Kindle's Wikipedia settings, in the same words.
+  settings() {
+    const box = h('div', { class: 'card' }, h('h2', {}, 'Settings'));
+    App.api('/api/wikipedia/settings').then((s) => {
+      const save = (patch) => App.api('/api/wikipedia/settings', { json: patch }).catch(App.fail);
+      const section = (key, text) => App.setting(text, App.toggle(s.sections[key] === true, (on) => save({ sections: { [key]: on } })));
+      const folder = h('input', { type: 'text', value: s.folder, style: 'width:100%;max-width:320px', spellcheck: false });
+      box.append(
+        h('div', { class: 'small muted', style: 'margin-top:8px' }, 'DISPLAY'),
+        App.setting('Toolbar', App.select([['left', 'Left'], ['top', 'Top']], s.toolbar, (v) => save({ toolbar: v }))),
+        App.setting('Images', App.toggle(s.images, (on) => save({ images: on }))),
+        h('div', { class: 'small muted', style: 'margin-top:8px' }, 'ARTICLES'),
+        App.setting('Language', App.select(App.arr(s.languages).map((l) => [l.code, l.name])
+          .concat(App.arr(s.languages).some((l) => l.code === s.lang) ? [] : [[s.lang, s.lang]]), s.lang, (v) => save({ lang: v }))),
+        App.setting('Tap a link', App.select([['preview', 'Preview'], ['open', 'Open']], s.link_tap, (v) => save({ link_tap: v }))),
+        App.setting('Save to', h('div', { class: 'row' }, folder, h('button', { class: 'btn', onclick: async () => {
+          const r = await save({ folder: folder.value.trim() });
+          if (r) { folder.value = r.folder; App.toast('Saved'); }
+        } }, 'Use this folder'))),
+        h('div', { class: 'small muted', style: 'margin-top:8px' }, 'FRONT PAGE'),
+        section('featured', 'Today’s featured article'), section('onthisday', 'On this day'),
+        section('news', 'In the news'), section('mostread', 'Most read yesterday'),
+        h('div', { class: 'small muted', style: 'margin-top:8px' }, 'RECENT'),
+        App.setting('Keep recent', App.select(App.arr(s.keep_choices).map((n) => [String(n), n + ' articles']), s.keep_recent,
+          (v) => save({ keep_recent: Number(v) }))),
+        App.setting('Clear recent', h('button', { class: 'btn', onclick: async () => {
+          if (!(await App.confirm('Clear recent', 'Clear the list of recent articles?', 'Clear', true))) return;
+          if (await save({ clear_recent: true })) { App.toast('Cleared'); this.reload(); }
+        } }, 'Clear')),
+        App.setting('Show in recent books', App.toggle(s.in_history, (on) => save({ in_history: on }))));
+    }, App.fail);
+    return box;
+  },
 
   when(t) {
     const d = new Date(t * 1000);

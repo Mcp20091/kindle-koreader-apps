@@ -26,7 +26,31 @@ App.pages.home = {
         card('#fonts', 'Fonts', 'Your fonts, getting more, the default and the font settings.', s.plugins.apps),
         card('#koreader', 'KOReader', 'Folders, common settings and KOReader’s whole menu.', true),
         card('#system', 'System', 'Update plugins, backups, logs, gestures and the password.', true)),
-      ...[App.kindleControls(), screenCard(), sendCard(), sleepCard()].filter(Boolean));
+      ...[notificationsCard(), App.kindleControls(), screenCard(), sendCard(), sleepCard()].filter(Boolean));
+
+    // The Kindle's notifications (its 🔔 list): open one on the Kindle, remove it, or clear them all.
+    function notificationsCard() {
+      if (!s.plugins.apps) return null;
+      const box = h('div', { class: 'card', style: 'margin-top:16px' });
+      const draw = async () => {
+        const n = await App.api('/api/notifications').catch(() => null);
+        if (!n || !n.installed) { box.remove(); return; }
+        const list = App.arr(n.list);
+        const act = (path, body) => App.api('/api/notifications/' + path, { json: body }).then(draw, (e) => { App.fail(e); draw(); });
+        box.replaceChildren(...[h('h2', {}, 'Notifications' + (list.length ? ' (' + list.length + ')' : '')),
+          list.length ? null : h('p', { class: 'muted' }, 'No notifications.'),
+          ...list.map((e) => h('div', { class: 'spread', style: 'padding:8px 0;border-top:1px solid var(--line)' },
+            h('div', {}, h('div', {}, e.text), h('div', { class: 'small muted' }, [e.name, e.when].filter(Boolean).join(' · '))),
+            h('div', { class: 'row', style: 'white-space:nowrap' },
+              h('button', { class: 'btn small', onclick: () => act('open', { id: e.id }) }, 'Open on Kindle'),
+              h('button', { class: 'btn small', onclick: () => act('remove', { id: e.id }) }, 'Remove')))),
+          list.length ? h('div', { class: 'row', style: 'margin-top:8px' }, h('button', { class: 'btn danger', onclick: async () => {
+            if (await App.confirm('Clear all', 'Clear all notifications?', 'Clear', true)) act('remove', { all: true });
+          } }, 'Clear all')) : null].filter(Boolean));
+      };
+      draw();
+      return box;
+    }
 
     // The sleep screen To Do, Home Assistant and Apps share.
     function sleepCard() {

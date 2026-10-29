@@ -477,5 +477,17 @@ do
     check("google list: none yet", G.state().status .. "," .. G.query{ cat = "all" }.total, "none,0")
 end
 
+-- PS.notifications is the plain list (To Do calls it); the web page's calls have their own names,
+-- and only main.lua sets that one (an earlier table of the same name broke To Do's call).
+do
+    local function read(f) local h = assert(io.open(f, "rb")) local t = h:read("*a") h:close() return t end
+    local notify, main = read("appsnotify.lua"), read("main.lua")
+    check("notify doesn't set PS.notifications", notify:find("PS%.notifications%s*=") == nil, true)
+    check("main sets PS.notifications to a function", main:find("PS%.notifications = function") ~= nil, true)
+    for __, name in ipairs({ "notifyRows", "notifyOpen", "notifyRemove", "notifyClear" }) do
+        check("notify sets PS." .. name, notify:find("PS%." .. name .. "%s*=") ~= nil, true)
+    end
+end
+
 print(string.format("%d passed, %d failed", passed, failed))
 os.exit(failed == 0 and 0 or 1)

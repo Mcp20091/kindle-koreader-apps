@@ -70,10 +70,11 @@ function Library:init()
         end,
         --- Whether the Library is where books are browsed (Library settings > Browse books with).
         isBrowser = function() return S.isBrowser() end,
-        settings = function() V().settings() end,
+        settings = function(name) V().settings(name) end,
     }
     if PS.registerSettings then
-        PS.registerSettings{ key = "library", name = _("Library"), icon = "library", open = function() V().settings() end }
+        PS.registerSettings{ key = "library", name = _("Library"), icon = "library", open = function(name) V().settings(name) end,
+            rows = function() return V().settingNames() end }
     end
     -- What it is for the launcher (apps.koplugin/appsinfo.lua): no tile of its own (the
     -- launcher's Library tile opens it), its Settings row in Reading, no gestures over the apps.
