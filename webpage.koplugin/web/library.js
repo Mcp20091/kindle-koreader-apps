@@ -348,5 +348,23 @@ App.library = (() => {
     setTimeout(ask, 1500);
   }
 
-  return { search, recent, storage, collections, addTo, details, highlights, fromLink, niceName, STATUS, stateText, setStatus, pickFolder, remove };
+  // The Library app's settings, as on the Kindle (Library settings).
+  function settingsCard() {
+    const el = h('div', { class: 'card', style: 'margin-top:16px' });
+    App.api('/api/library/settings').then((s) => {
+      if (!s.installed) { el.remove(); return; }
+      const save = (patch) => App.api('/api/library/settings', { json: patch }).catch(App.fail);
+      el.replaceChildren(h('h2', {}, 'Library settings'),
+        App.setting('Show books as', App.select([['covers', 'Covers'], ['list', 'List']], s.view, (v) => save({ view: v }))),
+        App.setting('Open on', App.select([['home', 'Home'], ['last', 'Where you left off']], s.start, (v) => save({ start: v }))),
+        App.setting('Home starts with', App.select([['places', 'Servers and folders'], ['books', 'Books']], s.home_first, (v) => save({ home_first: v })),
+          'What comes first on Home, after Continue reading and Recent'),
+        App.setting('Show hidden files', App.toggle(s.hidden === true, (on) => save({ hidden: on })), 'Names starting with a dot'),
+        App.setting('Browse books with', App.select([['library', 'Library'], ['koreader', 'KOReader’s file browser']], s.browser, (v) => save({ browser: v })),
+          'What Back from a book and the launcher’s Library open'));
+    }, (e) => el.replaceChildren(h('div', { class: 'empty' }, e.message)));
+    return el;
+  }
+
+  return { settingsCard, search, recent, storage, collections, addTo, details, highlights, fromLink, niceName, STATUS, stateText, setStatus, pickFolder, remove };
 })();

@@ -495,7 +495,62 @@ end
 
 -- ------------------------------------------------------------------ routes
 
+-- The Library app's settings (library.koplugin's librarysettings), as the Kindle's Library settings.
+local SETTINGS = {
+    { key = "view", default = "covers", values = { covers = true, list = true } },
+    { key = "start", default = "home", values = { home = true, last = true } },
+    { key = "home_first", default = "places", values = { places = true, books = true } },
+    { key = "hidden", default = false },
+    { key = "browser", default = "library", values = { library = true, koreader = true } },
+}
+
+local function librarySettings()
+    if not require("webcommon").plugin("library") then return nil end
+    local ok, S = pcall(require, "librarysettings")
+    return ok and S or nil
+end
+
+function Web.librarySettings()
+    local S = librarySettings()
+    if not S then return { installed = false } end
+    local out = { installed = true }
+    for __, d in ipairs(SETTINGS) do out[d.key] = S.get(d.key, d.default) end
+    return out
+end
+
+--- Sets the ones given (checked); returns the settings, or nil and why.
+function Web.setLibrarySettings(b)
+    local S = librarySettings()
+    if not S then return nil, "The Library app isn't installed" end
+    for __, d in ipairs(SETTINGS) do
+        local v = b[d.key]
+        if v ~= nil then
+            if d.values and not d.values[v] then return nil, "Not a choice for " .. d.key end
+            if not d.values and type(v) ~= "boolean" then return nil, "On or off, please" end
+        end
+    end
+    for __, d in ipairs(SETTINGS) do
+        local v = b[d.key]
+        if v ~= nil then
+            S.set(d.key, v)
+            -- Hidden files show in Folders: the Library walks them again.
+            if d.key == "hidden" then
+                local ok, M = pcall(require, "librarymodel")
+                if ok and M.forget then pcall(M.forget) end
+            end
+        end
+    end
+    return Web.librarySettings()
+end
+
 function Web.routes(server)
+    server:route("GET", "^/api/library/settings$", function(req, res) res:json(Web.librarySettings()) end)
+    server:route("POST", "^/api/library/settings$", function(req, res)
+        local out, why = Web.setLibrarySettings(req.json())
+        if not out then return res:error(400, why) end
+        res:json(out)
+    end)
+
     server:route("GET", "^/api/library/search$", function(req, res)
         local results, why, partial = Web.search(req.query.q)
         if why then return res:error(400, why) end

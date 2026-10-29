@@ -78,6 +78,38 @@ function Wikipedia:init()
             open = function(name) self:currentPlugin():show("settings", name) end,
             rows = function() return require("wikihome").settingRows() end }
     end
+    -- Quick buttons (the launcher's clock corner and control center): a random article, the front
+    -- page's Today, and search. Tap does it; hold opens the front page.
+    if PS.registerQuick then
+        local function ask(fn)
+            local lock = PS.lock
+            if lock and lock.ask("wikipedia", fn) then return end
+            fn()
+        end
+        local QUICK = {
+            random = { name = _("Random article"), icon = "shuffle", run = function(w) w:random() end },
+            today = { name = _("Today"), icon = "newspaper", run = function(w) w:show("today") end },
+            search = { name = _("Search"), icon = "search", run = function(w) w:show("search") end },
+        }
+        PS.registerQuick{ key = "wikipedia", name = _("Wikipedia"),
+            choices = function()
+                local out = {}
+                for __, id in ipairs({ "random", "today", "search" }) do
+                    table.insert(out, { id = id, name = QUICK[id].name, icon = QUICK[id].icon })
+                end
+                return out
+            end,
+            item = function(id)
+                local q = QUICK[id]
+                if not q then return nil end
+                return { label = q.name, icon = q.icon,
+                    tap = function(done)
+                        ask(function() q.run(self:currentPlugin()) end)
+                        done()
+                    end,
+                    hold = function() ask(function() self:currentPlugin():show("today") end) end }
+            end }
+    end
     -- The web page's backup: the settings (saved articles stay out: they are in
     -- the Library, and can be downloaded again).
     PS.backupApps = PS.backupApps or {}

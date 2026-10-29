@@ -90,6 +90,10 @@ Your reading settings (font, size, zoom, margins, spacing) carry from one articl
 - The full list of sources is at the end of the article, under **References** in **Contents**.
 - Each article starts with Wikipedia's summary box (born, died, location and so on) when the article has one, then its sections one after another.
 
+## Quick buttons
+
+Wikipedia adds three quick buttons (see the Launcher chapter): **Random article**, **Today** (the front page's Today) and **Search**. Tap does it; hold opens the front page.
+
 ## Settings
 
 The settings are in four sections: **Display**, **Articles**, **Front page** and **Recent**. Open them from **⋮ > Settings**, **Wikipedia** in the launcher's Settings list, or **More > Wikipedia settings** while reading.
@@ -114,5 +118,6 @@ The web page's **Wikipedia** tab (with the web server on):
 - **Saved on this Kindle**: each saved article with **Download EPUB** (to read it on your computer or phone) and **Remove**.
 - **Save an article to this Kindle**: search Wikipedia from your phone or computer (the search goes straight to Wikipedia from your browser) and tap **Save**. The button shows **Saving…** while the Kindle downloads the article over its own Wi-Fi, in the background, so you can keep using the Kindle; then it shows under **Saved** on the Kindle and on the page.
 - **Recent on this Kindle**: what you read lately, with **Read on wikipedia.org** and **Save to Kindle**.
+- **Settings**: the Kindle's Wikipedia settings, in the same words and sections: **Toolbar**, **Images**, **Language**, **Tap a link**, **Save to** (type a folder that exists on the Kindle, then **Use this folder**), the four **Front page** sections, **Keep recent**, **Clear recent** (it asks first) and **Show in recent books**.
 
 ![The web page's Wikipedia tab: saved articles, and an article searched to save](img/wikipedia/web-tab.png)

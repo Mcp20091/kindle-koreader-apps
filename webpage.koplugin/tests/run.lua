@@ -50,5 +50,29 @@ check("host from names", Tls.hostOf({ "localhost", "192.168.1.50", "kindle.home.
 check("wildcard skipped", Tls.hostOf({ "*.example.lan", "reader.example.lan" }), "reader.example.lan")
 check("addresses only", Tls.hostOf({ "localhost", "127.0.0.1", "192.168.1.50", "fe80::1" }), nil)
 
+-- The Library settings on the web page: only the known choices are kept.
+do
+    local kept = {}
+    local was = { webcommon = package.loaded["webcommon"], librarysettings = package.loaded["librarysettings"] }
+    package.loaded["webcommon"] = { plugin = function(name) return name == "library" and {} or nil end }
+    package.loaded["librarysettings"] = {
+        get = function(key, default) if kept[key] == nil then return default end return kept[key] end,
+        set = function(key, value) kept[key] = value end,
+    }
+    local W = require("weblibrary")
+    local s = W.librarySettings()
+    check("library settings default view", s.view, "covers")
+    check("library settings default browser", s.browser, "library")
+    check("library settings default hidden", s.hidden, false)
+    local out = W.setLibrarySettings({ view = "list", hidden = true })
+    check("library settings set view", out.view, "list")
+    check("library settings set hidden", out.hidden, true)
+    local bad, why = W.setLibrarySettings({ start = "yesterday" })
+    check("library settings refuse a bad choice", bad, nil)
+    check("library settings say why", why ~= nil, true)
+    check("library settings bad choice not kept", kept.start, nil)
+    package.loaded["webcommon"], package.loaded["librarysettings"] = was.webcommon, was.librarysettings
+end
+
 print(string.format("%d passed, %d failed", passed, failed))
 os.exit(failed == 0 and 0 or 1)

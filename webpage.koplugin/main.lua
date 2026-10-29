@@ -4,7 +4,7 @@ Wi-Fi (as CrossInk's web page): files, and pages for the Home Assistant, To
 Do and Notes plugins (setup, sign-ins, app IDs, reordering, and more).
 
 Tools > Web server starts it and shows the address (and a QR code). It runs
-until stopped, or after 30 minutes nobody uses it; meanwhile the reader stays
+until stopped, or after the time chosen in Stop after unused (30 minutes to start with); meanwhile the reader stays
 awake.
 
 @module koplugin.webpage
@@ -45,6 +45,24 @@ end
 
 local function setSetting(key, value)
     G_reader_settings:saveSetting("webpage_" .. key, value)
+end
+
+-- Stop after unused: minutes, 0 = never. The older on/off switch (30 minutes or never) is read once.
+local IDLE_CHOICES = { 15, 30, 60, 0 }
+local function idleMinutes()
+    local m = setting("idle_minutes", nil)
+    if m ~= nil then return m end
+    return setting("idle_stop", true) == false and 0 or 30
+end
+local function idleName(m)
+    if m == 0 then return _("Never") end
+    if m == 60 then return _("1 hour") end
+    return T(_("%1 min"), m)
+end
+local function idleOptions()
+    local o = {}
+    for __, m in ipairs(IDLE_CHOICES) do table.insert(o, { value = m, label = idleName(m) }) end
+    return o
 end
 
 --- The reader's address on the Wi-Fi (no packet is sent to find it).
@@ -119,7 +137,7 @@ function WebPage:shareWithApps()
                     setSetting("awake", not setting("awake", true))
                     w:keepAwake()
                 end },
-                { _("Stop after 30 minutes unused"), setting("idle_stop", true), function() setSetting("idle_stop", not setting("idle_stop", true)) end },
+                { _("Stop after unused"), idleName(idleMinutes()), function() w:askIdle() end },
                 { _("Port"), tostring(setting("port", 8080)), function() w:askPort() end },
                 { heading = _("SECURITY") },
                 { _("HTTPS (encrypted)"), setting("https", false), function() w:setHttps(not setting("https", false)) end },
@@ -182,9 +200,9 @@ function WebPage:addToMainMenu(menu_items)
                 end,
             },
             {
-                text = _("Stop after 30 minutes of inactivity"),
-                checked_func = function() return setting("idle_stop", true) end,
-                callback = function() setSetting("idle_stop", not setting("idle_stop", true)) end,
+                text_func = function() return T(_("Stop after unused: %1"), idleName(idleMinutes())) end,
+                keep_menu_open = true,
+                callback = function(touchmenu) self:askIdle(touchmenu) end,
             },
             {
                 text = _("HTTPS (encrypted)"),
@@ -507,6 +525,7 @@ function WebPage:routes(server)
     server.guard = function(req, res) return Auth.guard(req, res, dir) end
     Auth.routes(server, dir)
     self:httpsRoutes(server)
+    self:serverRoutes(server)
     server:route("GET", "^/$", function(req, res) res:file(dir .. "index.html", "index.html", true) end)
     server:route("GET", "^/static/([%w%._%-]+)$", function(req, res)
         res:file(dir .. req.captures[1], req.captures[1], true)
@@ -702,8 +721,9 @@ function WebPage:watchIdle()
     if not running then return end
     running.task = function()
         if not running then return end
-        if setting("idle_stop", true) and os.time() - running.last > 30 * 60 then
-            return self:stop(_("Web server stopped after 30 minutes of inactivity."))
+        local m = idleMinutes()
+        if m > 0 and os.time() - running.last > m * 60 then
+            return self:stop(T(_("Web server stopped after %1 unused."), idleName(m)))
         end
         self:keepAwake()
         UIManager:scheduleIn(60, running.task)
@@ -734,6 +754,65 @@ function WebPage:showAddress()
             { text = _("Close"), callback = function() UIManager:close(dialog) end },
         } },
     }
+end
+
+--- Stop after unused: 15 min, 30 min, 1 hour or never.
+function WebPage:askIdle(touchmenu)
+    local KO = require("pluginshare").ko
+    local function save(m)
+        setSetting("idle_minutes", m)
+        if touchmenu then touchmenu:updateItems() end
+    end
+    if KO and KO.choose then
+        return KO.choose(_("Stop after unused"), idleOptions(), idleMinutes(), save)
+    end
+    local i = 1
+    for n, m in ipairs(IDLE_CHOICES) do if m == idleMinutes() then i = n end end
+    save(IDLE_CHOICES[i % #IDLE_CHOICES + 1])
+end
+
+--- The web page's System > Web server card: the same settings, and Stop web server.
+function WebPage:serverRoutes(server)
+    local function state()
+        return { awake = setting("awake", true), idle_minutes = idleMinutes(), port = setting("port", 8080),
+            choices = IDLE_CHOICES }
+    end
+    server:route("GET", "^/api/webserver$", function(req, res) res:json(state()) end)
+    server:route("POST", "^/api/webserver$", function(req, res)
+        local b = req.json()
+        if b.awake ~= nil then
+            setSetting("awake", b.awake == true)
+            self:keepAwake()
+        end
+        if b.idle_minutes ~= nil then
+            local ok
+            for __, m in ipairs(IDLE_CHOICES) do if m == b.idle_minutes then ok = true end end
+            if not ok then return res:error(400, "Choose 15 min, 30 min, 1 hour or Never.") end
+            setSetting("idle_minutes", b.idle_minutes)
+        end
+        local moved
+        if b.port ~= nil then
+            local n = tonumber(b.port)
+            if not (n and n >= 1024 and n <= 65535) then return res:error(400, "Use a number from 1024 to 65535.") end
+            n = math.floor(n)
+            moved = n ~= setting("port", 8080)
+            setSetting("port", n)
+        end
+        local out = state()
+        out.ok = true
+        if moved then
+            out.address = (self:address():gsub(":%d+/?$", ":" .. out.port))
+            res:json(out)
+            UIManager:scheduleIn(1, function() self:restart(function() end) end)
+        else
+            res:json(out)
+        end
+    end)
+    -- Answers first, then stops: the page then says it's stopped.
+    server:route("POST", "^/api/webserver/stop$", function(req, res)
+        res:json({ ok = true })
+        UIManager:scheduleIn(1, function() self:stop() end)
+    end)
 end
 
 function WebPage:askPort(touchmenu)
