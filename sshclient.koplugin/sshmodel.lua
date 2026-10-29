@@ -1047,9 +1047,8 @@ local function hostExtras(args)
         out.check = { n >= 0 and n or nil }
     end
     if args.readOnOpen ~= nil then
-        local off = args.readOnOpen == false
-        out.readOnOpen = { off and false or nil }
-        if off then out.readOnOpen[1] = false end
+        out.readOnOpen = {}
+        if args.readOnOpen == false then out.readOnOpen[1] = false end
     end
     return out
 end

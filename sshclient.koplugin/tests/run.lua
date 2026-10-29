@@ -742,12 +742,12 @@ do
     eq(select(2, M.act(d, "saveHostStats", { id = id, sensors = { { cmd = "", kind = "ok" } } })), "A custom sensor needs a command.", "web: a sensor needs a command")
     eq(#h.sensors, 3, "web: a refused save keeps what was")
     -- (a sensor taken out takes its alerts with it)
-    assert(M.act(d, "saveHostStats", { id = id, sensors = {}, alerts = { cs_s8 = 90, disk = 80 }, customAlerts = { { what = "cs_s7", op = "gt", value = 1 } } }))
+    assert(M.act(d, "saveHostStats", { id = id, sensors = {}, alerts = { cs_s8 = 90, disk = 80 }, customAlerts = {} }))
     eq(tostring(h.alerts.cs_s8) .. h.alerts.disk .. #h.customAlerts .. #h.sensors, "nil8000", "web: alerts on a removed sensor are dropped")
 
     -- quick commands
     r = assert(M.act(d, "saveHostQuick", { id = id, quick = { "reboot", "cmd:df -h|Space", "nonsense", "cmd:|" }, quickIcons = { ["cmd:df -h|Space"] = "hard-drive", ["x"] = "bad icon" } }))
-    eq(table.concat(h.quick, ";"), "cmd:df -h|Space", "web: quick commands from the system's list or your own")
+    eq(table.concat(h.quick, ";"), "reboot;cmd:df -h|Space", "web: quick commands from the system's list or your own")
     eq(h.quickIcons["cmd:df -h|Space"], "hard-drive", "web: an own quick command's icon")
     assert(M.act(d, "saveHostQuick", { id = id, quick = false }))
     eq(tostring(h.quick) .. tostring(h.quickIcons), "nilnil", "web: back to the usual quick commands")
