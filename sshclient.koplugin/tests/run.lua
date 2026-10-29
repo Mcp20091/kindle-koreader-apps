@@ -688,5 +688,76 @@ eq(tostring(M.needsPin(ph, 1000 + 60)) .. tostring(M.needsPin(ph, 1000 + 301)), 
 eq(M.needsPin({ id = "h10" }), false, "no PIN, nothing asked")
 eq(M.pinHash({ id = "a" }, "1234") ~= M.pinHash({ id = "b" }, "1234"), true, "the same PIN differs per host")
 
+-- The checks' one timer: the next one due, or none
+local now0 = 100000
+local function nci(hosts, all, can) return tostring(M.nextCheckIn(hosts, all, now0, can)) end
+eq(nci({}, 15), "nil", "checks: no hosts, no timer")
+eq(nci({ { id = "a" } }, 0), "nil", "checks: Off, no timer")
+eq(nci({ { id = "a", last = { at = now0 - 60 } } }, 15), "840", "checks: due 15 minutes after the last read")
+eq(nci({ { id = "a" } }, nil), "0", "checks: never read, due now; 15 minutes by default")
+eq(nci({ { id = "a", last = { at = now0 - 5000 } } }, 15), "0", "checks: overdue is now, not negative")
+eq(nci({ { id = "a", paused = true } }, 15), "nil", "checks: a paused host has none")
+eq(nci({ { id = "a", check = 0 } }, 15), "nil", "checks: the host's own Off")
+eq(nci({ { id = "a", check = 0, last = { at = now0 } }, { id = "b", check = 5, last = { at = now0 - 60 } } }, 0), "240", "checks: a host's own time beats Off for all")
+eq(nci({ { id = "a", last = { at = now0 - 60 } }, { id = "b", last = { at = now0 - 600 } } }, 15), "300", "checks: the soonest of the hosts")
+eq(nci({ { id = "a", last = { at = now0 - 600 }, failedAt = now0 - 10 } }, 15), "890", "checks: a failed read waits its turn")
+eq(nci({ { id = "a" }, { id = "b" } }, 15, function(h) return h.id == "b" end), "0", "checks: only hosts that can be read quietly")
+eq(nci({ { id = "a" } }, 15, function() return false end), "nil", "checks: none can be read quietly, no timer")
+eq(M.checkEvery({}, nil) .. "/" .. M.checkEvery({}, 0) .. "/" .. M.checkEvery({ check = 30 }, 0), "15/0/30", "checks: every how many minutes")
+
+-- The web page's host settings: groups, MAC address, checks, stats, sensors, alerts, quick commands
+do
+    local d = M.normalize({})
+    local id = assert(M.act(d, "saveHost", { name = "Box", address = "192.168.1.30", user = "pi", auth = "ask",
+        groups = " Home, Servers ,Home", mac = "DC:A6:32:01:02:03", check = 30, readOnOpen = false })).id
+    local h = M.host(d, id)
+    eq(table.concat(h.groups, "|"), "Home|Servers", "web: groups from a line, once each")
+    eq(h.mac, "dc:a6:32:01:02:03", "web: MAC address kept in lower case")
+    eq(h.check, 30, "web: its own check time")
+    eq(h.readOnOpen, false, "web: not read when its page opens")
+    assert(M.act(d, "saveHost", { id = id, check = -1, readOnOpen = true, groups = "", mac = "" }))
+    eq(tostring(h.check) .. tostring(h.readOnOpen) .. tostring(h.groups) .. tostring(h.mac), "nilnilnilnil", "web: like every host, read on open, no groups, no MAC")
+    assert(M.act(d, "saveHost", { id = id, name = "Box 2" }))
+    assert(M.act(d, "saveHost", { id = id, mac = "aa:bb:cc:dd:ee:ff", check = 5 }))
+    assert(M.act(d, "saveHost", { id = id, name = "Box 3" }))
+    eq(tostring(h.mac) .. h.check, "aa:bb:cc:dd:ee:ff5", "web: a save without them leaves them")
+    eq(select(2, M.act(d, "saveHost", { id = id, mac = "nonsense" })), "That isn't a MAC address (like dc:a6:32:01:02:03).", "web: a bad MAC address is refused")
+    eq(h.mac, "aa:bb:cc:dd:ee:ff", "web: and not kept")
+
+    -- stats, custom sensors and alerts
+    local r = assert(M.act(d, "saveHostStats", { id = id,
+        stats = { uptime = false, nonsense = true, cs_s8 = false },
+        sensors = { { name = "Pool", cmd = "zpool list -H -o cap\nx", kind = "percent", unit = "ignored" }, { id = "s7", name = "Fan", cmd = "cat fan", kind = "number", unit = "rpm" }, { cmd = "true", kind = "ok" } },
+        alerts = { disk = 85, cpu = 0, failed = true, temp = "x", cs_s8 = 90, cs_s7 = 4000, cs_s9 = true, cs_s99 = 5, nonsense = 1 },
+        customAlerts = { { what = "load", op = "gt", value = "4" }, { id = 3, what = "cs_s7", op = "gt", value = 3000 }, { what = "ip", op = "has", value = "192." } } }))
+    eq(h.stats.uptime == false and h.stats.nonsense == nil and h.stats.cs_s8 == false, true, "web: stats kept, unknown ones dropped")
+    eq(#h.sensors .. h.sensors[1].id .. h.sensors[2].id .. h.sensors[3].id, "3s8s7s9", "web: sensors get ids that don't clash")
+    eq(h.sensors[1].cmd, "zpool list -H -o cap x", "web: a sensor's command is one line")
+    eq(tostring(h.sensors[1].unit) .. h.sensors[2].unit, "nilrpm", "web: only a number has a unit") 
+    eq(h.alerts.disk .. tostring(h.alerts.cpu) .. tostring(h.alerts.failed) .. tostring(h.alerts.temp), "85niltruenil", "web: limits kept, zero and junk dropped")
+    eq(tostring(h.alerts.cs_s8) .. h.alerts.cs_s7 .. tostring(h.alerts.cs_s9) .. tostring(h.alerts.cs_s99), "904000truenil", "web: alerts on sensors, not on ones that aren't there")
+    eq(#h.customAlerts .. h.customAlerts[1].id .. h.customAlerts[2].id .. h.customAlerts[3].id, "3435", "web: custom alerts get ids that don't clash")
+    eq(select(2, M.act(d, "saveHostStats", { id = id, customAlerts = { { what = "load", op = "gt", value = "many" } } })), "Above and below need a number.", "web: a custom alert's test needs a number")
+    eq(select(2, M.act(d, "saveHostStats", { id = id, customAlerts = { { what = "cs_s5", op = "gt", value = 1 } } })), "A custom alert watches something that isn't there.", "web: and something to watch")
+    eq(select(2, M.act(d, "saveHostStats", { id = id, sensors = { { cmd = "", kind = "ok" } } })), "A custom sensor needs a command.", "web: a sensor needs a command")
+    eq(#h.sensors, 3, "web: a refused save keeps what was")
+    -- (a sensor taken out takes its alerts with it)
+    assert(M.act(d, "saveHostStats", { id = id, sensors = {}, alerts = { cs_s8 = 90, disk = 80 }, customAlerts = {} }))
+    eq(tostring(h.alerts.cs_s8) .. h.alerts.disk .. #h.customAlerts .. #h.sensors, "nil8000", "web: alerts on a removed sensor are dropped")
+
+    -- quick commands
+    r = assert(M.act(d, "saveHostQuick", { id = id, quick = { "reboot", "cmd:df -h|Space", "nonsense", "cmd:|" }, quickIcons = { ["cmd:df -h|Space"] = "hard-drive", ["x"] = "bad icon" } }))
+    eq(table.concat(h.quick, ";"), "reboot;cmd:df -h|Space", "web: quick commands from the system's list or your own")
+    eq(h.quickIcons["cmd:df -h|Space"], "hard-drive", "web: an own quick command's icon")
+    assert(M.act(d, "saveHostQuick", { id = id, quick = false }))
+    eq(tostring(h.quick) .. tostring(h.quickIcons), "nilnil", "web: back to the usual quick commands")
+    eq(select(2, M.act(d, "saveHostQuick", { id = "nope", quick = {} })), "No such host.", "web: quick commands of no host")
+
+    -- the page never gets a PIN's hash
+    h.pin = "s2:abc"
+    local st = M.webState(d)
+    eq(tostring(st.hosts[1].pin) .. tostring(st.hosts[1].hasPin), "niltrue", "web: a PIN's hash stays on the Kindle")
+end
+
 print(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)

@@ -43,7 +43,7 @@ function SSH:init()
     -- SSH's job and AI features in Settings > AI (the launcher's)
     require("sshai").register()
     local PS = require("pluginshare")
-    -- the checks every few minutes (once while KOReader runs)
+    -- the checks (one timer, for the next one due; saved() sets it again)
     if not state.checking then
         state.checking = true
         require("sshnet").start(self)
@@ -242,6 +242,8 @@ end
 --- After a change to the data: saved, and the lists showing it redrawn.
 function SSH:saved()
     self.store:save()
+    -- the next check follows the hosts and settings (one timer, or none)
+    require("sshnet").start(self)
 end
 
 -- ------------------------------------------------------------------ launcher
@@ -258,7 +260,48 @@ end
 -- key is trusted (known).
 function SSH:webState()
     local st = M.webState(self.store.data)
-    for __, h in ipairs(st.hosts) do h.known = self.store:isKnown(h.address) end
+    local S = require("sshstats")
+    for __, h in ipairs(st.hosts) do
+        h.known = self.store:isKnown(h.address)
+        -- what the page's boxes choose from, for this host's system (as the Kindle's pages do)
+        local os_id = M.hostOS(h)
+        local on = {}
+        for __, id in ipairs(S.shown(h, true)) do on[id] = true end
+        h.statList = {}
+        for __, x in ipairs(S.STATS) do
+            if S.fits(x, os_id) then h.statList[#h.statList + 1] = { id = x.id, name = x.name, sub = x.sub, on = on[x.id] == true } end
+        end
+        h.alertList = {}
+        for __, a in ipairs(S.ALERTS) do
+            h.alertList[#h.alertList + 1] = { id = a.id, name = a.name, unit = a.unit, yesno = a.yesno }
+        end
+        h.watchList = {}
+        for __, w in ipairs(S.watchable(h.sensors)) do
+            h.watchList[#h.watchList + 1] = { id = w.id, name = w.name, unit = w.unit, text = w.text }
+        end
+        local d = h.last and h.last.v and h.last.v.docker
+        h.quickList = {}
+        for __, q in ipairs(S.quickFor(os_id, d and d.ok)) do
+            h.quickList[#h.quickList + 1] = { id = q.id, name = q.name, sub = q.cmd }
+        end
+        h.quickNow = {}
+        for __, q in ipairs(S.quickShown(h, d and d.ok)) do h.quickNow[#h.quickNow + 1] = q.id end
+        h.quickUsual = {}
+        for __, q in ipairs(S.quickShown({ os = h.os, detected = h.detected }, d and d.ok)) do h.quickUsual[#h.quickUsual + 1] = q.id end
+        h.macSeen = h.last and h.last.v and h.last.v.mac or nil
+        h.last = nil
+    end
+    -- SSH's settings (Check hosts, Stats under each host, Dark terminal, Text size)
+    local all = self.store.data.check_every
+    local ok, Screens = pcall(require, "sshscreens")
+    st.settings = { check_every = all == nil and 15 or all, main_stats = self.store.data.main_stats ~= false,
+        dark = require("sshdark").isOn(), text_size = G_reader_settings:readSetting("terminal_font_size", 14),
+        every = ok and Screens.EVERY or nil }
+    st.icons = {}
+    if ok and Screens.QUICK_ICONS then
+        for __, ic in ipairs(Screens.QUICK_ICONS) do st.icons[#st.icons + 1] = { id = ic[1], name = ic[2] } end
+    end
+    st.sensorKinds, st.ops = S.SENSOR_KINDS, S.OPS
     st.dbclient = self.store:dbclient() ~= nil
     -- AI help: whether an AI is set up (and for SSH's job), and the last
     -- output shown on the Kindle (its last 30 KB)
@@ -316,8 +359,9 @@ function SSH:aiResult(key)
     return aiJobs[tostring(key)]
 end
 
---- The web page's changes: M.act's (saveHost, deleteHost, saveCommands,
--- saveHostCommands, renameKey) and importKey { name, text } (a private key
+--- The web page's changes: M.act's (saveHost, saveHostStats, saveHostQuick,
+-- deleteHost, saveCommands, saveHostCommands, renameKey), saveSettings { check_every,
+-- main_stats, dark, text_size }, wakeHost { id } and importKey { name, text } (a private key
 -- file's text), createKey { name }, deleteKey { id }, forgetHost { id }.
 -- Returns a result table or nil, why.
 function SSH:act(name, args)
@@ -358,6 +402,28 @@ function SSH:act(name, args)
             end
         end
         r = { added = added, skipped = skipped }
+    elseif name == "saveSettings" then
+        -- { check_every, main_stats, dark, text_size }: what is given is changed
+        local data = self.store.data
+        if args.check_every ~= nil then
+            local n = tonumber(args.check_every)
+            if not n or n < 0 then return nil, "Choose how often to check hosts." end
+            data.check_every = n
+        end
+        if args.main_stats ~= nil then data.main_stats = args.main_stats and true or false end
+        if args.dark ~= nil then require("sshdark").set(args.dark and true or false) end
+        if args.text_size ~= nil then
+            local n = tonumber(args.text_size)
+            if not n or n < 6 or n > 40 then return nil, "Choose a text size." end
+            G_reader_settings:saveSetting("terminal_font_size", math.floor(n))
+        end
+        r = {}
+    elseif name == "wakeHost" then
+        local h = M.host(self.store.data, args.id)
+        if not h then return nil, "No such host." end
+        local ok, err = require("sshnet").wake(h)
+        if not ok then return nil, err end
+        r = {}
     elseif name == "forgetHost" then
         local h = M.host(self.store.data, args.id)
         if not h then return nil, "No such host." end

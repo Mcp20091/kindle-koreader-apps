@@ -197,23 +197,25 @@ Net.PAUSE_AFTER = 3
 
 -- Every how many minutes (0: off): the host's own, or every host's.
 function Net.every(plugin, host)
-    if host.check ~= nil then return host.check end
-    local all = plugin.store.data.check_every
-    if all == nil then return 15 end
-    return all
+    return M.checkEvery(host, plugin.store.data.check_every)
 end
 
---- The checks: every minute, the hosts whose time has come are read
--- (quietly, and only when on Wi-Fi already).
+--- The checks: one timer, set for the next time a host is due (not every
+-- minute), and only while some host can be checked. Called at the start and
+-- after every change (plugin:saved()), so it follows the hosts and settings.
 function Net.start(plugin)
     if Net.task then UIManager:unschedule(Net.task) end
+    Net.task = nil
+    local left = M.nextCheckIn(plugin.store.data.hosts, plugin.store.data.check_every, os.time(),
+        function(h) return Net.quiet(plugin, h) end)
+    if not left then return end
     Net.task = function()
         Net.task = nil
         Net.tick(plugin)
-        Net.task = function() Net.start(plugin) end
-        UIManager:scheduleIn(60, Net.task)
+        Net.start(plugin)
     end
-    UIManager:scheduleIn(60, Net.task)
+    -- (at least a minute: a check that can't run now, Wi-Fi off, comes back then)
+    UIManager:scheduleIn(math.max(60, left), Net.task)
 end
 
 function Net.tick(plugin)
