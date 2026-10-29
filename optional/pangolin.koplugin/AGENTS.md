@@ -54,7 +54,7 @@ together when Pangolin changes.
 - `pgbg.lua`, `pgko.lua`, `pgpage.lua`: FlashForge's ffbg/ffko/ffpage (themselves from SSH's), renamed.
 - `pgtitle.lua`, `pgcanvas.lua`: **copies** of the launcher's `appsbar.lua` and `appscanvas.lua`. Re-copy
   them when those change; don't edit them here.
-- `icons/` (Lucide, ISC), `tests/run.lua`, `docs/guide.md` (the user guide chapter).
+- `icons/` (Lucide, ISC), `tests/run.lua`; the user guide chapter is `guide/pangolin.md` (repository root).
 
 ## Rules
 

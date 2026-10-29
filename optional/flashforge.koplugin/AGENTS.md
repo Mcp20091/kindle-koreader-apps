@@ -56,7 +56,7 @@ it's installed, with nothing of it in their code.
 - `ffko.lua`: the ⋮ menu and pop-up wrappers (SSH's sshko.lua; `PS.ko` when the launcher is there).
 - `fftitle.lua`, `ffcanvas.lua`: **copies** of the launcher's `appsbar.lua` and `appscanvas.lua`. Re-copy
   them when those change; don't edit them here.
-- `icons/` (Lucide, ISC), `tests/run.lua`, `docs/guide.md` (the user guide chapter).
+- `icons/` (Lucide, ISC), `tests/run.lua`; the user guide chapter is `guide/flashforge.md` (repository root).
 
 ## How it runs
 

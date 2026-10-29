@@ -12,4 +12,9 @@ wikipedia.md
 syncthing.md
 ssh.md
 webserver.md
+# Optional apps: not in the main install (Settings > Updates > Optional apps).
+flashforge.md
+pangolin.md
+pfsense.md
+nextdns.md
 credits.md
