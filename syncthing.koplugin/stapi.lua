@@ -136,6 +136,8 @@ function API:snapshot()
     table.sort(snap.pendingFolders, function(a, b) return (a.time or 0) < (b.time or 0) end)
     snap.deviceCount = #snap.devices
     snap.config = config
+    -- (whether the web GUI has a password; the password itself is not kept)
+    snap.passwordSet = type(config.gui) == "table" and type(config.gui.password) == "string" and config.gui.password ~= ""
     return snap
 end
 

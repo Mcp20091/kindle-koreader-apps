@@ -189,6 +189,7 @@ function View:render()
         line1 = M.summary(snap)
         local ip = st:ip()
         line2 = snap and (M.devicesLine(snap.connected, snap.deviceCount) .. (ip and (" · " .. ip) or "")) or ""
+        if st:turnsOff() then line2 = _("Turns off when up to date") end
     else
         line1 = _("Off")
         line2 = st:withWifi() and _("Starts when Wi-Fi connects") or _("Turn on to sync")
@@ -670,6 +671,9 @@ function View:menu()
     local st = self.st
     local running = st:isRunning()
     KO.menu(st.ui, self, {
+        { _("Sync now, then turn off"), function()
+            if st:syncThenOff() then self:say(_("Syncthing turns off once everything is up to date")) end
+        end },
         { _("This Kindle's ID"), function()
             if st:deviceId() then self:showId() else self:say(_("Shown once Syncthing has run")) end
         end },
@@ -709,8 +713,13 @@ function View.settingsRows(st, view)
             st:setWithWifi(not st:withWifi())
             view:refresh()
         end },
+        { _("Turn off when up to date"), st:offWhenSynced(), function()
+            st:setOffWhenSynced(not st:offWhenSynced())
+            view:refresh()
+        end },
         { _("WEB GUI") },
-        { _("Password"), "", function() view:askPassword() end },
+        { _("Password"), st:passwordSet() == nil and "" or (st:passwordSet() and _("Set") or _("Not set")),
+            function() view:askPassword() end },
         { _("Port"), st:port(), function() view:askPort() end },
     }
 end
@@ -754,8 +763,7 @@ function View:askPort()
     self:askText{ title = _("Port"), subtitle = _("Syncthing's web GUI and API (8384 unless something else uses it)."),
         text = self.st:port(), number = true,
         check = function(v)
-            local n = tonumber(v)
-            if not n or n < 1024 or n > 65535 then return _("Pick a port from 1024 to 65535") end
+            if not M.validPort(v) then return _("Pick a port from 1024 to 65535") end
         end,
         done = function(v)
             self.st:setPort(math.floor(tonumber(v)))

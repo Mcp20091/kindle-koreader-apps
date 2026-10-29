@@ -47,6 +47,9 @@ credit in README.md and ../guide/syncthing.md.
 - Nothing waits on Syncthing in KOReader's main loop: every REST call runs in a child process
   (`ffiutil.runInSubProcess`, see `job()` in main.lua) and comes back through a timer. Start runs the script in the
   background and waits for the API with timers; stop sends TERM, then KILL after about 3 s, also on timers.
+- Turn off when up to date (`syncthing_off_when_synced`) and Sync now, then turn off: `armOff` sets a deadline (30 min)
+  and one check every 30 s that asks for a status read; `checkOff` (after every read) stops Syncthing when
+  `M.allInSync(snap)` holds or the deadline passed. That timer exists only while waiting and every stop path ends it.
 - Status is read only when something shows it: every 5 s while the app is the top widget, at most every 20 s for
   the launcher line, every 3 s for the web page. No other periodic timers.
 - The launcher is told to redraw only when its line text changes.
@@ -59,7 +62,8 @@ credit in README.md and ../guide/syncthing.md.
   time and battery with ▾ (tap: `PS.showControlCenter`), ⟳, 🔔 (`PS.showNotifications`, badge
   `PS.notifyCount`), ⋮ with Settings last. Page count in the bar.
 - Notifications (`PS.notify` / `PS.unnotify`), one key per thing: `syncthing:req:dev:<device id>`,
-  `syncthing:req:folder:<folder id>:<from device id>`, `syncthing:err:<folder id>`. Taken away when the request
+  `syncthing:req:folder:<folder id>:<from device id>`, `syncthing:err:<folder id>`; ongoing `syncthing:running` (its icon in every clock corner) while it runs;
+  `syncthing:turnedoff` after it turned itself off. Taken away when the request
   is accepted or ignored, or the error clears. `PS.notifyOpeners.syncthing` opens the app.
 - `PS.registerSettings{ key = "syncthing" }` (opens the settings page; back returns to the launcher),
   `PS.registerSearch` (folders by name or path, from memory only), `PS.registerSetup` (order 50: pairing),

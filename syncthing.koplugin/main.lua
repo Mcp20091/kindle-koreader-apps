@@ -43,6 +43,7 @@ local state = {
     fetching = false,   -- a status read in the background
     waiting = {},       -- what waits for it
     line = nil,         -- the launcher's line last shown
+    offBy = nil,        -- when to turn off even if not up to date (Turn off when up to date, Sync now)
 }
 
 local Syncthing = WidgetContainer:extend{
@@ -84,6 +85,8 @@ end
 -- corner (shared notifications, when the launcher is there).
 local function runningNote(on)
     local PS = require("pluginshare")
+    -- (what waited for it to be up to date ends when it stops)
+    if not on then state.offBy = nil end
     if on then
         if PS.notify then
             pcall(PS.notify, { app = "syncthing", key = "syncthing:running", ongoing = true, icon = "folder-sync",
@@ -190,7 +193,10 @@ function Syncthing:init()
     self.ui.menu:registerToMainMenu(self)
     self:onDispatcherRegisterActions()
     -- (Syncthing keeps running when KOReader restarts: its icon is back)
-    if self:isRunning() then runningNote(true) end
+    if self:isRunning() then
+        runningNote(true)
+        if self:offWhenSynced() then self:armOff() end
+    end
     if self:withWifi() and not state.stopped and not self:isRunning() and NetworkMgr:isConnected() then
         UIManager:nextTick(function() self:start(true) end)
     end
@@ -221,6 +227,20 @@ function Syncthing:setPort(port)
     self.api = API.new(self.dir, self:port())
 end
 
+--- Whether the web GUI has a password: true or false, nil when not known (Syncthing is off).
+function Syncthing:passwordSet()
+    return state.snap and state.snap.passwordSet
+end
+
+--- Change the port (from the web page): only while Syncthing is off, from 1024 to 65535.
+function Syncthing:changePort(v)
+    if self:isRunning() then return false, _("Turn Syncthing off to change the port") end
+    local port = M.validPort(v)
+    if not port then return false, _("Pick a port from 1024 to 65535") end
+    self:setPort(math.floor(port))
+    return true
+end
+
 --- Start with Wi-Fi (the upstream plugin's "Start with KOReader" carries over).
 function Syncthing:withWifi()
     local v = G_reader_settings:readSetting("syncthing_with_wifi")
@@ -230,6 +250,20 @@ end
 
 function Syncthing:setWithWifi(on)
     G_reader_settings:saveSetting("syncthing_with_wifi", on)
+end
+
+--- Turn off when up to date: Syncthing turns itself off once everything is in sync.
+function Syncthing:offWhenSynced()
+    return G_reader_settings:isTrue("syncthing_off_when_synced")
+end
+
+function Syncthing:setOffWhenSynced(on)
+    G_reader_settings:saveSetting("syncthing_off_when_synced", on)
+    if on then
+        if self:isRunning() and not state.offBy then self:armOff() end
+    else
+        self:disarmOff()
+    end
 end
 
 function Syncthing:installed()
@@ -349,6 +383,9 @@ function Syncthing:start(quiet)
     os.execute(cmd .. " > /dev/null 2>&1 &")
     state.snap, state.starting, state.cancel = nil, os.time(), nil
     runningNote(true)
+    local PS = require("pluginshare")
+    if PS.unnotify then pcall(PS.unnotify, "syncthing:turnedoff") end
+    if self:offWhenSynced() and not state.offBy then self:armOff() end
     self:changed()
     self:waitUntilReady(quiet)
     return true
@@ -510,6 +547,7 @@ function Syncthing:fetch(done, quiet)
         if type(snap) == "table" and self:isRunning() then
             state.snap, state.snapTime = snap, os.time()
             self:notifyChanges(snap)
+            self:checkOff(snap)
         else
             snap = nil
         end
@@ -554,6 +592,76 @@ function Syncthing:notifyChanges(snap)
         if not before[key] then changed = true end
     end
     if changed then G_reader_settings:saveSetting("syncthing_notified", now) end
+end
+
+-- ------------------------------------------------------------------ turn off when up to date
+
+local OFF_BY = 30 * 60   -- turn off after this many seconds even if not up to date
+local OFF_CHECK = 30     -- seconds between checks while waiting
+
+--- Wait for everything to be up to date, then turn Syncthing off (or give up at the
+-- deadline). The only timer is one check every 30 s while this waits.
+function Syncthing:armOff()
+    state.offBy = os.time() + OFF_BY
+    self:offTimer()
+    self:changed()
+end
+
+function Syncthing:disarmOff()
+    state.offBy = nil
+    if state.offTask then UIManager:unschedule(state.offTask) end
+    self:changed()
+end
+
+--- The waiting is on.
+function Syncthing:turnsOff() return state.offBy ~= nil end
+
+function Syncthing:offTimer()
+    if state.offTask then UIManager:unschedule(state.offTask) end
+    state.offTask = state.offTask or function()
+        if not state.offBy then return end
+        if not self:isRunning() then state.offBy = nil return end
+        -- (the status read checks it when it is in; this asks for one)
+        if not state.starting then self:fetch() end
+        if state.offBy and os.time() >= state.offBy then return self:finishOff(false) end
+        UIManager:scheduleIn(OFF_CHECK, state.offTask)
+    end
+    UIManager:scheduleIn(OFF_CHECK, state.offTask)
+end
+
+--- After a status read: up to date, then off.
+function Syncthing:checkOff(snap)
+    if not state.offBy or state.starting then return end
+    if M.allInSync(snap) then
+        self:finishOff(true)
+    elseif os.time() >= state.offBy then
+        self:finishOff(false)
+    end
+end
+
+function Syncthing:finishOff(synced)
+    if not state.offBy then return end
+    state.offBy = nil
+    if state.offTask then UIManager:unschedule(state.offTask) end
+    self:stop(true, true)
+    local PS = require("pluginshare")
+    if PS.notify then
+        pcall(PS.notify, { app = "syncthing", name = _("Syncthing"), icon = "folder-sync", key = "syncthing:turnedoff",
+            text = synced and _("Syncthing turned off: everything is up to date")
+                or _("Syncthing turned off: still not up to date after 30 minutes"),
+            open = openApp, route = {} })
+    end
+end
+
+--- Sync now, then turn off: on if it is off, off once up to date.
+function Syncthing:syncThenOff()
+    if not self:installed() then
+        require("stko").toast(_("Syncthing isn't installed: the syncthing program is missing"))
+        return false
+    end
+    self:armOff()
+    if not self:isRunning() then NetworkMgr:runWhenConnected(function() self:start() end) end
+    return true
 end
 
 --- The last status read (nil while off or not read yet); read again in the
@@ -731,7 +839,8 @@ end
 function Syncthing:webState()
     local running = self:isRunning()
     local out = { program = self:installed(), running = running, starting = self:isStarting(),
-        id = self:deviceId(), withWifi = self:withWifi(), port = self:port(), gui = running and self:guiAddress() or nil,
+        id = self:deviceId(), withWifi = self:withWifi(), offWhenSynced = self:offWhenSynced(), turnsOff = self:turnsOff(),
+        port = self:port(), passwordSet = self:passwordSet(), gui = running and self:guiAddress() or nil,
         folders = {}, devices = {}, pendingDevices = {}, pendingFolders = {} }
     local snap = running and not self:isStarting() and self:status(3)
     M.twentyFour = not G_reader_settings:isTrue("twelve_hour_clock")
