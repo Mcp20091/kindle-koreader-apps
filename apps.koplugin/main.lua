@@ -52,6 +52,8 @@ do
     PS.popup = setmetatable({}, { __index = function(__, k) return require("appspopup")[k] end })
     -- The shared helpers (menus, pop-ups, the light…): the other apps' copies hand over to these.
     PS.ko = setmetatable({}, { __index = function(__, k) return require("appsko")[k] end })
+    -- Stable lists: rows stay where they are after a change in place (appsstable.lua).
+    PS.stable = setmetatable({}, { __index = function(__, k) return require("appsstable")[k] end })
     PS.showControlCenter = function(koMenu) require("appscontrol").show(koMenu) end
     -- The launcher's own notifications after a restart: { settings = key } opens that Settings page.
     PS.notifyOpeners = PS.notifyOpeners or {}

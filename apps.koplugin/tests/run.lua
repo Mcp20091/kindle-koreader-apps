@@ -489,5 +489,55 @@ do
     end
 end
 
+do
+    -- Stable lists (appsstable.lua): rows stay in place after a change, until cleared.
+    local Stable = require("appsstable")
+    local items = { a = { id = "a", n = 1 }, b = { id = "b", n = 2 }, c = { id = "c", n = 3 } }
+    local function fresh(e) return items[e.id] end
+    local function ids(sections)
+        local t = {}
+        for __, s in ipairs(sections) do
+            local r = {}
+            for __, e in ipairs(s.entries) do table.insert(r, e.id .. e.n) end
+            table.insert(t, (s.key or "") .. ":" .. table.concat(r, ","))
+        end
+        return table.concat(t, " ")
+    end
+    local view = {}
+    local opts = { on = true, fresh = fresh }
+    local first = { { key = "today", entries = { items.a, items.b } }, { key = "later", entries = { items.c } } }
+    check("stable: first draw as sorted", ids(Stable.order(view, first, opts)), "today:a1,b2 later:c3")
+    -- b changed and sorted elsewhere: kept in place, up to date.
+    items.b = { id = "b", n = 20 }
+    local resorted = { { key = "today", entries = { items.a } }, { key = "later", entries = { items.b, items.c } } }
+    check("stable: not marked, sorted again", ids(Stable.order(view, resorted, opts)), "today:a1 later:b20,c3")
+    Stable.order(view, first, opts)
+    Stable.mark(view)
+    check("stable: marked, kept in place and up to date", ids(Stable.order(view, resorted, opts)), "today:a1,b20 later:c3")
+    check("stable: kept on the next draw", ids(Stable.order(view, resorted, opts)), "today:a1,b20 later:c3")
+    items.d = { id = "d", n = 4 }
+    local withNew = { { key = "today", entries = { items.d, items.a } }, { key = "later", entries = { items.b, items.c } } }
+    check("stable: a new item goes after the rest", ids(Stable.order(view, withNew, opts)), "today:a1,b20 later:c3 today:d4")
+    items.a = nil
+    local withoutA = { { key = "today", entries = { items.d } }, { key = "later", entries = { items.b, items.c } } }
+    check("stable: a gone item is dropped", ids(Stable.order(view, withoutA, opts)), "today:b20 later:c3 today:d4")
+    Stable.clear(view)
+    local sorted = { { key = "today", entries = { items.d } }, { key = "later", entries = { items.b, items.c } } }
+    check("stable: cleared, sorted again", ids(Stable.order(view, sorted, opts)), "today:d4 later:b20,c3")
+    Stable.mark(view)
+    check("stable: off, always as sorted", ids(Stable.order(view, first, { on = false, fresh = fresh })), "today:a1,b2 later:c3")
+    check("stable: off drops the mark", view.stable_keep, nil)
+    local flat = {}
+    local function names(list) local t = {} for __, e in ipairs(list) do t[#t + 1] = e.id end return table.concat(t, ",") end
+    Stable.list(flat, { items.b, items.c }, { fresh = fresh })
+    Stable.mark(flat)
+    check("stable: a plain list", names(Stable.list(flat, { items.c, items.b }, { fresh = fresh })), "b,c")
+    local two = {}
+    Stable.order(two, { { entries = { items.b } } }, { name = "x" })
+    Stable.order(two, { { entries = { items.c } } }, { name = "y" })
+    Stable.mark(two)
+    check("stable: two lists on one screen", ids(Stable.order(two, { { entries = { items.c, items.b } } }, { name = "x" })), ":b20 :c3")
+end
+
 print(string.format("%d passed, %d failed", passed, failed))
 os.exit(failed == 0 and 0 or 1)
