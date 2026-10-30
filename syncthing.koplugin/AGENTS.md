@@ -39,7 +39,7 @@ credit in README.md and ../guide/syncthing.md.
   folder name `syncthing.koplugin` too).
 - `G_reader_settings`: `syncthing_port` (default "8384"), `syncthing_with_wifi` (Start with Wi-Fi; falls back to
   upstream's `syncthing_autostart`), `syncthing_notified` (notification keys already sent, so a restart doesn't
-  send them again). The home folder (`home_dir`) is where accepted folders go by default.
+  send them again), `syncthing_warn` (Warn about stuck sync and conflicts; on unless false). The home folder (`home_dir`) is where accepted folders go by default.
 
 ## How it runs
 
@@ -62,9 +62,12 @@ credit in README.md and ../guide/syncthing.md.
   time and battery with ▾ (tap: `PS.showControlCenter`), ⟳, 🔔 (`PS.showNotifications`, badge
   `PS.notifyCount`), ⋮ with Settings last. Page count in the bar.
 - Notifications (`PS.notify` / `PS.unnotify`), one key per thing: `syncthing:req:dev:<device id>`,
-  `syncthing:req:folder:<folder id>:<from device id>`, `syncthing:err:<folder id>`; ongoing `syncthing:running` (its icon in every clock corner) while it runs;
+  `syncthing:req:folder:<folder id>:<from device id>`, `syncthing:err:<folder id>`; with `syncthing_warn`, `syncthing:stalled:<folder id>` (files waiting
+  30 min with a device it is shared with connected and the files/bytes left never going down: `M.stalled`, its timer
+  in memory only) and `syncthing:conflicts:<folder id>` (`*.sync-conflict-*` files, counted with `find` in the status
+  read's background process, at most every 10 min, only when a read happens anyway); ongoing `syncthing:running` (its icon in every clock corner) while it runs;
   `syncthing:turnedoff` after it turned itself off. Taken away when the request
-  is accepted or ignored, or the error clears. `PS.notifyOpeners.syncthing` opens the app.
+  is accepted or ignored, or the error, stall or conflicts clear. `PS.notifyOpeners.syncthing` opens the app.
 - `PS.registerSettings{ key = "syncthing" }` (opens the settings page; back returns to the launcher),
   `PS.registerSearch` (folders by name or path, from memory only), `PS.registerSetup` (order 50: pairing),
   `PS.noteRecent("syncthing")`; the open screen is the plugin's `.view`.

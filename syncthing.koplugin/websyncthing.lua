@@ -20,7 +20,7 @@ local ACTIONS = { rescan = true, pauseFolder = true, pauseDevice = true, acceptD
 
 function Web.routes(server)
     -- { installed, program, running, starting, summary, id, withWifi, port, gui,
-    --   offWhenSynced, turnsOff, passwordSet, folders, devices, pendingDevices, pendingFolders }
+    --   offWhenSynced, warn, turnsOff, passwordSet, folders, devices, pendingDevices, pendingFolders }
     --   (see Syncthing:webState). The password is never sent, only whether one is set.
     server:route("GET", "^/api/syncthing$", function(req, res)
         local s = st()
@@ -66,13 +66,14 @@ function Web.routes(server)
         res:json({ ok = true })
     end)
 
-    -- { withWifi, offWhenSynced, port } (the port only while Syncthing is off)
+    -- { withWifi, offWhenSynced, warn, port } (the port only while Syncthing is off)
     server:route("POST", "^/api/syncthing/settings$", function(req, res)
         local s = st()
         if not s then return res:error(404, "Syncthing isn't installed") end
         local b = req.json()
         if type(b.withWifi) == "boolean" then s:setWithWifi(b.withWifi) end
         if type(b.offWhenSynced) == "boolean" then s:setOffWhenSynced(b.offWhenSynced) end
+        if type(b.warn) == "boolean" and s.setWarnsOfProblems then s:setWarnsOfProblems(b.warn) end
         if b.port ~= nil then
             local ok, err = s:changePort(b.port)
             if not ok then return res:error(409, err) end

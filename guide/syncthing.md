@@ -27,6 +27,8 @@ While Syncthing runs, its icon (folders with arrows) shows by the clock in every
 
 New requests and folders with errors also show in the shared notifications (the bell), so you see them from the other apps too. Tap one to open Syncthing; it goes away once the request is accepted or ignored, or the error is fixed.
 
+Two warnings go there too: **"Papers hasn't finished syncing"** when a folder has had files waiting for half an hour, with a device it's shared with connected, without getting any closer to done; and **"Papers has files with conflicts"** when Syncthing kept two versions of a file that was changed in two places (the copies are named with `sync-conflict` beside the file). Each shows once and goes away by itself when the folder is up to date or the conflicting copies are gone. Turn them off with **Warn about stuck sync and conflicts** in the settings. Syncthing looks for them only while something shows its status (the app, the launcher's line or the web page).
+
 ## Setting it up
 
 You need Syncthing on the other device too: **syncthing.net** for a computer, or Syncthing-Fork on Android.
@@ -91,6 +93,7 @@ The QR code and the full ID, to add the Kindle from Syncthing on another device.
 
   - **Start with Wi-Fi** (a switch): when on, Syncthing starts by itself whenever the Kindle's Wi-Fi connects, and stops before Wi-Fi goes off. If you turn Syncthing off by hand, it stays off until Wi-Fi connects again.
   - **Turn off when up to date** (a switch): when on, every time Syncthing is on it turns itself off once all folders are up to date with the connected devices, or after 30 minutes. It checks about every 30 seconds while it waits. It doesn't turn off with no folders or no connected device until the 30 minutes are up.
+  - **Warn about stuck sync and conflicts** (a switch, under NOTIFICATIONS, on to start with): sends the two warnings above to the notifications. Requests and errors are always sent.
   - **Password** (under WEB GUI): sets that password (Syncthing must be on). It shows **Set** or **Not set**.
   - **Port**: the web GUI's port, 8384 unless something else uses it. Change it while Syncthing is off.
 
@@ -98,7 +101,7 @@ The QR code and the full ID, to add the Kindle from Syncthing on another device.
 
 The web page (see the Web server chapter) has a **Syncthing** tab with the same things, handy with a keyboard:
 
-- **Turn on** / **Turn off**, **Rescan all**, **Sync now, then turn off**, and the switches **Start with Wi-Fi** and **Turn off when up to date**.
+- **Turn on** / **Turn off**, **Rescan all**, **Sync now, then turn off**, and the switches **Start with Wi-Fi**, **Turn off when up to date** and **Warn about stuck sync and conflicts**.
 - **Web GUI password** (**Set** or **Not set**, with **Set password**; the password is never shown) and **Port** (**Change**, while Syncthing is off), as in the Kindle's settings.
 - **This Kindle's ID** with **Copy**, to paste into Syncthing on your computer.
 - **Requests** with **Accept** (a name for a device; for a folder, where it goes on the Kindle) and **Ignore**.

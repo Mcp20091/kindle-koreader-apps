@@ -252,6 +252,16 @@ function Syncthing:setWithWifi(on)
     G_reader_settings:saveSetting("syncthing_with_wifi", on)
 end
 
+--- Warn about stuck sync and conflicts in the shared notifications (on unless turned off).
+function Syncthing:warnsOfProblems()
+    return G_reader_settings:readSetting("syncthing_warn") ~= false
+end
+
+function Syncthing:setWarnsOfProblems(on)
+    G_reader_settings:saveSetting("syncthing_warn", on and true or false)
+    if not on then state.since = nil end
+end
+
 --- Turn off when up to date: Syncthing turns itself off once everything is in sync.
 function Syncthing:offWhenSynced()
     return G_reader_settings:isTrue("syncthing_off_when_synced")
@@ -524,6 +534,30 @@ end
 
 -- ------------------------------------------------------------------ status
 
+-- Conflicting copies are looked for at most every 10 minutes. Syncthing keeps a change
+-- that clashed with another device's as "<name>.sync-conflict-<date>-<id>.<ext>" beside it.
+local CONFLICT_EVERY = 600
+
+--- { [folder id] = number of conflicting copies (up to 50) } for the folders that are
+-- on. Runs in the status read's background process, never on the screen's loop.
+local function countConflicts(snap)
+    local out = {}
+    for __, f in ipairs(snap.folders or {}) do
+        local path = f.folder.path
+        if not f.folder.paused and type(path) == "string" and path:sub(1, 1) == "/" then
+            local p = io.popen(string.format("find %s -name '*.sync-conflict-*' ! -path '*/.stversions/*' 2>/dev/null | head -50",
+                shellQuote(path)))
+            if p then
+                local n = 0
+                for __ in p:lines() do n = n + 1 end
+                p:close()
+                out[f.folder.id] = n
+            end
+        end
+    end
+    return out
+end
+
 --- Read Syncthing's status (API:snapshot) in the background; done(snap) when
 -- it is in (nil if Syncthing didn't answer). One read at a time. quiet: don't
 -- redraw (waitUntilReady does that itself).
@@ -538,13 +572,18 @@ function Syncthing:fetch(done, quiet)
     if not alive(readPid()) or state.stopping then return finish(nil) end
     state.fetching = true
     local api = self.api
+    local lookForConflicts = self:warnsOfProblems() and os.time() - (state.conflictTime or 0) >= CONFLICT_EVERY
     job(function()
         local snap, err = api:snapshot()
-        if snap then snap.config = nil end
+        if snap then
+            if lookForConflicts then snap.conflicts = countConflicts(snap) end
+            snap.config = nil
+        end
         return snap, err
     end, function(snap)
         state.fetching = false
         if type(snap) == "table" and self:isRunning() then
+            if lookForConflicts then state.conflictTime = os.time() end
             state.snap, state.snapTime = snap, os.time()
             self:notifyChanges(snap)
             self:checkOff(snap)
@@ -579,6 +618,17 @@ function Syncthing:notifyChanges(snap)
         local st = f.status
         if st and not f.folder.paused and (st.state == "error" or (tonumber(st.pullErrors) or 0) > 0) then
             note("syncthing:err:" .. f.folder.id, T(_("Errors in %1"), f.folder.label))
+        end
+    end
+    -- Stuck folders and folders with conflicting copies (Warn about stuck sync and conflicts).
+    if self:warnsOfProblems() then
+        state.since = state.since or {}
+        for __, p in ipairs(M.problems(snap, state.since, os.time())) do note(p.key, p.text) end
+        -- (Not looked for conflicts this time: the ones told about stay until the next look.)
+        if not snap.conflicts then
+            for key in pairs(before) do
+                if key:find("^syncthing:conflicts:") then now[key] = true end
+            end
         end
     end
     local changed = false
@@ -839,7 +889,7 @@ end
 function Syncthing:webState()
     local running = self:isRunning()
     local out = { program = self:installed(), running = running, starting = self:isStarting(),
-        id = self:deviceId(), withWifi = self:withWifi(), offWhenSynced = self:offWhenSynced(), turnsOff = self:turnsOff(),
+        id = self:deviceId(), withWifi = self:withWifi(), offWhenSynced = self:offWhenSynced(), warn = self:warnsOfProblems(), turnsOff = self:turnsOff(),
         port = self:port(), passwordSet = self:passwordSet(), gui = running and self:guiAddress() or nil,
         folders = {}, devices = {}, pendingDevices = {}, pendingFolders = {} }
     local snap = running and not self:isStarting() and self:status(3)
