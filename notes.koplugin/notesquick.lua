@@ -40,6 +40,40 @@ function Quick.toPage(s, dy, z, top)
     return out
 end
 
+--- The picture behind the pad: `shot` (the screen, faded) with the pad drawn on it, white and
+-- lined, its edge, its handle and its buttons. `ed` is the editor, `ui` a Notes UI. Shared by
+-- the quick note and the handwritten notes on highlights (noteshandnote.lua).
+function Quick.padBackground(shot, ed, ui)
+    local W, H = Screen:getWidth(), Screen:getHeight()
+    local r = ed.pageRect
+    local bg = shot:copy()
+    bg:paintRect(r[1], r[2], r[3], r[4], Blitbuffer.COLOR_WHITE)
+    Paper.level = Settings.get("paper_lines") or "medium"
+    -- (The lines clear of the buttons' strip by the edge: below it, or above it when flipped.)
+    local strip = #ed:quickButtons() > 0 and ui:u(26) or ui:u(10)
+    local y0, y1 = r[2] + strip, r[2] + r[4]
+    if ed.quick.flip then y0, y1 = r[2] + ui:u(10), r[2] + r[4] - (strip > ui:u(10) and strip or 0) end
+    Paper.paint(bg, "narrow", r[1], y0, r[1] + r[3], y1, W, H, r[1])
+    -- The edge between the pad and the picture (above the pad, or below it when flipped),
+    -- and its handle: drag it to make the pad taller or shorter.
+    local hw, hh = ui:u(60), ui:u(7)
+    local hx = r[1] + math.floor((r[3] - hw) / 2)
+    if ed.quick.flip then
+        local e = r[2] + r[4]
+        bg:paintRect(r[1], e, r[3], 3, Blitbuffer.COLOR_BLACK)
+        ui:box(bg, hx, e + ui:u(11), hw, hh, { fill = UI.MID, r = math.floor(hh / 2) })
+    else
+        bg:paintRect(r[1], r[2] - 3, r[3], 3, Blitbuffer.COLOR_BLACK)
+        ui:box(bg, hx, r[2] - ui:u(18), hw, hh, { fill = UI.MID, r = math.floor(hh / 2) })
+    end
+    -- Its buttons beside the handle, small icons inside the pad's edge: Peek, Swap | Discard, Save.
+    local is = ui:u(16)
+    for __, b in ipairs(ed:quickButtons()) do
+        ui:drawIcon(bg, b.icon, b.x + math.floor((b.w - is) / 2), b.y + math.floor((b.h - is) / 2), is)
+    end
+    return bg
+end
+
 --- Peek: the screen the quick note was opened over, as it was, full screen; any touch goes back.
 function Quick.peek(bb, back)
     local InputContainer = require("ui/widget/container/inputcontainer")
@@ -108,35 +142,7 @@ return function(Notes)
         local ui = UI.new()
         local inboxPage, inboxId   -- the page made for this note, once there is ink
         local discarded = false
-        local function bgFor(ed)
-            local r = ed.pageRect
-            local bg = shot:copy()
-            bg:paintRect(r[1], r[2], r[3], r[4], Blitbuffer.COLOR_WHITE)
-            Paper.level = Settings.get("paper_lines") or "medium"
-            -- (The lines clear of the buttons' strip by the edge: below it, or above it when flipped.)
-            local strip = #ed:quickButtons() > 0 and ui:u(26) or ui:u(10)
-            local y0, y1 = r[2] + strip, r[2] + r[4]
-            if ed.quick.flip then y0, y1 = r[2] + ui:u(10), r[2] + r[4] - (strip > ui:u(10) and strip or 0) end
-            Paper.paint(bg, "narrow", r[1], y0, r[1] + r[3], y1, W, H, r[1])
-            -- The edge between the pad and the picture (above the pad, or below it when flipped),
-            -- and its handle: drag it to make the pad taller or shorter.
-            local hw, hh = ui:u(60), ui:u(7)
-            local hx = r[1] + math.floor((r[3] - hw) / 2)
-            if ed.quick.flip then
-                local e = r[2] + r[4]
-                bg:paintRect(r[1], e, r[3], 3, Blitbuffer.COLOR_BLACK)
-                ui:box(bg, hx, e + ui:u(11), hw, hh, { fill = UI.MID, r = math.floor(hh / 2) })
-            else
-                bg:paintRect(r[1], r[2] - 3, r[3], 3, Blitbuffer.COLOR_BLACK)
-                ui:box(bg, hx, r[2] - ui:u(18), hw, hh, { fill = UI.MID, r = math.floor(hh / 2) })
-            end
-            -- Its buttons beside the handle, small icons inside the pad's edge: Peek, Swap | Discard, Save.
-            local is = ui:u(16)
-            for __, b in ipairs(ed:quickButtons()) do
-                ui:drawIcon(bg, b.icon, b.x + math.floor((b.w - is) / 2), b.y + math.floor((b.h - is) / 2), is)
-            end
-            return bg
-        end
+        local function bgFor(ed) return Quick.padBackground(shot, ed, ui) end
         local nb = { id = "quick", name = _("Quick note"), paper = "plain", width = W, height = H,
             pages = { { id = "quick", strokes = {} } } }
         local store = {

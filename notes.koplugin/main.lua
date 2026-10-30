@@ -40,6 +40,7 @@ require("notesonenoteview")(Notes)
 -- puzzle books are then its own app and left out of the list.)
 require("notesfind")(Notes)
 require("notesquick")(Notes)
+require("noteshandnote")(Notes)
 
 local function listFiles(dir)
     local lfs = require("libs/libkoreader-lfs")
@@ -98,6 +99,8 @@ end
 -- A book open: its pages' ink shown (PDFs and other fixed-page books).
 function Notes:onReaderReady()
     pcall(self.marginReady, self)
+    -- A book open: Write a note in its highlight menu (noteshandnote.lua).
+    pcall(self.handNoteReady, self)
 end
 
 function Notes:addToMainMenu(menu_items)
@@ -106,6 +109,14 @@ function Notes:addToMainMenu(menu_items)
         sorting_hint = "tools",
         callback = function() self:showStart() end,
     }
+    if self.ui.highlight then
+        -- PROBE (log only; goes with noteshandprobe.lua): is the pen's side button seen as held?
+        menu_items.notes_pen_probe = {
+            text = _("Notes: pen button check (test)"),
+            sorting_hint = "tools",
+            callback = function() self:handProbeCheck() end,
+        }
+    end
     if self.ui.paging then
         menu_items.notes_margin = {
             text = _("Write on this page"),

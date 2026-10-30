@@ -1321,5 +1321,28 @@ do
     end
 end
 
+do
+    -- Handwritten notes on highlights: ink kept in the pad's units, put back (and scaled), tied to the highlight.
+    local Hand = require("noteshandnote")
+    local strokes = { { t = "pen", w = 4, p = { 120.4, 1030, 160, 1070.6 }, q = { 3, 6 } }, { w = 2, p = { 400, 1150 } } }
+    local rec = Hand.record(strokes, 1000, 1200)
+    check("hand: kept from the pad's top, whole numbers", table.concat(rec.strokes[1].p, ","), "120,30,160,71")
+    check("hand: width, pen width and pressure kept", rec.w .. " " .. rec.strokes[1].w .. " " .. table.concat(rec.strokes[1].q, ","), "1200 4 3,6")
+    local back = Hand.toPad(rec, 1000, 1200)
+    check("hand: back on the same pad", table.concat(back[1].p, ",") .. " " .. table.concat(back[2].p, ","), "120,1030,160,1071 400,1150")
+    local narrow = Hand.toPad(rec, 500, 600)
+    check("hand: a narrower pad scales it", table.concat(narrow[1].p, ",") .. " " .. narrow[1].w .. " " .. table.concat(narrow[1].q, ","), "60,515,80,536 2 2,3")
+    check("hand: a dot stays a dot", #Hand.record({ { w = 2, p = { 5, 5 } } }, 0, 10).strokes[1].p, 2)
+    local annos = { { datetime = "2026-03-01 09:00:00" }, { datetime = "2026-03-02 10:30:00", note = Hand.marker() } }
+    check("hand: highlight found by its datetime", Hand.indexOf(annos, "2026-03-02 10:30:00"), 2)
+    check("hand: no such highlight", Hand.indexOf(annos, "2026-01-01 00:00:00"), nil)
+    local all = { ["2026-03-02 10:30:00"] = rec, ["2025-12-24 18:00:00"] = rec }
+    check("hand: has ink", Hand.has(all, annos[2]), true)
+    check("hand: no ink", Hand.has(all, annos[1]), false)
+    check("hand: an empty note is no ink", Hand.has({ x = { strokes = {} } }, { datetime = "x" }), false)
+    local kept, n = Hand.prune(all, annos)
+    check("hand: ink of a deleted highlight dropped", n .. " " .. tostring(kept["2025-12-24 18:00:00"]), "1 nil")
+end
+
 print(string.format("%d passed, %d failed", passed, failed))
 os.exit(failed == 0 and 0 or 1)

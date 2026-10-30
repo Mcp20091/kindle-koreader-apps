@@ -18,6 +18,14 @@ and browsing, AI (the launcher's services: Claude, Gemini, a local AI…) to rea
   `notesfind` (search, links), `noteslock`, `notesclose`, `notesquick`, `notestodolink`.
 - `noteseditor.lua`: the drawing screen (toolbar, panels, pages, lasso, zoom). Big; edit with care.
 - `notespen.lua`: reads the pen straight from the digitizer (evdev), not through KOReader's touch.
+  `Pen.held()` asks the digitizer once which buttons are held (EVIOCGKEY), outside the event stream.
+- `noteshandnote.lua`: handwritten notes on highlights in KOReader's reader ("Write a note" in the
+  highlight menu, the quick note's pad, `Quick.padBackground`). Ink in the book's settings
+  (`notes_handnotes`, keyed by the highlight's datetime, in the pad's units); the highlight's note is
+  "Handwritten note", so KOReader's note mark opens the pad. The side button held while selecting
+  makes the highlight at once (`pen_highlight`, on, no settings row yet); not proven on a Kindle, so
+  `noteshandprobe.lua` and the "Notes: pen button check (test)" menu item log what the pen reads (remove
+  them once it's proven). Nothing of it is in the input path.
 - `notesink.lua`, `notesshapes.lua`, `notestidy.lua`, `notespaper.lua`, `notesitems.lua`:
   plain Lua (no KOReader modules), unit-tested.
 - `notesstore.lua`: one Lua file per notebook, `koreader/notes/<id>.lua`, read back in an empty
