@@ -356,6 +356,12 @@ end
 --- The first day a repeat falls on that is on or after `from`, counting from
 -- `anchor` (the task's due date, one of its days). nil when it never does
 -- (a range that ended).
+--- Whether Skip to current would move the task: it repeats and is overdue (one due today or
+-- later is already current).
+function Model.canSkip(task, today)
+    return task.recurring == true and task.recurrence ~= nil and task.due ~= nil and task.due < today and not task.completed
+end
+
 function Model.nextOccurrence(rec, anchor, from)
     if not rec or not anchor then return nil end
     local p = rec.pattern

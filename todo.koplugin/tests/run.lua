@@ -482,5 +482,24 @@ do
     check("test: no network", rows[1].kind .. " " .. rows[2].kind, "unreachable unreachable")
 end
 
+do
+    -- Skip to current: offered only when it moves the task (a repeating task that's overdue).
+    local rec = Model.preset("custom", 100, 1, "days")
+    check("skip: overdue repeating task", Model.canSkip({ recurring = true, recurrence = rec, due = 98 }, 100), true)
+    check("skip: due today is already current", Model.canSkip({ recurring = true, recurrence = rec, due = 100 }, 100), false)
+    check("skip: due later is already current", Model.canSkip({ recurring = true, recurrence = rec, due = 104 }, 100), false)
+    check("skip: no date, nothing to skip", Model.canSkip({ recurring = true, recurrence = rec }, 100), false)
+    check("skip: not repeating", Model.canSkip({ recurring = false, due = 98 }, 100), false)
+    check("skip: done", Model.canSkip({ recurring = true, recurrence = rec, due = 98, completed = true }, 100), false)
+end
+do
+    -- The hold menu's buttons get their taps: the box's own (empty) area comes before them, as later zones win.
+    local src = io.open("todoviews.lua", "rb"):read("*a")
+    local popup = src:match("function Views%.holdPopup.-\nend\n")
+    local box = popup and popup:find("zone(x, y, w, h, function() end)", 1, true)
+    local firstButton = popup and popup:find("zone(bx, by", 1, true)
+    check("hold menu: the box's area before its buttons", box ~= nil and firstButton ~= nil and box < firstButton, true)
+end
+
 print(string.format("%d passed, %d failed", passed, failed))
 os.exit(failed == 0 and 0 or 1)

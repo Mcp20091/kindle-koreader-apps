@@ -604,11 +604,16 @@ local function keepOrder(c, view, sections)
 end
 
 local function listMenuIcons(c, view, add)
-    return {
+    local icons = {
         { icon = "ellipsis-vertical", fn = function() c:viewMenu(view) end },
         { icon = "plus", fn = add },
         { icon = "search", fn = function() c:askSearch() end },
     }
+    -- With Keep rows in place: sort the rows again now (no sync), beside ⟳.
+    if c:opt("stable_lists") and require("pluginshare").stable then
+        table.insert(icons, 2, { icon = "arrow-up-down", fn = function() c:sortAgain() c:render() end })
+    end
+    return icons
 end
 
 function Views.agenda(c, view)
@@ -735,7 +740,7 @@ function Views.task(c, view)
         function() c:repeatMenu(list, task) end))
     -- Chips: what moves the date.
     local chips = {}
-    if task.recurring then
+    if Model.canSkip(task, today) then
         table.insert(chips, { "skip-forward", _("Skip to current"), function() c:skipToCurrent(list, task) end })
     end
     table.insert(chips, { "calendar-clock", T(_("Postpone %1 days"), c:opt("push_days")), function() c:pushOff(list, task, c:opt("push_days")) end,
@@ -1114,7 +1119,7 @@ function Views.holdPopup(c, list, task, close, onTask)
             { task.important and "star-filled" or "star", task.important and _("Unstar") or _("Star"), function() close() c:toggleStar(list, task) end },
             { "sun", _("Due today"), function() close() c:setDue(list, task, today) end },
             { "sunrise", _("Tomorrow"), function() close() c:setDue(list, task, today + 1) end },
-            task.recurring and { "skip-forward", _("Skip to current"), function() close() c:skipToCurrent(list, task) end }
+            Model.canSkip(task, today) and { "skip-forward", _("Skip to current"), function() close() c:skipToCurrent(list, task) end }
                 or { "calendar-days", _("Pick a date…"), function() close() c:pickDue(list, task) end },
             { "calendar-clock", _("Postpone…"), function() close() c:pushOffMenu(list, task) end },
             { "arrow-right", _("Move to list"), function() close() c:moveMenu(list, task) end },
@@ -1122,6 +1127,8 @@ function Views.holdPopup(c, list, task, close, onTask)
         }
         local h = 58 + math.ceil(#buttons / 2) * 46 + 48
         local x, y = (W - w) / 2, math.max(60, (H - h) / 2)
+        -- (A tap on the box between buttons does nothing; first, as later zones win over it.)
+        zone(x, y, w, h, function() end)
         p:rect(x + 4, y + 4, w, h, MID, 10)
         p:rect(x, y, w, h, WHITE, 10)
         p:frame(x, y, w, h, 1.4, BLACK, 10)
@@ -1143,7 +1150,6 @@ function Views.holdPopup(c, list, task, close, onTask)
             close()
             if onTask then c:open({ kind = "settings" }) else c:openTask(list, task) end
         end)
-        zone(x, y, w, h, function() end)
     end
 end
 

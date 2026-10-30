@@ -59,7 +59,7 @@ A deleted list goes at once, with **Undo** for a few seconds, and waits under **
 
 A list shows its tasks grouped **OVERDUE**, **TODAY**, **UPCOMING** and **NO DUE DATE** (or as one list: **⋮ > Group by due date**). Starred tasks come first within each day (**Starred first**).
 
-When you tick a task, star it, give it a new date, **Skip to current** or **Postpone** it, it stays where it is (up to date) instead of jumping to its new place, so the next row is still under your pen. The list sorts again when you leave it, go back, tap **Refresh screen** or **Sync now**, or add or delete a task. Turn this off with **Keep rows in place** in the settings. The web page works the same way.
+When you tick a task, star it, give it a new date, **Skip to current** or **Postpone** it, it stays where it is (up to date) instead of jumping to its new place, so the next row is still under your pen. The list sorts again when you leave it, go back, tap **Refresh screen** or **Sync now**, or add or delete a task; or tap **↕** in the title bar to sort it now, without syncing. Turn this off with **Keep rows in place** in the settings. The web page works the same way.
 
 ![A list](img/apps/todo-list.png)
 
@@ -75,7 +75,7 @@ Each task shows its due day, reminder time, repeat, steps ("2/5"), a notes mark,
   - **Star**
   - **Due today**
   - **Tomorrow**
-  - **Pick a date…**, or **Skip to current** for a repeating task
+  - **Pick a date…**, or **Skip to current** for a repeating task that's overdue
   - **Postpone…**: by 1, 2, 3, 7, 14 or 30 days, or a date
   - **Move to list**
   - **Delete**
@@ -134,7 +134,7 @@ The same works when you rename a task: **Rename and set date** or **Keep as type
 - **Due**: **Today**, **Tomorrow**, **Next week**, **Pick a date…** or **No due date**. Changing the due date moves the reminder with it. Hold to clear.
 - **Reminder**: a time on the due day, or **Another day…**, or **No reminder**. Reminders ring on your phone (To Do keeps them), and also on the Kindle while KOReader is open (Settings > **Reminder alerts**).
 - **Repeat**: the presets, or **Custom…** (every 1 to 99 days, weeks, months or years), or **Remove repeat**.
-- **Skip to current** (a repeating task): moves it to the first day it falls on from today.
+- **Skip to current** (a repeating task that's overdue): moves it to the first day it falls on from today.
 - **Postpone**: by your usual number of days. Hold it to choose.
 - **Due today**.
 - **Remove repeat**: it stops repeating, its due date is cleared, and a note with the old date is added.
