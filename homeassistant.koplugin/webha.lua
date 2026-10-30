@@ -29,6 +29,7 @@ local PREFS = {
     dash_temps = "boolean", dash_attention = "boolean", start = "string",
     layout = "string", dash_layout = "string",
     doorbell = "string", wake_warning = "boolean", keep_off = "number", dash_graph = "string", auto_light = "boolean",
+    stable_lists = "boolean",
 }
 
 local function ha() return Common.plugin("homeassistant") end

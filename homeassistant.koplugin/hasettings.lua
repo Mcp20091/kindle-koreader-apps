@@ -354,6 +354,10 @@ local function rowsOf(view)
         { _("Quick tiles"), T(_("%1 tiles"), ha.snap and #Model.quick(ha.snap, prefs) or 0), function() view:go({ kind = "reorder", what = "quick" }) end },
         { _("Rooms"), _("Reorder or hide"), function() view:go({ kind = "reorder", what = "rooms" }) end },
         { _("Routines"), #(prefs.routines or {}) == 0 and _("None yet") or tostring(#prefs.routines), function() view:go({ kind = "routines" }) end },
+        { _("Keep rows in place"), ha:stableLists(), function()
+            prefs.stable_lists = not ha:stableLists()
+            save()
+        end },
         { _("Keep turned off in On now"), keepOff > 0 and T(_("%1 min"), keepOff) or _("Off"), function()
             choose(_("Keep turned off in On now"), {
                 { label = _("Off"), value = 0 }, { label = T(_("%1 min"), 1), value = 1 }, { label = T(_("%1 min"), 3), value = 3 },

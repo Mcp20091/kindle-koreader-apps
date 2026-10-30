@@ -58,7 +58,13 @@ end
 
 -- ------------------------------------------------------------------ navigation
 
+--- The launcher's stable lists (PS.stable), or nil without the launcher.
+function View:stable()
+    return require("pluginshare").stable
+end
+
 function View:go(route)
+    if self:stable() then self:stable().clear(self) end
     table.insert(self.stack, { route = self.route, pageNo = self.pageNo })
     self.route, self.pageNo, self.sheet = route, 1, nil
     self:onRouteChanged()
@@ -67,6 +73,7 @@ end
 
 function View:back()
     if self.sheet then return self:closeSheet() end
+    if self:stable() then self:stable().clear(self) end
     local prev = table.remove(self.stack)
     -- From the screen it opened on: back to Apps (or what was under it).
     if not prev then
@@ -421,6 +428,7 @@ function View:titlebar(c, back, title, icons, pages)
         c:icon("refresh-cw", rx, 13, 18)
     end
     c:hit(rx - 8, 0, 34, 44, function()
+        if self:stable() then self:stable().clear(self) end
         if reload then reload() else self.ha:update() end
         self:refresh("full")
     end)
@@ -2129,6 +2137,11 @@ end
 function S.activity(self, c, snap)
     local F = c:flow(52, c.H - 8, self.pageNo)
     local list = Model.activity(snap, self.ha.prefs)
+    -- (A device just switched stays where it was until the screen is left or refreshed.)
+    if self:stable() then
+        list = self:stable().list(self, list, { on = self.ha:stableLists(), id = function(e) return e.id end,
+            fresh = function(e) return snap.byId[e.id] end })
+    end
     for i = 1, math.min(#list, 120) do
         local e = list[i]
         F:block(42, function(y)

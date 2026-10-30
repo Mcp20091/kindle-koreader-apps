@@ -284,6 +284,8 @@ App.pages.ha = {
         App.setting('Update interval', App.select([['1', 'Every minute'], ['5', 'Every 5 min'], ['10', 'Every 10 min'], ['15', 'Every 15 min'], ['30', 'Every 30 min']], p.dash_minutes ?? 5, num('dash_minutes'))),
         App.setting('Keep awake', App.select([['charging', 'While charging'], ['always', 'Always'], ['never', 'Never']], p.dash_awake || 'charging', set('dash_awake')))),
       h('div', { class: 'card' }, h('h2', {}, 'Home'),
+        App.setting('Keep rows in place', App.toggle(p.stable_lists !== false, set('stable_lists')),
+          'After you switch a device, it stays where it is in the Activity list until you leave the screen or refresh it.'),
         App.setting('Keep turned off in On now', App.select([['0', 'Off'], ['1', '1 min'], ['3', '3 min'], ['5', '5 min'], ['10', '10 min']], p.keep_off ?? 3, num('keep_off')),
           'A device turned off on the Kindle stays in On now a while (shown as off), so a tap turns it back on.'),
         s.weathers.length ? App.setting('Weather', App.select([['auto', 'Auto'], ...s.weathers.map((w) => [w.id, w.name])], p.weather || 'auto', set('weather')), 'For the dashboard, the Weather screen and the launcher.') : null,

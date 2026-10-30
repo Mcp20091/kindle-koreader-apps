@@ -1074,10 +1074,22 @@ end
 -- ------------------------------------------------------------------ acting
 
 --- A service for an entity: its new state shown at once, the real one after.
+--- Keep rows in place (on to start with): a device switched stays where it is in Activity.
+function HomeAssistant:stableLists()
+    return self.prefs.stable_lists ~= false
+end
+
+--- The open screen keeps its rows where they are on the next draws (the launcher's PS.stable).
+function HomeAssistant:keepRows()
+    local stable = require("pluginshare").stable
+    if stable and self.screen and self:stableLists() then stable.mark(self.screen) end
+end
+
 function HomeAssistant:act(e, service, data)
     local old = e.state
     local wasOn = Model.isOn(e)
     e.state = Model.expected(e, service)
+    self:keepRows()
     self:noteTurnedOff(e, wasOn)
     if self.screen then
         self.screen:refresh("fast")

@@ -128,7 +128,7 @@ A room's screen shows its temperature and humidity, how much is on (with **All o
 - **Scenes & scripts**: each with **Run**.
 - **Security**: the status bar, **LOCKS & DOORS** (with **Lock all** when something is unlocked), the security cameras, and door, window, motion, smoke and leak sensors.
 - **Weather**: now (temperature, humidity, wind, inside), **NEXT HOURS** with the chance of rain, and **NEXT DAYS** with highs and lows.
-- **Activity**: what changed, newest first.
+- **Activity**: what changed, newest first. A device you switch here stays where it is until you leave the screen or refresh it (**Keep rows in place** in the settings).
 - **Batteries**: every battery, lowest first, bold under 20%.
 - **3D printer**: its camera, the print's progress, file, time left and layer; **TEMPERATURES** (nozzle and bed); **CONTROLS**, named as the printer names them (such as **Pause**, **Resume**, **Cancel** or **Stop**); and **DETAILS**.
 - **Search** (the magnifier on Home): find a device by name, room or id. Launcher search also finds devices and routines; a device opens its controls.
@@ -248,6 +248,7 @@ With **Sleep screen** set to **Home Assistant**, the sleeping Kindle shows:
 
 - **Home sections**, **Shortcuts**, **Quick tiles** and **Rooms**: each opens a list to order (see below).
 - **Routines**.
+- **Keep rows in place**: on to start with. A device you switch stays where it is in Activity until you leave the screen or refresh it.
 - **Keep turned off in On now** (see On now).
 
 ### Devices and cameras

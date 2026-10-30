@@ -65,6 +65,10 @@ Quiet updates (the timer, the dashboard) only run when `online()` is true. Taps 
 
 ## Pitfalls
 
+- **Activity keeps its rows after a switch.** It sorts by when things changed, so a device switched there would jump to the top. `HomeAssistant:act`
+  calls `keepRows()` (the launcher's `PS.stable.mark` on the screen, with Keep rows in place, `prefs.stable_lists`,
+  on to start with) and `S.activity` puts its list through `PS.stable.list`; `View:go`, `View:back` and the title
+  bar's ⟳ clear it. Other screens don't re-sort after a switch and don't use it.
 - **Keep the view in `self.screen`, not `self.view`.** In a book, `self.view` is KOReader's
   ReaderView.
 - **Online checks:** `NetworkMgr:isConnected() ~= false`, never `isOnline()`. `isOnline` looks up a
