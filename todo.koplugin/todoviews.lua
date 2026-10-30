@@ -604,11 +604,16 @@ local function keepOrder(c, view, sections)
 end
 
 local function listMenuIcons(c, view, add)
-    return {
+    local icons = {
         { icon = "ellipsis-vertical", fn = function() c:viewMenu(view) end },
         { icon = "plus", fn = add },
         { icon = "search", fn = function() c:askSearch() end },
     }
+    -- With Keep rows in place: sort the rows again now (no sync), beside ⟳.
+    if c:opt("stable_lists") and require("pluginshare").stable then
+        table.insert(icons, 2, { icon = "arrow-up-down", fn = function() c:sortAgain() c:render() end })
+    end
+    return icons
 end
 
 function Views.agenda(c, view)

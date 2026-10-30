@@ -59,7 +59,7 @@ A deleted list goes at once, with **Undo** for a few seconds, and waits under **
 
 A list shows its tasks grouped **OVERDUE**, **TODAY**, **UPCOMING** and **NO DUE DATE** (or as one list: **⋮ > Group by due date**). Starred tasks come first within each day (**Starred first**).
 
-When you tick a task, star it, give it a new date, **Skip to current** or **Postpone** it, it stays where it is (up to date) instead of jumping to its new place, so the next row is still under your pen. The list sorts again when you leave it, go back, tap **Refresh screen** or **Sync now**, or add or delete a task. Turn this off with **Keep rows in place** in the settings. The web page works the same way.
+When you tick a task, star it, give it a new date, **Skip to current** or **Postpone** it, it stays where it is (up to date) instead of jumping to its new place, so the next row is still under your pen. The list sorts again when you leave it, go back, tap **Refresh screen** or **Sync now**, or add or delete a task; or tap **↕** in the title bar to sort it now, without syncing. Turn this off with **Keep rows in place** in the settings. The web page works the same way.
 
 ![A list](img/apps/todo-list.png)
 
