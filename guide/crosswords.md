@@ -100,7 +100,7 @@ Write the letters in the squares with the pen, as on paper. The toolbar down the
 
 ### Your toolbar buttons
 
-Anything in a crossword book's **⋯** menu can go on the toolbar: Hint, Check my answers, Get a crossword, Page orientation, Open on the web page, Ask AI, Export, Hide page, Rename notebook, Pen pressure, Light and Night mode. (Refresh screen and Settings are always at the bottom.)
+Anything in a crossword book's **⋯** menu can go on the toolbar: Hint, Check my answers, Get a crossword, Page orientation, Swap grid and clues, Open on the web page, Ask AI, Export, Hide page, Rename notebook, Pen pressure, Light and Night mode. (Refresh screen and Settings are always at the bottom.)
 
 1. Open **Crossword settings** (the toolbar's **Settings** in a crossword book, or **⋮ > Settings** on the Crosswords list), then **Toolbar buttons**.
 2. Tick the ones you want. They go under the tools, in the same order as in **⋯**.
@@ -247,6 +247,15 @@ Turn the Kindle on its side (or tap **⋯ > Page orientation**) and each puzzle 
 
 ![The same puzzle on its side](img/crosswords/cw-landscape.png)
 
+### Grid at the bottom
+
+To have the clues on top and the grid at the bottom, tap **⋯ > Swap grid and clues** (or turn on **Swap grid and clues** in Crossword settings, also on the web page). On its side, the clues are then on the left and the grid on the right. Tap it again to put them back.
+
+- It applies to every puzzle, upright and on its side.
+- What you wrote in the grid moves with the grid, into the same squares.
+- Writing elsewhere on the page stays where it is, so anything you wrote where the grid now is ends up under it.
+- The grid stays the same size. **Swap grid and clues** can go on the toolbar (see "Your toolbar buttons").
+
 ## The answers page
 
 Every downloaded puzzle has an answers page right after it, hidden so you don't turn to it by accident. To see it, tap **Hint > Show the answers page**, or open the puzzle list, tap **Hidden**, then the answers page.
@@ -313,6 +322,7 @@ Crosswords has its own settings, full screen like the other apps' settings: tap 
 - **DISPLAY**
   - **Clue size**: **Normal** or **Large**. Large clues that don't fit carry on to more clue pages; the grid stays put.
   - **Clue boxes**: the tick box before each clue. **On** to start with.
+  - **Swap grid and clues**: the clues above and the grid at the bottom (on its side, the grid on the right). **Off** to start with.
   - **Clue card**: when you tap a number in the grid, a card for **Every clue** (to start with) or for **Clues on other pages** only.
   - **Undo after a tick**: how long Undo shows after you tick a clue on its card: **Off**, **2**, **3** (to start with), **5** or **8 seconds**.
   - **Swipes change the light**: off to start with, so a hand brushing the screen's edge while you solve doesn't change the brightness or warmth (KOReader's light swipes). The same switch as in Notes > Settings.
@@ -330,7 +340,7 @@ Crosswords has its own settings, full screen like the other apps' settings: tap 
 - **AI**
   - **Check my answers** and **Hints from the AI**: which AI service each uses. Tap one to change it; it opens the launcher's **Settings > AI**, shared with Notes and SSH. With no service set up, this is one row: **AI services: Not set up**.
 
-When you change Clue size or Clue boxes, your crossword books are laid out again the next time you open them. Your writing is kept.
+When you change Clue size, Clue boxes or Swap grid and clues, your crossword books are laid out again the next time you open them. Your writing is kept.
 
 ![Crossword settings](img/crosswords/cw-settings.png)
 

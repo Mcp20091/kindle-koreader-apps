@@ -156,14 +156,15 @@ local function dayOfKey(key)
 end
 
 -- How the books' puzzles are laid out (Crossword settings > Clue size,
--- Clue boxes).
+-- Clue boxes, Swap grid and clues).
 local function layoutOpts()
-    return { large = Settings.get("crossword_clues") == "large", boxes = Settings.get("crossword_boxes") ~= false }
+    return { large = Settings.get("crossword_clues") == "large", boxes = Settings.get("crossword_boxes") ~= false,
+        swap = Settings.get("crossword_swap") == true }
 end
 -- How a book was laid out ("+t": clue pages under the same grid).
 local function layName()
     local o = layoutOpts()
-    return (o.large and "large" or "normal") .. (o.boxes and "+b" or "") .. "+t"
+    return (o.large and "large" or "normal") .. (o.boxes and "+b" or "") .. (o.swap and "+s" or "") .. "+t"
 end
 
 return function(Notes)
@@ -677,7 +678,7 @@ function Notes:addCrosswords(src, ps, open)
     local first, any, fresh = nil, false, {}
     -- Laid out as the settings say now (an older book's other puzzles too).
     if nb.lay ~= layName() or self:crosswordBookOld(nb) then
-        Crossword.syncBook(nb, function(key) return self:loadCrossword(key) end, Store.newPageId, layoutOpts())
+        self:syncCrosswordBook(nb)
         any = true
     end
     for __, p in ipairs(ps) do
@@ -715,12 +716,22 @@ function Notes:crosswordBookOld(nb)
     return false
 end
 
+--- A book's pages matched to the layout the settings say now; when the grid
+-- and the clues were swapped (or swapped back) since it was laid out, the
+-- writing in each grid goes with its grid first.
+function Notes:syncCrosswordBook(nb)
+    local load = function(key) return self:loadCrossword(key) end
+    local opts = layoutOpts()
+    Crossword.moveGrids(nb, load, opts, nb.lay ~= nil and nb.lay:find("+s", 1, true) ~= nil)
+    Crossword.syncBook(nb, load, Store.newPageId, opts)
+end
+
 --- A book of crosswords about to open, laid out as the settings say now
 -- (its PDF made again when not). Returns the notebook.
 function Notes:prepareCrosswordBook(nb)
     if not nb.feed or (nb.lay == layName() and not self:crosswordBookOld(nb)) then return nb end
     local msg = busy(_("Laying out the crosswords…"))
-    Crossword.syncBook(nb, function(key) return self:loadCrossword(key) end, Store.newPageId, layoutOpts())
+    self:syncCrosswordBook(nb)
     local ok, why = self:saveCrosswordBook(nb)
     UIManager:close(msg)
     if not ok then logger.warn("Notes crossword: could not lay out the book", why) end
@@ -1784,6 +1795,10 @@ function Notes:crosswordSettings(changed, rowsOnly)
             Settings.set("crossword_boxes", Settings.get("crossword_boxes") == false)
             relay = true
         end)
+        switch(_("Swap grid and clues"), Settings.get("crossword_swap") == true, function()
+            Settings.set("crossword_swap", Settings.get("crossword_swap") ~= true)
+            relay = true
+        end)
         local card = Settings.get("crossword_card") ~= "other"
         pick(_("Clue card"), card and _("Every clue") or _("Clues on other pages"), function()
             Settings.choose(_("Clue card\nWhat a number tapped in the grid shows in a card."),
@@ -1915,22 +1930,44 @@ function Notes:crosswordTitleMenu(withSettings)
     dialog = require("notesko").buttonDialog{ buttons = rows }
 end
 
---- Every book of crosswords laid out again (the clue size changed); one open
--- is closed first and opened again after.
+--- The grid and the clues swapped, or back (the toolbar button; Crossword
+-- settings has the same switch): every book laid out again, the one open
+-- reopened at the same page.
+function Notes:swapCrosswordGrid(ed)
+    ed:shareGrid(ed.page)
+    Settings.set("crossword_swap", Settings.get("crossword_swap") ~= true)
+    self:relayCrosswordBooks()
+end
+
+--- Every book of crosswords laid out again (the clue size or the swap
+-- changed); one open is closed first and opened again after, at the page it
+-- was on (or its puzzle's first page when that one is gone).
 function Notes:relayCrosswordBooks()
     local ed = self.editor
-    local open = ed and UIManager:isWidgetShown(ed) and ed.notebook.feed and { ed.notebook.id, ed.page }
+    local open = ed and UIManager:isWidgetShown(ed) and ed.notebook.feed and { ed.notebook.id, ed.page, (ed.notebook.pages[ed.page] or {}).pz }
     if open then self:closeEditor() end
     local msg = busy(_("Laying out the crosswords…"))
     for __, id in pairs(Settings.get("crossword_books") or {}) do
         local nb = self.store:read(id)
         if nb and nb.feed then
-            Crossword.syncBook(nb, function(key) return self:loadCrossword(key) end, Store.newPageId, layoutOpts())
+            self:syncCrosswordBook(nb)
             self:saveCrosswordBook(nb)
         end
     end
     UIManager:close(msg)
-    if open then self:open(open[1], open[2]) end
+    if open then
+        -- (The clue pages may now be more or fewer: the same page found by its part.)
+        local nb = self.store:read(open[1])
+        local at = open[2]
+        if nb and open[3] then
+            local key = open[3]:match("^(.-):")
+            for i, page in ipairs(nb.pages) do
+                if page.pz == open[3] then at = i break end
+                if page.pz and page.pz:match("^(.-):") == key and at == open[2] then at = i end
+            end
+        end
+        self:open(open[1], at)
+    end
 end
 
 -- ------------------------------------------------------------------ stats, finished puzzles

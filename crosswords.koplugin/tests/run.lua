@@ -69,5 +69,68 @@ do
     check("web settings: puzzle_buttons", slurp("webcrosswords.lua"):find('puzzle_buttons = "table"', 1, true) ~= nil, true)
 end
 
+do
+    -- Swap grid and clues: a made-up 15 x 15 puzzle with enough clues for a second clue page.
+    local grid, across, down = {}, {}, {}
+    for y = 1, 15 do
+        grid[y] = {}
+        for x = 1, 15 do grid[y][x] = string.char(65 + (x * 3 + y) % 26) end
+    end
+    for k = 1, 15 do
+        across[k] = "Something to fill in, with a few words (5)"
+        down[k] = across[k]
+    end
+    local p = C.fromGrid({ key = "usa/20261021", name = "Made up" }, grid, across, down)
+    for __, land in ipairs({ false, true }) do
+        local name = land and "swap, on its side: " or "swap: "
+        local plain = C.layout(p, { landscape = land })
+        local swapped = C.layout(p, { landscape = land, swap = true })
+        local g = swapped[1].grid
+        check(name .. "same cell size", g.cell, plain[1].grid.cell)
+        check(name .. "same parts", #swapped .. swapped[#swapped].part, #plain .. plain[#plain].part)
+        local clear = #swapped[1].clues > 0
+        for __, c in ipairs(swapped[1].clues) do
+            if land then clear = clear and c[1] + c[3] <= g.x + 1 else clear = clear and c[2] + c[4] <= g.y + 1 end
+        end
+        check(name .. "clues clear of the grid", clear, true)
+        if land then
+            check(name .. "grid at the right", g.x > plain[1].grid.x and g.x + 15 * g.cell <= swapped[1].w, true)
+        else
+            check(name .. "grid at the bottom", g.y > plain[1].grid.y and g.y + 15 * g.cell <= swapped[1].h, true)
+        end
+        local last = swapped[#swapped].grid
+        check(name .. "every clue page has the grid in the same place", last.x .. "," .. last.y, g.x .. "," .. g.y)
+    end
+
+    -- The writing in the grid goes with it, and back; writing outside it stays.
+    local load = function() return p end
+    local function r(v) return math.floor(v + 0.5) end
+    for __, land in ipairs({ false, true }) do
+        local name = land and "move, on its side: " or "move: "
+        local part = land and "L1" or "1"
+        local w, h = 1860, 2480
+        if land then w, h = h, w end
+        local from = C.gridOnScreen(p, C.layout(p, { landscape = land })[1], w, h)
+        local to = C.gridOnScreen(p, C.layout(p, { landscape = land, swap = true })[1], w, h)
+        local x, y = r(from[1] + from[3] * 3.5), r(from[2] + from[3] * 6.5)
+        local page = { pz = "usa/20261021:" .. part,
+            strokes = { { w = 3, p = { 6, 6, 12, 12 } }, { w = 4, p = { x, y, x + 8, y + 8 } } },
+            items = { { k = "text", x = x, y = y, w = 30, size = 24, text = "Q" } } }
+        local nb = { width = 1860, height = 2480, lay = "normal+b+t", pages = { page } }
+        local dx, dy = to[1] - from[1], to[2] - from[2]
+        check(name .. "something moved", C.moveGrids(nb, load, { swap = true }, false), true)
+        check(name .. "outside writing stays", #page.strokes .. " " .. table.concat(page.strokes[1].p, ","), "2 6,6,12,12")
+        check(name .. "grid writing in the same square", table.concat(page.strokes[2].p, ","),
+            r(x + dx) .. "," .. r(y + dy) .. "," .. r(x + 8 + dx) .. "," .. r(y + 8 + dy))
+        check(name .. "typed letter moved", page.items[1].x .. "," .. page.items[1].y, r(x + dx) .. "," .. r(y + dy))
+        check(name .. "no change, nothing moves", C.moveGrids(nb, load, { swap = true }, true), false)
+        C.moveGrids(nb, load, { swap = false }, true)
+        check(name .. "back where it was", table.concat(page.strokes[2].p, ",") .. " " .. page.items[1].x .. "," .. page.items[1].y,
+            x .. "," .. y .. "," .. (x + 8) .. "," .. (y + 8) .. " " .. x .. "," .. y)
+    end
+    local function slurp(name) local f = io.open(name, "rb") local s = f and f:read("*a") or "" if f then f:close() end return s end
+    check("web settings: crossword_swap", slurp("webcrosswords.lua"):find('crossword_swap = "boolean"', 1, true) ~= nil, true)
+end
+
 print(string.format("%d passed, %d failed", passed, failed))
 os.exit(failed == 0 and 0 or 1)

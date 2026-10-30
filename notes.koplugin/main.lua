@@ -827,6 +827,7 @@ function Notes:open(id, page)
         on_hint = cw and function(ed, mode, x, y) return self:crosswordHint(ed, mode, x, y) end or nil,
         on_crossword_settings = cw and function(changed) self:crosswordSettings(changed) end or nil,
         on_grid = cw and function(ed, i) return self:crosswordGridAt(ed.notebook, i, ed.w, ed.h) end or nil,
+        on_swap = cw and function(ed) self:swapCrosswordGrid(ed) end or nil,
         on_web_crossword = cw and self:crosswordsOnWebReady() and function(ed) self:crosswordsOnWeb(ed) end or nil,
         on_stats = cw and function() self:showCrosswordStats() end or nil,
         on_remove_puzzle = cw and function(nb, key) self:removeCrossword(nb.id, key) end or nil,

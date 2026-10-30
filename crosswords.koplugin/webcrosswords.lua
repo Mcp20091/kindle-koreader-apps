@@ -17,7 +17,7 @@ end
 
 local SOURCES = { guardian = true, usa = true, universal = true, wapo = true, tny = true }
 local KINDS = { quick = true, cryptic = true, quiptic = true, prize = true }
-local SETTINGS = { crossword_today = "string", crossword_clues = "string", crossword_boxes = "boolean", crossword_find = "boolean", crossword_card = "string", crossword_undo = "string", crossword_timer = "boolean",
+local SETTINGS = { crossword_today = "string", crossword_clues = "string", crossword_boxes = "boolean", crossword_swap = "boolean", crossword_find = "boolean", crossword_card = "string", crossword_undo = "string", crossword_timer = "boolean",
     crossword_finished = "string", crossword_auto = "table", puzzle_buttons = "table" }
 
 -- A puzzle's key from the browser: "quick/17616", "usa/20261021", "imp/2026102112000001".
@@ -187,6 +187,7 @@ function Web.routes(server)
             elseif SETTINGS[k] and type(v) == SETTINGS[k] then
                 if k == "crossword_clues" and (Settings.get(k) == "large") ~= (v == "large") then relay = true end
                 if k == "crossword_boxes" and (Settings.get(k) ~= false) ~= v then relay = true end
+                if k == "crossword_swap" and (Settings.get(k) == true) ~= v then relay = true end
                 if k == "crossword_auto" then Settings.set("crossword_auto_at", 0) end
                 Settings.set(k, v)
             end
