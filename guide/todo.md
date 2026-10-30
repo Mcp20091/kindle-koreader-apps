@@ -59,6 +59,8 @@ A deleted list goes at once, with **Undo** for a few seconds, and waits under **
 
 A list shows its tasks grouped **OVERDUE**, **TODAY**, **UPCOMING** and **NO DUE DATE** (or as one list: **⋮ > Group by due date**). Starred tasks come first within each day (**Starred first**).
 
+When you tick a task, star it, give it a new date, **Skip to current** or **Postpone** it, it stays where it is (up to date) instead of jumping to its new place, so the next row is still under your pen. The list sorts again when you leave it, go back, tap **Refresh screen** or **Sync now**, or add or delete a task. Turn this off with **Keep rows in place** in the settings. The web page works the same way.
+
 ![A list](img/apps/todo-list.png)
 
 A list's (or a view's) **⋮** has **Starred first: On/Off**, **Group by due date: On/Off** (in a list), **List options…** (as holding the list), **Sync now**, **Open on the web page** (a QR code for this list on the web page), **Refresh screen** and **Settings**. On a task's page, **⋮** opens the task's quick actions.
@@ -202,6 +204,7 @@ Done tasks, tasks hidden on sleep and hidden lists are left out.
 
 - **Starred on top**.
 - **Group by due date**.
+- **Keep rows in place**: on to start with. After you tick, star or reschedule a task, it stays where it is until you leave the screen or refresh it (also on the web page).
 - **Tap action**: **Open task** or **Quick actions**.
 - **Postpone by**: the usual number of days (1 to 60).
 - **Lists on this Kindle**: on to start with; off hides them (see "Lists on this Kindle").

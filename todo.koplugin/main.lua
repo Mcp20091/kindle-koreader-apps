@@ -65,7 +65,12 @@ local DEFAULTS = {
     reminders = true,            -- a message at a task's reminder while KOReader is open
     two_panes = true,            -- on its side: the lists at the left, the open one at the right
     local_lists = true,          -- lists kept only on this Kindle (off: hidden, still kept)
+    stable_lists = true,         -- Keep rows in place: a ticked, starred or moved task stays where it is
 }
+
+-- The launcher's stable lists (PS.stable); without the launcher, lists sort every time.
+local NO_STABLE = { mark = function() end, clear = function() end }
+local function Stable() return require("pluginshare").stable or NO_STABLE end
 
 local TILE_KEYS = { "today", "agenda", "starred", "calendar", "search" }
 
@@ -607,7 +612,13 @@ function Todo:webPage()
     return web and web.openOnWeb and web or nil
 end
 
+--- The open screen sorted again on its next draw (Keep rows in place lets go).
+function Todo:sortAgain()
+    Stable().clear(self.screen)
+end
+
 function Todo:refreshScreen()
+    self:sortAgain()
     self.ghost = 0
     if self.page then UIManager:setDirty(self.page, "full") end
 end
@@ -615,6 +626,8 @@ end
 
 function Todo:open(view)
     if not self.page then return self:show(view) end
+    self:sortAgain()
+    Stable().clear(view)
     table.insert(self.stack, self.screen)
     self.screen = view
     self:render(2)
@@ -626,6 +639,7 @@ function Todo:back()
         return self:home()
     end
     self.screen = table.remove(self.stack)
+    self:sortAgain()
     self:render(2)
 end
 
@@ -761,7 +775,10 @@ end
 -- ------------------------------------------------------------------ changes
 
 -- After every change: drawn again, and sent soon if Wi-Fi is already on.
-function Todo:changed()
+-- keep: a change made in place (Done, star, a new date), so the rows stay where
+-- they are (Keep rows in place); any other change sorts the screen again.
+function Todo:changed(keep)
+    if keep then Stable().mark(self.screen) else self:sortAgain() end
     self:render()
     self:sendSoon()
     self:pruneReminderNotes()
@@ -793,7 +810,7 @@ end
 function Todo:toggleDone(list, task)
     local done = self.store:toggleDone(list.id, task.id)
     if done then notify(T(_("Done: %1"), task.title)) end
-    self:changed()
+    self:changed(true)
 end
 
 --- Marks a task done from another plugin (Home Assistant's dashboard, Apps).
@@ -808,12 +825,12 @@ end
 
 function Todo:toggleStar(list, task)
     self.store:setStar(list.id, task.id, not task.important)
-    self:changed()
+    self:changed(true)
 end
 
 function Todo:setDue(list, task, day)
     self.store:setDue(list.id, task.id, day)
-    self:changed()
+    self:changed(true)
 end
 
 function Todo:pickDue(list, task)
@@ -926,7 +943,7 @@ function Todo:skipToCurrent(list, task)
         notify(_("Already current"))
     else
         notify(T(_("Moved to %1"), Dates.short(day)))
-        self:changed()
+        self:changed(true)
     end
 end
 
@@ -934,7 +951,7 @@ function Todo:pushOff(list, task, days)
     self.store:pushOff(list.id, task.id, days, self:today())
     local moved = self.store:findTask(list.id, task.id)
     if moved and moved.due then notify(T(_("Pushed off to %1"), Dates.short(moved.due))) end
-    self:changed()
+    self:changed(true)
 end
 
 function Todo:pushOffMenu(list, task)
@@ -1793,6 +1810,7 @@ end
 --- A sync by hand (KOReader asks to turn Wi-Fi on if it is off).
 function Todo:syncNow(options)
     if not self.api:signedIn() then return self:signIn() end
+    self:sortAgain()
     options = options or {}
     if options.downloadOnly == nil then options.downloadOnly = self:opt("download_only") end
     NetworkMgr:runWhenOnline(function()

@@ -30,6 +30,12 @@ next sync.
   (days since 1970-01-01). A reminder is Unix seconds (UTC).
 - `todoui.lua` (drawing kit in units, the short side is 620) and `todoviews.lua` (every screen and
   the sleep screen).
+- Keep rows in place (`stable_lists`, on to start with): `Todo:changed(true)` (Done, star, a new date, Skip
+  to current, Push off) marks the screen with the launcher's `PS.stable`, any other `changed()` sorts it again;
+  `Todo:sortAgain()` runs on Refresh screen, opening a screen, Back and Sync now. `todoviews.lua`'s
+  `keepOrder` puts the agenda, Starred and list sections through `PS.stable.order`. The web page does the
+  same for one draw after Done, star, Skip or a dialog that only changed the date, name or notes
+  (`keepNext` in web/todo.js).
 - `todoko.lua`: a copy of `apps.koplugin/appsko.lua` with its own header. Keep it in step.
 
 What it saves:
