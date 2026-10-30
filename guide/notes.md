@@ -566,7 +566,7 @@ Light and Night mode are KOReader's own: use the drop-down panel (tap the time a
 
 - **Sort by** and **Default sort**.
 - **Recent notebooks**: As a folder, At the top or Off.
-- **Open the last notebook when Notes opens**.
+- **Open the last notebook when Notes opens**: off to start with.
 - **Show notebooks as**: Covers or List.
 - **Reorder notebooks…** (My order).
 
