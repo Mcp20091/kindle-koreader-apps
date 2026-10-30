@@ -118,7 +118,7 @@ The Kindle's storage. It opens in the folder you looked at last (the documents f
 - **List** or **Covers**: the list shows names, sizes and dates; **Covers** shows each book's cover, title, author and how far you've read, like a bookshelf. Titles and covers come from KOReader; for a book it hasn't read yet, they appear a few seconds after you open the folder.
 - **Sort by** name (or title), date or size, and **Filter this folder** to find a book by its name, title or author.
 - **Group by** author, series or status (Reading, On hold, To read, Finished), as the Library groups books on the Kindle. Folders come first and other files last.
-- **Library settings**: the Library's settings, as on the Kindle: **Show books as**, **Open on**, **Home starts with**, **Show hidden files** and **Browse books with**. A change takes effect on the Kindle at once.
+- **Library settings**: the Library's settings, as on the Kindle: **Show books as**, **Open on**, **Home starts with**, **Keep rows in place**, **Show hidden files** and **Browse books with**. A change takes effect on the Kindle at once.
 - **Everywhere** (or Enter in the filter box) searches every folder by name, title and author. A result opens its folder with the file picked out. **← Back to this folder** returns to the list.
 - **Recent**: the newest files in every folder, such as what you just uploaded.
 - **Collections**: KOReader's collections, as on the Kindle, each with its files (**✕** takes one out).

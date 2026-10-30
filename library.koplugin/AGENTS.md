@@ -51,6 +51,10 @@ Each time a FileManager is made (after a book closes, at start), `Library:standI
 
 ## Pitfalls (learned the hard way)
 
+- **Book lists keep their rows after a status change** (Keep rows in place, `stable_lists` in the library
+  settings, on to start with): `V.statusMenu` marks the view with the launcher's `PS.stable`, `addBooks` puts its
+  groups through `PS.stable.order`, and `V.show(true)`, `V.back` and the screen's refresh clear it. Favorites,
+  collections, delete and move add or take away books, so they aren't marked.
 - **Read KOReader's collections before a move, not after.** `ReadCollection:_read` drops entries whose file is missing, so reading them after `mv` loses the book from its collections before `updateItem` can move it.
 - **`x and y or nil` is not a three-way choice**: with y false it gives nil (Select's empty boxes didn't show). Write it out.
 - **A `nil` in a table of buttons ends it for `ipairs`** (the launcher's book menu): insert conditionally.

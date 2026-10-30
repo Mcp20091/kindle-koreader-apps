@@ -501,6 +501,7 @@ local SETTINGS = {
     { key = "start", default = "home", values = { home = true, last = true } },
     { key = "home_first", default = "places", values = { places = true, books = true } },
     { key = "hidden", default = false },
+    { key = "stable_lists", default = true },
     { key = "browser", default = "library", values = { library = true, koreader = true } },
 }
 

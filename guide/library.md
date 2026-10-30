@@ -169,6 +169,7 @@ The launcher's search finds books too, and the Library adds its authors, series 
 - **Show books as**: **Covers** or **List**.
 - **Open on**: **Home**, or **Where you left off**.
 - **Home starts with**: **Servers and folders** or **Books**: what comes first on Home, after Continue reading and Recent.
+- **Keep rows in place**: on to start with. After you change a book's status (**Reading**, **On hold**, **Finished**), it stays where it is in the list until you leave the screen or refresh it, instead of moving at once.
 - **Show hidden files**: names starting with a dot, in Folders.
 - **Home folder**: KOReader's Home folder. To change it, hold a folder in Folders, then **Set as Home folder**.
 - **Browse books with**: **Library**, or **KOReader's file browser** (what Back from a book and the launcher's Library tile open).
