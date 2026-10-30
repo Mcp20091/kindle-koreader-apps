@@ -90,6 +90,22 @@ local function bookTitle(file)
     return Model.bookName(file)
 end
 
+--- The book Continue reading opens: KOReader's last file when it's still there, else the newest
+-- history entry that is. nil when there is none (no book yet, or the files are gone).
+function View.continueBook()
+    local lfs = require("libs/libkoreader-lfs")
+    local function there(f) return type(f) == "string" and lfs.attributes(f, "mode") == "file" end
+    local file = G_reader_settings:readSetting("lastfile")
+    if there(file) then return file end
+    local ok, ReadHistory = pcall(require, "readhistory")
+    if ok then
+        for __, item in ipairs(ReadHistory.hist or {}) do
+            if there(item.file) then return item.file end
+        end
+    end
+    return nil
+end
+
 function View:readRecent(n)
     local out = {}
     local ok, ReadHistory = pcall(require, "readhistory")
@@ -334,13 +350,13 @@ function View:status(tile)
         if stats.streak < 2 then return today end
         return today .. " \u{00B7} " .. T(_("%1 days in a row"), stats.streak)
     elseif key == "reading" then
-        local file = G_reader_settings:readSetting("lastfile")
-        if not file then return _("No recent book") end
+        local file = View.continueBook()
+        if not file then return _("Open a book") end
         local pct = try(function()
             local DocSettings = require("docsettings")
             return DocSettings:open(file):readSetting("percent_finished")
         end)
-        return bookTitle(file) .. (pct and string.format(" · %d%%", math.floor(pct * 100 + 0.5)) or "")
+        return bookTitle(file) .. (type(pct) == "number" and string.format(" · %d%%", math.floor(pct * 100 + 0.5)) or "")
     elseif key == "settings" then
         -- (a newer release seen, until it's installed)
         local tag = try(function() return require("appsupdate").available(self.apps) end)
@@ -468,10 +484,15 @@ function View:open(tile)
         UIManager:setDirty(self, "full")
         return
     elseif key == "reading" then
-        local file = G_reader_settings:readSetting("lastfile")
-        if not file then return end
-        UIManager:close(self)
-        require("appsreaderbar").openBook(file)
+        local file = View.continueBook()
+        if file then
+            UIManager:close(self)
+            require("appsreaderbar").openBook(file)
+            return
+        end
+        -- No book to continue: the library, where one is picked.
+        self.away = false
+        return self:open({ key = "library" })
     elseif key == "library" then
         UIManager:close(self)
         -- The Library app (library.koplugin) when it's there and chosen; else KOReader's file browser.
@@ -2315,6 +2336,11 @@ function View:settingsRows()
             local n = #Model.quickList(s)
             return n == 1 and _("1 button") or T(_("%1 buttons"), n)
         end)(), function() require("appsquick").edit(self) end },
+        -- The Continue reading tile (the same as hiding it in Edit home screen).
+        { _("Continue reading"), not Model.isHidden(s.hidden, { key = "reading" }), function()
+            s.hidden = s.hidden or {}
+            s.hidden.reading = not Model.isHidden(s.hidden, { key = "reading" }) or nil
+        end },
         { _("Recent books"), s.recent ~= false, function() s.recent = s.recent == false and true or false end },
         self:plugin("notes") and { _("Recent notebooks"), s.recent_notes ~= false, function()
             s.recent_notes = s.recent_notes == false and true or false

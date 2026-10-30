@@ -167,10 +167,10 @@ BUILTIN.newnote = function()
 end
 
 BUILTIN.reading = function()
-    local file = G_reader_settings:readSetting("lastfile")
+    local file = require("appsview").continueBook()
     return { label = _("Continue"), icon = "book-open",
         tap = function()
-            if not file then return KO.toast(_("No recent book")) end
+            if not file then return KO.toast(_("Open a book first")) end
             local v = PS().appsView and PS().appsView()
             if v and UIManager:isWidgetShown(v) then UIManager:close(v) end
             require("appsreaderbar").openBook(file)

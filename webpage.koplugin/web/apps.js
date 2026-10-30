@@ -383,6 +383,8 @@ App.pages.apps = {
         App.setting('Page bar', App.select([['parts', 'Numbered parts'], ['next', 'Parts and Next'], ['words', 'Words']], st.page_bar || 'parts', set('page_bar')),
           'At the foot of every app’s pages when there are several: a part per page to tap, the parts and a Next button, or “Page 1 of 4 · Next page”.'),
         App.setting('At a glance', App.toggle(st.today !== false, set('today')), 'The weather, what’s next and the tasks due, under the clock.'),
+        App.setting('Continue reading', App.toggle(!((tiles.find((t) => t.key === 'reading') || {}).hidden), (v) => post('/api/apps/tiles', { key: 'reading', hidden: !v }).then(reload)),
+          'The tile with your current book and how far you are in it. The same as hiding it in Home screen.'),
         App.setting('Recent books', App.toggle(st.recent !== false, set('recent'))),
         App.plugins && !App.plugins.notes ? null : App.setting('Recent notebooks', App.toggle(st.recent_notes !== false, set('recent_notes'))),
         App.plugins && !App.plugins.notes ? null : App.setting('Recent crosswords', App.toggle(st.recent_crosswords !== false, set('recent_crosswords'))),

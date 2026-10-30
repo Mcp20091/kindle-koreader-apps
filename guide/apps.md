@@ -89,7 +89,7 @@ Turn each row off in settings: **Recent notebooks** and **Recent crosswords**. R
 
 ## The tiles
 
-- **Continue reading**: the last book and how far in. Tap to open it.
+- **Continue reading**: the last book and how far in (its title and a percentage). Tap to open it where you left off. If that book was deleted, it shows the newest book in your history that is still there; with none, it says **Open a book** and a tap opens the Library. Turn the tile off in Settings > Launcher > **Continue reading**.
 - **Library**: your books and folders (see the Library chapter). Without the Library app, or with Library settings > **Browse books with** set to KOReader's file browser, it opens KOReader's file browser.
 - **Reading statistics**: how long you've read today and how many days in a row you've read, such as "25 min today · 4 days in a row". Tap it for your reading statistics (see below). It uses KOReader's reading statistics, so the Reading statistics plugin must be on.
 - **Home Assistant** and **Dashboard**: see the Home Assistant chapter. The Dashboard tile shows once Home Assistant is set up (it's Home Assistant's screen).
@@ -335,7 +335,7 @@ For a dark screen, use **Night mode** (the quick button, the control center or *
 
 ### Home screen
 
-- **At a glance**, **Quick buttons** and **Recent books**: the three rows under the clock.
+- **At a glance**, **Quick buttons** and **Recent books**: the three rows under the clock. **Continue reading** shows or hides the tile of that name.
 - **Recent notebooks**, **Recent crosswords**, **Removed from recent** and **Recent items**.
 
 ![The List layout](img/apps/launcher-list.png)
