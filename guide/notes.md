@@ -15,7 +15,7 @@ Crossword books are solved in the Crosswords app, which has its own chapter.
 - Or set a gesture: **Settings > Taps and gestures > Gesture manager**, pick a gesture, then **General > Notes**.
 - Or search from the launcher: notebooks are found by name (and by words on pages Notes' own search has already looked at). Notes is also in Recent apps once you've used it.
 
-Notes opens on the notebook list. If **Open the last notebook when Notes opens** is on (Settings > Notebook list), the notebook you used last opens straight away.
+Notes opens on the notebook list. If **Open the last notebook when Notes opens** is on (Settings > Notebook list), the notebook you used last opens straight away (crosswords don't count: they open from Crosswords).
 
 ### Making a notebook
 

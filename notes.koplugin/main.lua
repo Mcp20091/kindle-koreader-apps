@@ -390,7 +390,9 @@ function Notes:showStart()
     self.crosswordsApp = nil
     self:show()
     local id = Settings.get("open_last") and Settings.get("last_notebook")
-    if id and self.store:summary(id) then self:open(id) end
+    -- (A puzzle book belongs to the Crosswords app: Notes doesn't open on it.)
+    local sum = id and self.store:summary(id)
+    if sum and not sum.puzzle then self:open(id) end
 end
 
 -- The pen comes through KOReader's stylus API (KOReader 2026.07 or later).
@@ -623,7 +625,7 @@ function Notes:keepClosed(ed)
     local pages = Settings.get("last_pages") or {}
     pages[id] = ed.page
     Settings.set("last_pages", pages)
-    Settings.set("last_notebook", id)
+    if not ed.notebook.puzzle then Settings.set("last_notebook", id) end
     self.kept = self.kept or {}
     self.keptOrder = self.keptOrder or {}
     self.kept[id] = { notebook = ed.notebook, modified = ed.notebook.modified, undo = ed.undo, redo = ed.redo }
