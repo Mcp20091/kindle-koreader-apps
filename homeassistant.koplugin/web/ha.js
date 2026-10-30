@@ -102,7 +102,7 @@ App.pages.ha = {
           const star = h('button', { class: 'star' + (quick.has(d.id) ? ' on' : ''), title: 'Quick tile' }, '★');
           star.addEventListener('click', () => toggleQuick(d, star));
           return h('div', {}, box, h('span', { class: 'grow', style: d.visible ? '' : 'color:var(--muted)' }, d.name),
-            h('span', { class: 'small muted' }, d.state), h('span', { class: 'pill' }, d.domain.replace('_', ' ')), star);
+            h('span', { class: 'small muted' }, d.changed ? d.state + ' · ' + d.changed : d.state), h('span', { class: 'pill' }, d.domain.replace('_', ' ')), star);
         })));
       }
       return shown;

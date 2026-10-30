@@ -327,6 +327,22 @@ check("whole degrees", Model.formatTemp(70.0), "70°")
 check("tenths", Model.formatTemp(70.54), "70.5°")
 check("weather text", (Model.weather("clear-night")), "Clear")
 check("ago", Model.ago(125), "2 min ago")
+check("ago: just now", Model.ago(59), "just now")
+check("ago: an hour", Model.ago(3600), "1 h ago")
+check("ago: a day and a half", Model.ago(36 * 3600), "36 h ago")
+check("ago: days", Model.ago(3 * 86400 + 5), "3 d ago")
+do
+    local now = os.time()
+    local s = { now = now }
+    check("changed: lock", Model.changedText(s, { domain = "lock", changed = now - 720 }), "Changed 12 min ago")
+    check("changed: sensor, just now", Model.changedText(s, { domain = "sensor", changed = now - 10 }), "Changed just now")
+    check("changed: binary sensor", Model.changedText(s, { domain = "binary_sensor", changed = now - 7200 }), "Changed 2 h ago")
+    check("changed: a light has none", Model.changedText(s, { domain = "light", changed = now - 720 }), nil)
+    check("changed: no time, no line", Model.changedText(s, { domain = "lock" }), nil)
+    check("changed: clock ahead", Model.changedText(s, { domain = "lock", changed = now + 500 }), "Changed just now")
+    s.fetched = os.time() - 600
+    check("changed: grows after the snapshot", Model.changedText(s, { domain = "lock", changed = now - 720 }), "Changed 22 min ago")
+end
 check("dimmable", Model.dimmable(E["light.living_room_1"]), true)
 check("colour temperature", Model.hasColorTemp(E["light.living_room_lights"]), true)
 

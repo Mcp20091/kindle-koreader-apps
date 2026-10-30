@@ -619,7 +619,8 @@ function View:listRow(c, y, e, x, w)
     local cw = self:control(c, x + w, y + 10, e)
     local gone = e.state == "unavailable"
     c:text(x + 38, y + 20, e.name, 12, { bold = on, maxw = w - 44 - cw, color = gone and C.MID or C.BLACK })
-    c:text(x + 38, y + 37, Model.stateText(e), 10, { maxw = w - 44 - cw, color = C.GREY })
+    local changed = Model.changedText(self.ha.snap, e)
+    c:text(x + 38, y + 37, Model.stateText(e) .. (changed and ("  \u{00B7}  " .. changed) or ""), 10, { maxw = w - 44 - cw, color = C.GREY })
     c:hline(x + 38, y + 45, w - 38)
     c:hit(x, y, w - cw, 46, function() self:tapEntity(e) end, function() self:openSheet(e) end)
 end
@@ -970,7 +971,7 @@ function S.room(self, c, snap)
     end)
     for __, kind in ipairs(Model.kinds(room.entities)) do
         if kind.title == "SENSORS" then
-            F:block(26, function(y) self:label(c, y, _("SENSORS")) end, 36)
+            F:block(26, function(y) self:label(c, y, _("SENSORS")) end, 46)
             self:sensorRows(c, F, kind.entities)
         elseif kind.title == "CAMERAS" then
             F:block(26, function(y) self:label(c, y, _("CAMERAS")) end, 180)
@@ -993,7 +994,7 @@ end
 function View:sensorRows(c, F, list)
     local w = (c.W - 36) / 2
     for i = 1, #list, 2 do
-        F:block(38, function(y)
+        F:block(46, function(y)
             for k = 0, 1 do
                 local e = list[i + k]
                 if e then
@@ -1003,8 +1004,10 @@ function View:sensorRows(c, F, list)
                     c:icon(Model.icon(e), x, y + 9, 16)
                     c:text(x + 24, y + 22, Model.shortName(e), 11, { maxw = w - vw - 36, color = e.state == "unavailable" and C.MID or C.BLACK })
                     c:text(x + w - 4, y + 22, value, 12, { bold = true, align = "end" })
-                    c:hline(x, y + 36, w)
-                    c:hit(x, y, w, 38, function() self:openSheet(e) end)
+                    local changed = Model.changedText(self.ha.snap, e)
+                    if changed then c:text(x + 24, y + 37, changed, 9, { color = C.GREY, maxw = w - 28 }) end
+                    c:hline(x, y + 44, w)
+                    c:hit(x, y, w, 46, function() self:openSheet(e) end)
                 end
             end
         end)
@@ -1977,7 +1980,7 @@ function S.security(self, c, snap)
         if SECURITY_SENSORS[Model.str(e.attr.device_class) or ""] then table.insert(sensors, e) end
     end
     if #sensors > 0 then
-        F:block(26, function(y) self:label(c, y, _("SENSORS")) end, 38)
+        F:block(26, function(y) self:label(c, y, _("SENSORS")) end, 46)
         self:sensorRows(c, F, sensors)
     end
     self:titlebar(c, true, _("Security"), { { "refresh-cw", function()

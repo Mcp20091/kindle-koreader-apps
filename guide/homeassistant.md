@@ -105,6 +105,7 @@ Some taps ask first: **Unlock** a lock, **Open** or **Close** the garage, **Run*
 - **Players**: previous, play/pause, next, mute, volume and **Source**, with what's playing.
 - **On and off**: lights, switches, fans and players have an on/off switch at the top right. A TV that Home Assistant can't wake says so: it can turn it on only once Wake-on-LAN or a turn-on automation is set up for it.
 - **Cameras**: **Open full screen**, and **PLACEHOLDER IMAGE**: the drawing shown until the picture arrives (**Automatic**, **Doorway**, **Garage**, **Room**, **3D printer**).
+- **How old a reading is**: a lock's or sensor's sheet starts with a small line such as "Changed 12 min ago", so you can tell whether a reading is stale. The same line is under locks and sensors on Security and in a room, and on the web page's Devices list. It counts minutes, then hours, then days, and moves on when the screen redraws.
 - **Sensors with a number**: a bar graph of the **LAST 24 HOURS** with its highest and lowest.
 
 At the bottom of every sheet:
