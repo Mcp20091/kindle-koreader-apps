@@ -79,6 +79,7 @@ local PUZZLE_BUTTONS = {
     { key = "getcw", label = _("Get a crossword"), icon = "newspaper" },
     { key = "random", label = _("Random puzzle"), icon = "shuffle" },
     { key = "orient", label = _("Page orientation"), icon = "rotate-cw" },
+    { key = "swap", label = _("Swap grid and clues"), icon = "arrow-up-down" },
     { key = "web", label = _("Open on the web page"), icon = "qr-code" },
     { key = "ask", label = _("Ask AI"), icon = "sparkles" },
     { key = "export", label = _("Export"), icon = "file-down" },
@@ -1470,6 +1471,11 @@ function Editor:puzzleActions(byKey)
             close()
             self:chooseOrientation(function(landscape, mode) self.on_orient(self, landscape, mode, true) end)
         end) or false,
+        -- The grid and the clues swapped: the grid at the bottom (on its side, the right), for every puzzle.
+        nb.feed and self.on_swap and act("swap", Settings.get("crossword_swap") and _("On") or _("Off"), function()
+            close()
+            self.on_swap(self)
+        end, Settings.get("crossword_swap") == true) or false,
         -- The web page's Crosswords section, on a phone (a QR code).
         self.on_web_crossword and act("web", nil, function() close() self.on_web_crossword(self) end) or false,
         not Settings.noAI() and act("ask", nil, function() self:runAction("ask") end) or false,

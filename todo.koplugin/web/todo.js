@@ -2,6 +2,10 @@
 App.pages.todo = {
   listId: null,
   showDone: false,  // Completed (n) open
+  // Keep rows in place: after Done, a star or a new date the next draw keeps the rows
+  // where they were (keepNext, used once); layout is the last draw's { list, ids }.
+  keepNext: false,
+  layout: null,
   tab: 'tasks',
   async render(main, params) {
     const s = await App.api('/api/todo');
@@ -17,6 +21,8 @@ App.pages.todo = {
     }
     s.options = App.obj(s.options);
     const page = this;
+    page.keepOn = page.keepNext && s.options.stable_lists !== false;
+    page.keepNext = false;
     if (!s.lists.find((l) => l.id === page.listId)) page.listId = (s.lists.find((l) => l.default) || s.lists[0] || {}).id;
     const body = h('div');
     const draw = () => {
@@ -41,6 +47,7 @@ App.pages.todo = {
   },
 
   async change(json) {
+    this.keepNext = ['done', 'star', 'skip'].includes(json.op);
     await App.api('/api/todo/task', { json }).catch(App.fail);
     App.route();
   },
@@ -105,7 +112,16 @@ App.pages.todo = {
     };
     title.addEventListener('keydown', (e) => { if (e.key === 'Enter') add(); });
 
-    const tasks = list.tasks;
+    let tasks = list.tasks;
+    // Keep rows in place: the rows in the last draw's order, each up to date (a ticked
+    // one stays, done), new ones after them.
+    if (page.keepOn && page.layout && page.layout.list === list.id) {
+      const byId = new Map(list.tasks.concat(App.arr(list.completed)).map((t) => [t.id, t]));
+      const kept = page.layout.ids.map((id) => byId.get(id)).filter(Boolean);
+      const seen = new Set(kept.map((t) => t.id));
+      tasks = kept.concat(list.tasks.filter((t) => !seen.has(t.id)));
+    }
+    page.layout = { list: list.id, ids: tasks.map((t) => t.id) };
     const done = App.arr(list.completed);
     const listMenu = h('div', { class: 'row' },
       h('button', { class: 'btn small', onclick: async () => {
@@ -216,6 +232,8 @@ App.pages.todo = {
     if ((due.value || null) !== (t.due || null)) changes.push({ op: 'due', due: due.value || null });
     if (notes.value !== (t.notes || '')) changes.push({ op: 'notes', notes: notes.value });
     if (move.value !== list.id) changes.push({ op: 'move', to: move.value });
+    // (Only a new date, name or notes: the rows stay where they are, with Keep rows in place.)
+    page.keepNext = changes.length > 0 && changes.every((c) => ['due', 'rename', 'notes'].includes(c.op));
     for (const c of changes) {
       await App.api('/api/todo/task', { json: Object.assign({ list: list.id, id: t.id }, c) }).catch(App.fail);
     }
@@ -280,6 +298,8 @@ App.pages.todo = {
       h('div', { class: 'card' }, h('h2', {}, 'Tasks'),
         App.setting('Starred on top', App.toggle(o.starred_first, set('starred_first'))),
         App.setting('Group by due date', App.toggle(o.group_by_due, set('group_by_due'))),
+        App.setting('Keep rows in place', App.toggle(o.stable_lists !== false, set('stable_lists')),
+          'After you tick, star or reschedule a task, it stays where it is until you leave the page or refresh it.'),
         App.setting('Tap action', App.select([['task', 'Open task'], ['menu', 'Quick actions']], o.tap_opens, set('tap_opens'))),
         App.setting('Postpone by (days)', pushDays),
         App.setting('Reminder alerts', App.toggle(o.reminders !== false, set('reminders')), 'While KOReader is open.'),

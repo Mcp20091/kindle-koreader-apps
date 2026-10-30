@@ -15,7 +15,7 @@ Crossword books are solved in the Crosswords app, which has its own chapter.
 - Or set a gesture: **Settings > Taps and gestures > Gesture manager**, pick a gesture, then **General > Notes**.
 - Or search from the launcher: notebooks are found by name (and by words on pages Notes' own search has already looked at). Notes is also in Recent apps once you've used it.
 
-Notes opens on the notebook list. If **Open the last notebook when Notes opens** is on (Settings > Notebook list), the notebook you used last opens straight away.
+Notes opens on the notebook list. If **Open the last notebook when Notes opens** is on (Settings > Notebook list), the notebook you used last opens straight away (crosswords don't count: they open from Crosswords).
 
 ### Making a notebook
 
@@ -393,6 +393,16 @@ You can write on the pages of PDFs and other fixed-page books while reading them
 
 The writing is kept with the book and stays in place when you zoom in or out. It shows whenever that page does, in page or continuous view.
 
+## Handwritten notes on highlights
+
+In any book, a highlight's note can be written by hand.
+
+1. Select text, or tap a highlight, and tap **Write a note** in its menu.
+2. Write in the pad that opens over the lower part of the screen (the quick note's pad, with the same buttons by its handle).
+3. Tap **✓ Save**. The highlight gets KOReader's note mark in the margin; tap the mark to open the pad with your writing again.
+
+Erase all the writing and save to take the note away and keep just the highlight. The note belongs to the highlight, not to the page, so it stays with it when you change the font or its size.
+
 ## PDFs as notebooks
 
 **+ New notebook > From a PDF…** picks a PDF on the Kindle (copy it over by USB first, anywhere on the Kindle). Each PDF page becomes a page you can write on. Pages you add are blank paper. Landscape PDFs make a landscape notebook.
@@ -556,7 +566,7 @@ Light and Night mode are KOReader's own: use the drop-down panel (tap the time a
 
 - **Sort by** and **Default sort**.
 - **Recent notebooks**: As a folder, At the top or Off.
-- **Open the last notebook when Notes opens**.
+- **Open the last notebook when Notes opens**: off to start with.
 - **Show notebooks as**: Covers or List.
 - **Reorder notebooks…** (My order).
 

@@ -76,6 +76,8 @@ local function rows(view, c, e)
         data.entity_id = id
         ha:act(e, service, data)
     end
+    local changed = Model.changedText(ha.snap, e)
+    if changed then add(22, function(y) c:text(14, y + 14, changed, 10, { color = C.GREY }) end) end
     if e.state == "unavailable" then
         add(40, function(y) c:text(14, y + 20, _("This device is unavailable in Home Assistant."), 11, { color = C.GREY }) end)
         return out

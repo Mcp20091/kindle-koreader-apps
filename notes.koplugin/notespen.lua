@@ -184,6 +184,29 @@ function Pen:close()
     self.fd = nil
 end
 
+--- The pen's buttons as they are now, asked of the digitizer once (EVIOCGKEY):
+-- { side, tool = "pen"|"rubber"|nil, touching, path }, or nil and why. The device is
+-- opened for this one question and closed again; no events are read, so the writing
+-- path isn't touched. (A selection made in a book: noteshandnote.lua.)
+function Pen.held(path)
+    local ok, ffi = pcall(require, "ffi")
+    if not ok then return nil, "no ffi" end
+    local bit = require("bit")
+    pcall(require, "ffi/posix_h")
+    local C = ffi.C
+    path = path or Pen.findDevice()
+    if not path then return nil, "no pen digitizer" end
+    local fd = C.open(path, bit.bor(C.O_RDONLY, C.O_NONBLOCK))
+    if fd < 0 then return nil, "cannot open " .. path end
+    local keys = ffi.new("uint8_t[96]")
+    local okIoctl, rc = pcall(C.ioctl, fd, bit.tobit(0x80604518), keys)   -- EVIOCGKEY(96)
+    C.close(fd)
+    if not okIoctl or rc < 0 then return nil, "cannot ask " .. path end
+    local function on(code) return bit.band(keys[math.floor(code / 8)], bit.lshift(1, code % 8)) ~= 0 end
+    return { side = on(BTN_STYLUS), tool = on(BTN_TOOL_RUBBER) and "rubber" or (on(BTN_TOOL_PEN) and "pen" or nil),
+        touching = on(BTN_TOUCH), path = path }
+end
+
 --- Whether a touch KOReader hands over as the pen's is a finger. While the
 -- pen hovers, KOReader files a finger touching the screen in the pen's slot;
 -- the pen's own contact has the pen slot's number as its id, a finger has

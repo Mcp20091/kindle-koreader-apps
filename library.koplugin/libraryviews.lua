@@ -72,6 +72,8 @@ end
 local function plural(n, one, many) return n == 1 and one or T(many, n) end
 
 local function top() return nav.stack[#nav.stack] end
+-- The launcher's stable lists (PS.stable), or nil without the launcher.
+local function stable() return require("pluginshare").stable end
 
 -- ------------------------------------------------------------------ opening and closing
 
@@ -114,6 +116,7 @@ function V.open(plugin, view)
             Covers.release()
             local v = top()
             if v then v.list, v.rlist, v.err, v.page = nil, nil, nil, nil end
+            if stable() then stable().clear(v) end
         end,
         close_callback = function(page)
             if V.screen == page then V.screen = nil end
@@ -135,7 +138,10 @@ end
 function V.show(fresh)
     local s = V.screen
     if not s or s.closed then return end
-    if fresh then s.page = 1 end
+    if fresh then
+        s.page = 1
+        if stable() then stable().clear(top()) end
+    end
     s:redraw("full")
 end
 
@@ -187,6 +193,7 @@ function V.back()
     if #nav.stack > 1 then
         table.remove(nav.stack)
         local v = top()
+        if stable() then stable().clear(v) end
         if V.screen then V.screen.page = v.page or 1 end
         remember()
         return V.show()
@@ -336,6 +343,15 @@ end
 local function addBooks(items, list, v, opts)
     opts = opts or {}
     local groups = M.group(list, opts.noGroup and "none" or groupOf(v))
+    -- Keep rows in place: a book whose status was just changed stays where it was, up to date,
+    -- until the screen is left or refreshed.
+    if stable() then
+        for __, g in ipairs(groups) do g.entries = g.books end
+        groups = stable().order(v, groups, { on = S.get("stable_lists", true) ~= false,
+            id = function(b) return b.path end,
+            fresh = function(b) return M.book(b.path) or (lfs.attributes(b.path, "mode") == "file" and b or nil) end })
+        for __, g in ipairs(groups) do g.books = g.entries end
+    end
     for __, g in ipairs(groups) do
         if g.label then
             -- (the heading stays on the page with its first row of covers)
@@ -935,6 +951,7 @@ function V.statusMenu(list, back)
     local function set(status)
         for __, p in ipairs(list) do M.setStatus(p, status) end
         nav.select = nil
+        if stable() then stable().mark(top()) end
         V.show()
         KO.toast(plural(#list, T(_("Marked as %1"), M.STATUS_NAMES[status]:lower()), T(_("%1 marked as %2"), #list, M.STATUS_NAMES[status]:lower())))
     end
@@ -1593,6 +1610,11 @@ function V.settings(jump)
                 KO.choose(_("Home starts with"), { { label = _("Servers and folders"), value = "places" }, { label = _("Books"), value = "books" } },
                     S.get("home_first", "places"), function(val) S.set("home_first", val) page:redraw() end)
             end })
+        table.insert(items, { toggle = S.get("stable_lists", true) ~= false, text = _("Keep rows in place"),
+            sub = _("After you change a book's status, it stays where it is until you leave the screen or refresh it"), tap = function()
+            S.set("stable_lists", S.get("stable_lists", true) == false)
+            page:redraw()
+        end })
         table.insert(items, { band = _("FOLDERS") })
         table.insert(items, { toggle = S.get("hidden", false) == true, text = _("Show hidden files"), sub = _("Names starting with a dot"), tap = function()
             S.set("hidden", not S.get("hidden", false))

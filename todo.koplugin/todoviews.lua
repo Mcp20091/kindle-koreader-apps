@@ -584,6 +584,25 @@ local function sectionRows(c, sections, opts)
     return rows
 end
 
+--- The sections as they'll be drawn: with Keep rows in place, a task ticked,
+-- starred or given a new date stays where it was (up to date) until the screen
+-- is left or refreshed (the launcher's PS.stable; without it, as sorted).
+local function keepOrder(c, view, sections)
+    local stable = require("pluginshare").stable
+    if not stable then return sections end
+    return stable.order(view, sections, { on = c:opt("stable_lists"),
+        id = function(e) return e.task.id end,
+        fresh = function(e)
+            local list = c.store:findList(e.list.id)
+            local task = list and c.store:findTask(list.id, e.task.id)
+            if not task or task.deleted then return nil end
+            local out = {}
+            for k, v in pairs(e) do out[k] = v end
+            out.list, out.task = list, task
+            return out
+        end })
+end
+
 local function listMenuIcons(c, view, add)
     return {
         { icon = "ellipsis-vertical", fn = function() c:viewMenu(view) end },
@@ -596,7 +615,7 @@ function Views.agenda(c, view)
     local today = c:today()
     local sections = Model.agenda(c.store:lists(), today, c:offset(), {
         todayOnly = view.kind == "today", starredFirst = c:opt("starred_first"), hidden = c:hiddenSet() })
-    local rows = sectionRows(c, sections, { withList = true, agenda = true })
+    local rows = sectionRows(c, keepOrder(c, view, sections), { withList = true, agenda = true })
     if #rows == 0 then
         table.insert(rows, Views.messageRow(view.kind == "today" and _("Nothing due today.") or _("Nothing due this week.")))
     end
@@ -611,7 +630,7 @@ end
 function Views.starred(c, view)
     local today = c:today()
     local entries = Model.starred(c.store:lists(), { hidden = c:hiddenSet() })
-    local rows = sectionRows(c, Model.groupByDue(entries, today, c:offset(), false), { withList = true, starZone = true })
+    local rows = sectionRows(c, keepOrder(c, view, Model.groupByDue(entries, today, c:offset(), false)), { withList = true, starZone = true })
     if #rows == 0 then table.insert(rows, Views.messageRow(_("No starred tasks."))) end
     return {
         title = _("Starred"),
@@ -628,11 +647,11 @@ function Views.list(c, view)
     local entries = Model.listEntries(list)
     local rows
     if c:opt("group_by_due") then
-        rows = sectionRows(c, Model.groupByDue(entries, today, c:offset(), c:opt("starred_first")), { starZone = true })
+        rows = sectionRows(c, keepOrder(c, view, Model.groupByDue(entries, today, c:offset(), c:opt("starred_first"))), { starZone = true })
     else
         rows = {}
-        for __, e in ipairs(Model.sortEntries(entries, c:offset(), c:opt("starred_first"))) do
-            table.insert(rows, Views.taskRow(c, e, { starZone = true }))
+        for __, s in ipairs(keepOrder(c, view, { { entries = Model.sortEntries(entries, c:offset(), c:opt("starred_first")) } })) do
+            for __, e in ipairs(s.entries) do table.insert(rows, Views.taskRow(c, e, { starZone = true })) end
         end
     end
     if #rows == 0 then table.insert(rows, Views.messageRow(_("Nothing to do here."))) end
@@ -1019,6 +1038,8 @@ function Views.settings(c, view)
     add(Views.settingsHeading(_("TASKS")))
     add(Views.settingRow(_("Starred on top"), nil, c:opt("starred_first"), function() c:flip("starred_first") end))
     add(Views.settingRow(_("Group by due date"), nil, c:opt("group_by_due"), function() c:flip("group_by_due") end))
+    add(Views.settingRow(_("Keep rows in place"), nil, c:opt("stable_lists"), function() c:flip("stable_lists") end,
+        _("After you tick, star or reschedule a task, it stays where it is until you leave the screen or refresh it.")))
     add(Views.settingRow(_("Tap action"), c:opt("tap_opens") == "menu" and _("Quick actions") or _("Open task"), nil,
         function() c:chooseTap() end))
     add(Views.settingRow(_("Postpone by"), T(_("%1 days"), c:opt("push_days")), nil, function() c:choosePushDays() end))

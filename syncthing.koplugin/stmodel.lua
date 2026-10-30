@@ -193,6 +193,66 @@ function M.validPort(v)
     return n
 end
 
+-- How long a folder may have files waiting, with a device it is shared with
+-- connected, without getting any closer, before it counts as stuck.
+M.STALL_SECS = 30 * 60
+
+--- The folders that are stuck: files waiting for STALL_SECS while a device the
+-- folder is shared with is connected, with neither the files nor the bytes left
+-- going down in that time. `since` is kept by the caller between reads:
+-- { [folder id] = { t, need, bytes } }. Returns { [folder id] = true }.
+function M.stalled(snap, since, now)
+    local up = {}
+    for __, d in ipairs(snap.devices or {}) do
+        if d.conn and d.conn.connected and d.device and not d.device.paused then up[d.device.deviceID] = true end
+    end
+    local out, seen = {}, {}
+    for __, f in ipairs(snap.folders or {}) do
+        local id, st = f.folder.id, f.status
+        local waiting = false
+        if st and not f.folder.paused and st.state ~= "error" and M.need(st) > 0 then
+            for __, d in ipairs(f.folder.devices or {}) do
+                if up[d.deviceID] then waiting = true end
+            end
+        end
+        if waiting then
+            seen[id] = true
+            local need, bytes = M.need(st), tonumber(st.needBytes) or 0
+            local e = since[id]
+            if not e or need < e.need or bytes < e.bytes then
+                e = { t = now }
+                since[id] = e
+            end
+            e.need, e.bytes = need, bytes
+            if now - e.t >= M.STALL_SECS then out[id] = true end
+        end
+    end
+    for id in pairs(since) do
+        if not seen[id] then since[id] = nil end
+    end
+    return out
+end
+
+--- What goes to the shared notifications besides requests and errors: { { key, text } }
+-- for stuck folders and folders with conflicting copies (snap.conflicts:
+-- { [folder id] = count } from the last look for them; nil when not looked this time).
+function M.problems(snap, since, now)
+    local stuck = M.stalled(snap, since, now)
+    local out = {}
+    for __, f in ipairs(snap.folders or {}) do
+        local id, label = f.folder.id, f.folder.label or f.folder.id
+        if stuck[id] then
+            table.insert(out, { key = "syncthing:stalled:" .. id, text = T(_("%1 hasn't finished syncing"), label) })
+        end
+        local n = snap.conflicts and tonumber(snap.conflicts[id]) or 0
+        if n > 0 and not f.folder.paused then
+            table.insert(out, { key = "syncthing:conflicts:" .. id,
+                text = T(N(_("%1 has a file with a conflict"), _("%1 has files with conflicts"), n), label) })
+        end
+    end
+    return out
+end
+
 --- The launcher's line: "On · Up to date", "On · Syncing · 3 files left", "Off".
 function M.appsLine(running, snap)
     if not running then return _("Off") end

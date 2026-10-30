@@ -58,7 +58,13 @@ end
 
 -- ------------------------------------------------------------------ navigation
 
+--- The launcher's stable lists (PS.stable), or nil without the launcher.
+function View:stable()
+    return require("pluginshare").stable
+end
+
 function View:go(route)
+    if self:stable() then self:stable().clear(self) end
     table.insert(self.stack, { route = self.route, pageNo = self.pageNo })
     self.route, self.pageNo, self.sheet = route, 1, nil
     self:onRouteChanged()
@@ -67,6 +73,7 @@ end
 
 function View:back()
     if self.sheet then return self:closeSheet() end
+    if self:stable() then self:stable().clear(self) end
     local prev = table.remove(self.stack)
     -- From the screen it opened on: back to Apps (or what was under it).
     if not prev then
@@ -421,6 +428,7 @@ function View:titlebar(c, back, title, icons, pages)
         c:icon("refresh-cw", rx, 13, 18)
     end
     c:hit(rx - 8, 0, 34, 44, function()
+        if self:stable() then self:stable().clear(self) end
         if reload then reload() else self.ha:update() end
         self:refresh("full")
     end)
@@ -619,7 +627,8 @@ function View:listRow(c, y, e, x, w)
     local cw = self:control(c, x + w, y + 10, e)
     local gone = e.state == "unavailable"
     c:text(x + 38, y + 20, e.name, 12, { bold = on, maxw = w - 44 - cw, color = gone and C.MID or C.BLACK })
-    c:text(x + 38, y + 37, Model.stateText(e), 10, { maxw = w - 44 - cw, color = C.GREY })
+    local changed = Model.changedText(self.ha.snap, e)
+    c:text(x + 38, y + 37, Model.stateText(e) .. (changed and ("  \u{00B7}  " .. changed) or ""), 10, { maxw = w - 44 - cw, color = C.GREY })
     c:hline(x + 38, y + 45, w - 38)
     c:hit(x, y, w - cw, 46, function() self:tapEntity(e) end, function() self:openSheet(e) end)
 end
@@ -970,7 +979,7 @@ function S.room(self, c, snap)
     end)
     for __, kind in ipairs(Model.kinds(room.entities)) do
         if kind.title == "SENSORS" then
-            F:block(26, function(y) self:label(c, y, _("SENSORS")) end, 36)
+            F:block(26, function(y) self:label(c, y, _("SENSORS")) end, 46)
             self:sensorRows(c, F, kind.entities)
         elseif kind.title == "CAMERAS" then
             F:block(26, function(y) self:label(c, y, _("CAMERAS")) end, 180)
@@ -993,7 +1002,7 @@ end
 function View:sensorRows(c, F, list)
     local w = (c.W - 36) / 2
     for i = 1, #list, 2 do
-        F:block(38, function(y)
+        F:block(46, function(y)
             for k = 0, 1 do
                 local e = list[i + k]
                 if e then
@@ -1003,8 +1012,10 @@ function View:sensorRows(c, F, list)
                     c:icon(Model.icon(e), x, y + 9, 16)
                     c:text(x + 24, y + 22, Model.shortName(e), 11, { maxw = w - vw - 36, color = e.state == "unavailable" and C.MID or C.BLACK })
                     c:text(x + w - 4, y + 22, value, 12, { bold = true, align = "end" })
-                    c:hline(x, y + 36, w)
-                    c:hit(x, y, w, 38, function() self:openSheet(e) end)
+                    local changed = Model.changedText(self.ha.snap, e)
+                    if changed then c:text(x + 24, y + 37, changed, 9, { color = C.GREY, maxw = w - 28 }) end
+                    c:hline(x, y + 44, w)
+                    c:hit(x, y, w, 46, function() self:openSheet(e) end)
                 end
             end
         end)
@@ -1977,7 +1988,7 @@ function S.security(self, c, snap)
         if SECURITY_SENSORS[Model.str(e.attr.device_class) or ""] then table.insert(sensors, e) end
     end
     if #sensors > 0 then
-        F:block(26, function(y) self:label(c, y, _("SENSORS")) end, 38)
+        F:block(26, function(y) self:label(c, y, _("SENSORS")) end, 46)
         self:sensorRows(c, F, sensors)
     end
     self:titlebar(c, true, _("Security"), { { "refresh-cw", function()
@@ -2126,6 +2137,11 @@ end
 function S.activity(self, c, snap)
     local F = c:flow(52, c.H - 8, self.pageNo)
     local list = Model.activity(snap, self.ha.prefs)
+    -- (A device just switched stays where it was until the screen is left or refreshed.)
+    if self:stable() then
+        list = self:stable().list(self, list, { on = self.ha:stableLists(), id = function(e) return e.id end,
+            fresh = function(e) return snap.byId[e.id] end })
+    end
     for i = 1, math.min(#list, 120) do
         local e = list[i]
         F:block(42, function(y)

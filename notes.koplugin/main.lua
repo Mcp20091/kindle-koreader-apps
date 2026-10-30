@@ -40,6 +40,7 @@ require("notesonenoteview")(Notes)
 -- puzzle books are then its own app and left out of the list.)
 require("notesfind")(Notes)
 require("notesquick")(Notes)
+require("noteshandnote")(Notes)
 
 local function listFiles(dir)
     local lfs = require("libs/libkoreader-lfs")
@@ -98,6 +99,8 @@ end
 -- A book open: its pages' ink shown (PDFs and other fixed-page books).
 function Notes:onReaderReady()
     pcall(self.marginReady, self)
+    -- A book open: Write a note in its highlight menu (noteshandnote.lua).
+    pcall(self.handNoteReady, self)
 end
 
 function Notes:addToMainMenu(menu_items)
@@ -106,6 +109,14 @@ function Notes:addToMainMenu(menu_items)
         sorting_hint = "tools",
         callback = function() self:showStart() end,
     }
+    if self.ui.highlight then
+        -- PROBE (log only; goes with noteshandprobe.lua): is the pen's side button seen as held?
+        menu_items.notes_pen_probe = {
+            text = _("Notes: pen button check (test)"),
+            sorting_hint = "tools",
+            callback = function() self:handProbeCheck() end,
+        }
+    end
     if self.ui.paging then
         menu_items.notes_margin = {
             text = _("Write on this page"),
@@ -379,7 +390,9 @@ function Notes:showStart()
     self.crosswordsApp = nil
     self:show()
     local id = Settings.get("open_last") and Settings.get("last_notebook")
-    if id and self.store:summary(id) then self:open(id) end
+    -- (A puzzle book belongs to the Crosswords app: Notes doesn't open on it.)
+    local sum = id and self.store:summary(id)
+    if sum and not sum.puzzle then self:open(id) end
 end
 
 -- The pen comes through KOReader's stylus API (KOReader 2026.07 or later).
@@ -612,7 +625,7 @@ function Notes:keepClosed(ed)
     local pages = Settings.get("last_pages") or {}
     pages[id] = ed.page
     Settings.set("last_pages", pages)
-    Settings.set("last_notebook", id)
+    if not ed.notebook.puzzle then Settings.set("last_notebook", id) end
     self.kept = self.kept or {}
     self.keptOrder = self.keptOrder or {}
     self.kept[id] = { notebook = ed.notebook, modified = ed.notebook.modified, undo = ed.undo, redo = ed.redo }
@@ -827,6 +840,7 @@ function Notes:open(id, page)
         on_hint = cw and function(ed, mode, x, y) return self:crosswordHint(ed, mode, x, y) end or nil,
         on_crossword_settings = cw and function(changed) self:crosswordSettings(changed) end or nil,
         on_grid = cw and function(ed, i) return self:crosswordGridAt(ed.notebook, i, ed.w, ed.h) end or nil,
+        on_swap = cw and function(ed) self:swapCrosswordGrid(ed) end or nil,
         on_web_crossword = cw and self:crosswordsOnWebReady() and function(ed) self:crosswordsOnWeb(ed) end or nil,
         on_stats = cw and function() self:showCrosswordStats() end or nil,
         on_remove_puzzle = cw and function(nb, key) self:removeCrossword(nb.id, key) end or nil,

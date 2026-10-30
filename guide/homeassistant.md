@@ -105,6 +105,7 @@ Some taps ask first: **Unlock** a lock, **Open** or **Close** the garage, **Run*
 - **Players**: previous, play/pause, next, mute, volume and **Source**, with what's playing.
 - **On and off**: lights, switches, fans and players have an on/off switch at the top right. A TV that Home Assistant can't wake says so: it can turn it on only once Wake-on-LAN or a turn-on automation is set up for it.
 - **Cameras**: **Open full screen**, and **PLACEHOLDER IMAGE**: the drawing shown until the picture arrives (**Automatic**, **Doorway**, **Garage**, **Room**, **3D printer**).
+- **How old a reading is**: a lock's or sensor's sheet starts with a small line such as "Changed 12 min ago", so you can tell whether a reading is stale. The same line is under locks and sensors on Security and in a room, and on the web page's Devices list. It counts minutes, then hours, then days, and moves on when the screen redraws.
 - **Sensors with a number**: a bar graph of the **LAST 24 HOURS** with its highest and lowest.
 
 At the bottom of every sheet:
@@ -127,7 +128,7 @@ A room's screen shows its temperature and humidity, how much is on (with **All o
 - **Scenes & scripts**: each with **Run**.
 - **Security**: the status bar, **LOCKS & DOORS** (with **Lock all** when something is unlocked), the security cameras, and door, window, motion, smoke and leak sensors.
 - **Weather**: now (temperature, humidity, wind, inside), **NEXT HOURS** with the chance of rain, and **NEXT DAYS** with highs and lows.
-- **Activity**: what changed, newest first.
+- **Activity**: what changed, newest first. A device you switch here stays where it is until you leave the screen or refresh it (**Keep rows in place** in the settings).
 - **Batteries**: every battery, lowest first, bold under 20%.
 - **3D printer**: its camera, the print's progress, file, time left and layer; **TEMPERATURES** (nozzle and bed); **CONTROLS**, named as the printer names them (such as **Pause**, **Resume**, **Cancel** or **Stop**); and **DETAILS**.
 - **Search** (the magnifier on Home): find a device by name, room or id. Launcher search also finds devices and routines; a device opens its controls.
@@ -247,6 +248,7 @@ With **Sleep screen** set to **Home Assistant**, the sleeping Kindle shows:
 
 - **Home sections**, **Shortcuts**, **Quick tiles** and **Rooms**: each opens a list to order (see below).
 - **Routines**.
+- **Keep rows in place**: on to start with. A device you switch stays where it is in Activity until you leave the screen or refresh it.
 - **Keep turned off in On now** (see On now).
 
 ### Devices and cameras

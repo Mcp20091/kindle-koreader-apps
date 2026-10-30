@@ -15,7 +15,7 @@ local OPTIONS = {
     starred_first = "boolean", group_by_due = "boolean", show_hidden = "boolean", sync_interval = "number",
     send_now = "boolean", send_delay = "number", download_only = "boolean", sleep_screen = "boolean", sleep_content = "string",
     week_start = "string", tap_opens = "string", push_days = "number", reminders = "boolean", two_panes = "boolean",
-    local_lists = "boolean", deghost = "number",
+    local_lists = "boolean", deghost = "number", stable_lists = "boolean",
 }
 
 local signIn  -- the sign-in under way

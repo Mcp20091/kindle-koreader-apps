@@ -44,7 +44,7 @@ Notes' editor and kept by Notes' store. The AI (Claude, Gemini, OpenRouter, Groq
   parsed again when a book is laid out again.
 - Settings live in Notes' settings, all prefixed `crossword_`: `crossword_books` (source → book id),
   `crossword_today`, `crossword_source`, `crossword_kind`, `crossword_auto` (sources fetched
-  automatically) and `crossword_auto_at`, `crossword_clues` (`"large"` or unset), `crossword_boxes`,
+  automatically) and `crossword_auto_at`, `crossword_clues` (`"large"` or unset), `crossword_boxes`, `crossword_swap` (grid and clues swapped: a book's `lay` then has `+s`, and when that changes `Crossword.moveGrids` moves the writing in each grid with it),
   `crossword_card`, `crossword_find`, `crossword_timer`, `crossword_finished`, `crossword_recent`;
   plus `puzzle_buttons` (the toolbar's pinned buttons). Don't rename them: existing books depend on them.
 

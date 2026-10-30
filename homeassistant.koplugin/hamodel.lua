@@ -30,7 +30,7 @@ local MAIN = { camera = true, lock = true, cover = true, vacuum = true, media_pl
 --- The snapshot (the template's JSON) made into { now, list, byId, rooms, doors, batteries, weather }.
 function Model.parse(data)
     if type(data) ~= "table" or type(data.e) ~= "table" then return nil end
-    local snap = { now = num(data.now) or os.time(), list = {}, byId = {}, rooms = {}, doors = {}, batteries = {} }
+    local snap = { now = num(data.now) or os.time(), fetched = os.time(), list = {}, byId = {}, rooms = {}, doors = {}, batteries = {} }
     for __, row in ipairs(data.e) do
         local id = str(row[1])
         local domain = id and id:match("^([%w_]+)%.")
@@ -926,7 +926,20 @@ function Model.ago(seconds)
     if not seconds or seconds < 60 then return "just now" end
     local m = math.floor(seconds / 60)
     if m < 60 then return m .. " min ago" end
-    return math.floor(m / 60) .. " h ago"
+    local h = math.floor(m / 60)
+    if h < 48 then return h .. " h ago" end
+    return math.floor(h / 24) .. " d ago"
+end
+
+local CHANGED_DOMAINS = { lock = true, sensor = true, binary_sensor = true }
+
+--- "Changed 12 min ago" for a lock or a sensor, so a stale reading shows; nil
+-- for anything else or without a time. The age counts the time since the
+-- snapshot came in, so it keeps up when the screen redraws without an update.
+function Model.changedText(snap, e)
+    if not (snap and e and CHANGED_DOMAINS[e.domain] and e.changed) then return nil end
+    local age = (snap.now or e.changed) - e.changed + (snap.fetched and math.max(0, os.time() - snap.fetched) or 0)
+    return "Changed " .. Model.ago(age)
 end
 
 -- ------------------------------------------------------------------ the dashboard's sections

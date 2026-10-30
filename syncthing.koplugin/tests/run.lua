@@ -151,5 +151,44 @@ eq(M.validPort("65536"), nil, "validPort too high")
 eq(M.validPort("80.5"), nil, "validPort not whole")
 eq(M.validPort("abc"), nil, "validPort not a number")
 
+-- Stuck folders and conflicts, for the notifications (made-up folder and devices).
+local function folderSnap(need, bytes, connected, extra)
+    local snap = { devices = { { device = { deviceID = "PEER" }, conn = { connected = connected } } },
+        folders = { { folder = { id = "f1", label = "Papers", devices = { { deviceID = "SELF" }, { deviceID = "PEER" } } },
+            status = { state = "idle", needFiles = need, needBytes = bytes } } } }
+    for k, v in pairs(extra or {}) do snap[k] = v end
+    return snap
+end
+local function keysOf(list) local t = {} for __, p in ipairs(list) do t[#t + 1] = p.key end return table.concat(t, ",") end
+local since = {}
+local t0 = 5000
+eq(keysOf(M.problems(folderSnap(4, 800, true), since, t0)), "", "stuck: not at first")
+eq(keysOf(M.problems(folderSnap(4, 800, true), since, t0 + M.STALL_SECS - 1)), "", "stuck: not quite yet")
+local stuck = M.problems(folderSnap(4, 800, true), since, t0 + M.STALL_SECS)
+eq(keysOf(stuck), "syncthing:stalled:f1", "stuck after the time with nothing done")
+eq(stuck[1].text, "Papers hasn't finished syncing", "stuck: wording")
+eq(keysOf(M.problems(folderSnap(4, 800, true), since, t0 + M.STALL_SECS + 30)), "syncthing:stalled:f1", "stuck: same key next time")
+eq(keysOf(M.problems(folderSnap(3, 500, true), since, t0 + M.STALL_SECS + 60)), "", "stuck: progress starts the time again")
+eq(keysOf(M.problems(folderSnap(3, 500, true), since, t0 + 2 * M.STALL_SECS + 60)), "syncthing:stalled:f1", "stuck: again without progress")
+eq(keysOf(M.problems(folderSnap(0, 0, true), since, t0 + 2 * M.STALL_SECS + 90)), "", "stuck: up to date clears it")
+eq(next(since), nil, "stuck: up to date forgets the folder")
+since = {}
+M.problems(folderSnap(4, 800, false), since, 0)
+eq(keysOf(M.problems(folderSnap(4, 800, false), since, 9 * M.STALL_SECS)), "", "stuck: never with no device connected")
+local paused = folderSnap(4, 800, true)
+paused.folders[1].folder.paused = true
+M.problems(paused, since, 0)
+eq(keysOf(M.problems(paused, since, 9 * M.STALL_SECS)), "", "stuck: never when paused")
+local failing = folderSnap(4, 800, true)
+failing.folders[1].status.state = "error"
+M.problems(failing, since, 0)
+eq(keysOf(M.problems(failing, since, 9 * M.STALL_SECS)), "", "stuck: an error is its own notification")
+local one = M.problems(folderSnap(0, 0, true, { conflicts = { f1 = 1 } }), {}, 0)
+eq(keysOf(one), "syncthing:conflicts:f1", "conflicts: key")
+eq(one[1].text, "Papers has a file with a conflict", "conflicts: one")
+eq(M.problems(folderSnap(0, 0, true, { conflicts = { f1 = 3 } }), {}, 0)[1].text, "Papers has files with conflicts", "conflicts: several")
+eq(keysOf(M.problems(folderSnap(0, 0, true, { conflicts = { f1 = 0 } }), {}, 0)), "", "conflicts: none found")
+eq(keysOf(M.problems(folderSnap(0, 0, true), {}, 0)), "", "conflicts: not looked for yet")
+
 print(string.format("%d passed, %d failed", passed, failed))
 os.exit(failed == 0 and 0 or 1)

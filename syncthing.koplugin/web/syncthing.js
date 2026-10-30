@@ -80,6 +80,9 @@ App.pages.syncthing = {
         try { await App.api('/api/syncthing/settings', { json: { offWhenSynced: v } }); } catch (e) { App.fail(e); }
         setTimeout(() => page.reload(), 300);
       }), 'Turns Syncthing off once every folder is up to date with the connected devices, or after 30 minutes.'),
+      App.setting('Warn about stuck sync and conflicts', App.toggle(s.warn !== false, async (v) => {
+        try { await App.api('/api/syncthing/settings', { json: { warn: v } }); } catch (e) { App.fail(e); }
+      }), 'In the notifications: a folder that hasn’t got any closer to done for half an hour, and files with a conflict.'),
       App.setting('Web GUI password', h('span', {}, s.passwordSet === undefined || s.passwordSet === null ? '' : (s.passwordSet ? 'Set' : 'Not set'), ' ',
         h('button', { class: 'btn small', onclick: setPassword }, 'Set password')), 'For Syncthing’s own web page. User name: syncthing.'),
       App.setting('Port', h('span', {}, String(s.port), ' ', h('button', { class: 'btn small', disabled: s.running, onclick: setPort }, 'Change')),

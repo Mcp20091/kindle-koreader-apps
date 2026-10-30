@@ -630,6 +630,8 @@ end
 -- (the answers page only when the puzzle has its answers). `opts.large`:
 -- bigger clues; `opts.landscape`: pages on their side (H x W points, parts
 -- "L1"…, "La"), the grid at the left as tall as fits with the clues beside it.
+-- `opts.swap`: the grid and the clues the other way round: the clues above
+-- the grid at the bottom, or on its side the clues at the left of the grid.
 -- `opts.boxes`: a tick box before each clue (its place kept in the page's
 -- clues). The grid is where it always is for its orientation, whatever the
 -- clue size or boxes. Clues that don't fit carry on to pages with the same
@@ -648,24 +650,36 @@ function Crossword.layout(p, opts)
     if land then
         -- As big as the page's height allows, smaller while that leaves no
         -- room for the clues beside it (down to about half the width).
-        gx, gy = LEFT, 44
+        -- Swapped: the grid at the right, the clues at the left.
+        gy = 44
         local big = math.floor(math.min((ph - gy - 14) / p.rows, (pw - LEFT - RIGHT) * 0.7 / p.cols) * 10) / 10
         local small = math.floor(math.min((ph - gy - 14) / p.rows, (pw - LEFT - RIGHT) * 0.52 / p.cols) * 10) / 10
+        -- The clue columns beside a grid of cells `c` wide.
+        local function beside(c)
+            if opts.swap then return columns(LEFT, pw - RIGHT - p.cols * c - 18, 2, gy + 8, ph - 10) end
+            return columns(LEFT + p.cols * c + 18, pw - RIGHT, 2, gy + 8, ph - 10)
+        end
         cell = small
         for c = big, small, -1 do
-            local x0 = gx + p.cols * c + 18
-            local cols = columns(x0, pw - RIGHT, 2, gy + 8, ph - 10)
+            local cols = beside(c)
             if flowClues(p, cols, cols, size, line, function() end, indent) == 1 then
                 cell = c
                 break
             end
         end
-        first = columns(gx + p.cols * cell + 18, pw - RIGHT, 2, gy + 8, ph - 10)
+        gx = opts.swap and pw - RIGHT - p.cols * cell or LEFT
+        first = beside(cell)
     else
         -- The full width for big grids (21 x 21 Sundays); room for clues below the others.
+        -- Swapped: the clues above, the grid at the bottom.
         cell = math.floor((n > 15 and W - LEFT - RIGHT or math.min(450, W - LEFT - RIGHT)) / n * 10) / 10
         gx, gy = LEFT + (W - LEFT - RIGHT - p.cols * cell) / 2, 44
-        first = columns(LEFT, W - RIGHT, 2, gy + p.rows * cell + 20, ph - 10)
+        if opts.swap then
+            gy = ph - 14 - p.rows * cell
+            first = columns(LEFT, W - RIGHT, 2, 58, gy - 14)
+        else
+            first = columns(LEFT, W - RIGHT, 2, gy + p.rows * cell + 20, ph - 10)
+        end
     end
     -- More than a page of clues: room above them for the bar.
     local barY
@@ -1192,6 +1206,66 @@ function Crossword.carryGrid(src, dst, from, to)
     dst.items = #items > 0 and items or nil
 end
 
+--- The writing in the grid `from` of one page put in the same squares of
+-- the grid `to` of the same page (the grid moved: the grid and the clues
+-- swapped); writing outside the grid stays where it is. (Not carryGrid on
+-- the page itself: that would clear the new grid's place of writing that
+-- was outside the old grid.)
+function Crossword.moveGrid(page, from, to)
+    local before = { strokes = page.strokes, items = page.items }
+    local strokes, items = {}, {}
+    for __, s in ipairs(page.strokes or {}) do
+        if #s.p < 2 or not inGrid(from, strokeMiddle(s)) then table.insert(strokes, s) end
+    end
+    for __, it in ipairs(page.items or {}) do
+        if not (it.k == "text" and inGrid(from, it.x + it.w / 2, it.y + (it.size or 20) / 2)) then table.insert(items, it) end
+    end
+    local moved = {}
+    Crossword.carryGrid(before, moved, from, to)
+    for __, s in ipairs(moved.strokes or {}) do table.insert(strokes, s) end
+    for __, it in ipairs(moved.items or {}) do table.insert(items, it) end
+    page.strokes = strokes
+    page.items = #items > 0 and items or nil
+end
+
+--- A book's grid writing moved with its grids when the grid and the clues
+-- swap (`opts.swap` now, `was` before): on every written page of every
+-- puzzle, in its orientation. `load(key)` gives a parsed puzzle or nil.
+-- Returns whether anything moved.
+function Crossword.moveGrids(nb, load, opts, was)
+    if (was and true or false) == (opts.swap and true or false) then return false end
+    local pw, ph = nb.width or 1860, nb.height or 2480
+    if pw > ph then pw, ph = ph, pw end
+    local puzzles, laid, moved = {}, {}, false
+    local function lay(key, land, swap)
+        local id = key .. (land and "|L" or "|P") .. (swap and "s" or "")
+        if laid[id] == nil then
+            laid[id] = puzzles[key] and Crossword.layout(puzzles[key], { large = opts.large, boxes = opts.boxes, swap = swap, landscape = land }) or false
+        end
+        return laid[id] or {}
+    end
+    for __, page in ipairs(nb.pages) do
+        local key, part = Crossword.keyPart(page)
+        if key and written(page) then
+            if puzzles[key] == nil then puzzles[key] = load(key) or false end
+            local p = puzzles[key]
+            local land = part:sub(1, 1) == "L"
+            local w, h = land and ph or pw, land and pw or ph
+            local function gridOf(swap)
+                for __, lp in ipairs(lay(key, land, swap)) do
+                    if lp.part == part then return Crossword.gridOnScreen(p, lp, w, h) end
+                end
+            end
+            local from, to = p and gridOf(was), p and gridOf(opts.swap)
+            if from and to and (from[1] ~= to[1] or from[2] ~= to[2] or from[3] ~= to[3]) then
+                Crossword.moveGrid(page, from, to)
+                moved = true
+            end
+        end
+    end
+    return moved
+end
+
 --- The page (index) of the same puzzle laid out for the other orientation:
 -- the same part ("2" and "L2", the answers), else its first page.
 function Crossword.counterpart(nb, i)
@@ -1231,7 +1305,7 @@ end
 function Crossword.partsOf(p, opts)
     local out = {}
     for _, land in ipairs({ false, true }) do
-        for _, pg in ipairs(Crossword.layout(p, { large = opts and opts.large, boxes = opts and opts.boxes, landscape = land })) do
+        for _, pg in ipairs(Crossword.layout(p, { large = opts and opts.large, boxes = opts and opts.boxes, swap = opts and opts.swap, landscape = land })) do
             table.insert(out, pg.part)
         end
     end
@@ -1360,7 +1434,7 @@ function Crossword.bookPDF(nb, load, opts)
             local land = part:sub(1, 1) == "L"
             local lk = key .. (land and ":L" or ":P")
             if layouts[lk] == nil then
-                layouts[lk] = puzzles[key] and Crossword.layout(puzzles[key], { large = opts and opts.large, boxes = opts and opts.boxes, landscape = land }) or false
+                layouts[lk] = puzzles[key] and Crossword.layout(puzzles[key], { large = opts and opts.large, boxes = opts and opts.boxes, swap = opts and opts.swap, landscape = land }) or false
             end
             local shown
             for _, pg in ipairs(layouts[lk] or {}) do

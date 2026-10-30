@@ -29,6 +29,7 @@ local PREFS = {
     dash_temps = "boolean", dash_attention = "boolean", start = "string",
     layout = "string", dash_layout = "string",
     doorbell = "string", wake_warning = "boolean", keep_off = "number", dash_graph = "string", auto_light = "boolean",
+    stable_lists = "boolean",
 }
 
 local function ha() return Common.plugin("homeassistant") end
@@ -70,7 +71,7 @@ function Web.state(h)
     end
     for __, e in ipairs(snap.list) do
         table.insert(out.devices, {
-            id = e.id, name = e.name, domain = e.domain, area = e.area, state = Model.stateText(e),
+            id = e.id, name = e.name, domain = e.domain, area = e.area, state = Model.stateText(e), changed = Model.changedText and Model.changedText(snap, e) or nil,
             visible = Model.visible(e, prefs), primary = Model.isPrimary(e), quick = quick[e.id] or false,
         })
         if e.domain == "camera" then table.insert(out.cameras, { id = e.id, name = e.name }) end

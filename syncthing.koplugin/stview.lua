@@ -717,6 +717,11 @@ function View.settingsRows(st, view)
             st:setOffWhenSynced(not st:offWhenSynced())
             view:refresh()
         end },
+        { _("NOTIFICATIONS") },
+        { _("Warn about stuck sync and conflicts"), st:warnsOfProblems(), function()
+            st:setWarnsOfProblems(not st:warnsOfProblems())
+            view:refresh()
+        end },
         { _("WEB GUI") },
         { _("Password"), st:passwordSet() == nil and "" or (st:passwordSet() and _("Set") or _("Not set")),
             function() view:askPassword() end },

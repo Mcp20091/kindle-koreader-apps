@@ -225,6 +225,8 @@ App.pages.crosswords = {
         'The books are laid out again on the Kindle.'),
       App.setting('Clue boxes', App.toggle(st.crossword_boxes !== false, (v) => save('crossword_boxes', v)),
         'A tick box before each clue: tap it, or draw through it, with the pen.'),
+      App.setting('Swap grid and clues', App.toggle(st.crossword_swap === true, (v) => save('crossword_swap', v)),
+        'The clues on top and the grid at the bottom (on its side, the grid on the right). Writing in the grid moves with it.'),
       App.setting('Clue card', App.select([['other', 'Clues on other pages'], ['all', 'Every clue']], st.crossword_card === 'other' ? 'other' : 'all', (v) => save('crossword_card', v === 'other' ? 'other' : '')),
         'The card a number in the grid opens: only for clues on another page, or for every clue.'),
       App.setting('Undo after a tick', App.select([['0', 'Off'], ['2', '2 seconds'], ['3', '3 seconds'], ['5', '5 seconds'], ['8', '8 seconds']], st.crossword_undo || '3', (v) => save('crossword_undo', v === '3' ? '' : v)),
