@@ -232,12 +232,12 @@ local function controls(plugin, i)
             plugin:act("light", { on = not i.light }, function(ok, why) if not ok then failed(plugin, why) end end)
         end })
     end
-    if i.hasFiltration then
+    if i.hasFiltration and plugin:shows("filter") then
         table.insert(q, { icon = "fan", text = _("Filter"), sub = M.filtrationText(i.filtration), fn = function()
             UI.filtration(plugin, i)
         end })
     end
-    if i.camera then
+    if i.camera and plugin:shows("camera") then
         table.insert(q, { icon = "camera", text = _("Camera"), fn = function() UI.camera(plugin) end })
     end
     return q
@@ -300,9 +300,13 @@ function UI.mainItems(plugin)
         local p = {
             { icon = "gauge", label = _("Speed"), value = T("%1%", math.floor(i.speed + 0.5)), fn = function() UI.tune(plugin, "speed") end },
             { icon = "arrow-up-down", label = _("Z offset"), value = M.zText(i.zOffset), fn = function() UI.tune(plugin, "zOffset") end },
-            { icon = "fan", label = _("Cooling fan"), value = T("%1%", math.floor(i.coolingFan + 0.5)), fn = function() UI.tune(plugin, "coolingFan") end },
         }
-        if i.hasChamberFan then
+        local fans = plugin:shows("coolingFan") or (i.hasChamberFan and plugin:shows("chamberFan"))
+        if plugin:shows("coolingFan") then
+            table.insert(p, { icon = "fan", label = _("Cooling fan"), value = T("%1%", math.floor(i.coolingFan + 0.5)),
+                fn = function() UI.tune(plugin, "coolingFan") end })
+        end
+        if i.hasChamberFan and plugin:shows("chamberFan") then
             table.insert(p, { icon = "fan", label = _("Chamber fan"), value = T("%1%", math.floor(i.chamberFan + 0.5)),
                 fn = function() UI.tune(plugin, "chamberFan") end })
         end
@@ -313,7 +317,8 @@ function UI.mainItems(plugin)
             table.insert(p, { icon = "layers", label = _("Filament"), value = i.filament })
         end
         t[#t + 1] = { stats = p, cols = 3 }
-        t[#t + 1] = { note = _("Tap Speed, Z offset or a fan to change it for this print.") }
+        t[#t + 1] = { note = fans and _("Tap Speed, Z offset or a fan to change it for this print.")
+            or _("Tap Speed or Z offset to change it for this print.") }
     end
 
     if #i.slots > 0 then
@@ -326,12 +331,16 @@ function UI.mainItems(plugin)
     end
 
     t[#t + 1] = { band = _("MORE") }
-    t[#t + 1] = { tiles = {
+    local more = {
         { icon = "file", text = _("Recent files"), sub = _("Start a print"), fn = function() UI.files(plugin) end },
-        { icon = "camera", text = _("Camera"), sub = i.camera and _("Take a picture") or _("None reported"), fn = function() UI.camera(plugin) end },
         { icon = "info", text = _("Details"), sub = i.firmware ~= "" and T(_("Firmware %1"), i.firmware) or i.model,
             fn = function() UI.details(plugin) end },
-    }, cols = 3 }
+    }
+    if plugin:shows("camera") then
+        table.insert(more, 2, { icon = "camera", text = _("Camera"), sub = i.camera and _("Take a picture") or _("None reported"),
+            fn = function() UI.camera(plugin) end })
+    end
+    t[#t + 1] = { tiles = more, cols = #more }
     return t
 end
 
@@ -822,13 +831,29 @@ function UI.settingsItems(plugin, redo)
             G_reader_settings:saveSetting("flashforge_leveling", not plugin:leveling())
             redo()
         end }
-    t[#t + 1] = { toggle = G_reader_settings:isTrue("flashforge_light_always"), text = _("Always show the light button"),
-        sub = _("For a printer that says it has no light"),
-        callback = function()
-            G_reader_settings:flipNilOrFalse("flashforge_light_always")
+    -- SHOW: hide what this printer doesn't have (all shown at first).
+    t[#t + 1] = { band = _("SHOW") }
+    local function show(what, text, sub)
+        t[#t + 1] = { toggle = plugin:shows(what), text = text, sub = sub, callback = function()
+            G_reader_settings:saveSetting("flashforge_show_" .. what, not plugin:shows(what))
             redo()
             UI.refreshAll()
         end }
+    end
+    show("light", _("Light"), _("Its button on the main page and the Camera page"))
+    if plugin:shows("light") then
+        t[#t + 1] = { toggle = G_reader_settings:isTrue("flashforge_light_always"), text = _("Even if the printer says it has none"),
+            sub = _("Some printers have a light but don't say so"),
+            callback = function()
+                G_reader_settings:flipNilOrFalse("flashforge_light_always")
+                redo()
+                UI.refreshAll()
+            end }
+    end
+    show("camera", _("Camera"), _("Its button and the Camera page"))
+    show("filter", _("Air filter"), _("On the printers that have one"))
+    show("coolingFan", _("Cooling fan"), _("While printing"))
+    show("chamberFan", _("Chamber fan"), _("While printing, on the printers that report one"))
     t[#t + 1] = { band = _("PRINTER") }
     t[#t + 1] = { setting = true, text = _("Printer"), value = plugin:configured() and plugin:printerName() or _("Not set up"),
         hint = _("Find printers on this Wi-Fi"), callback = function() UI.find(plugin) end }

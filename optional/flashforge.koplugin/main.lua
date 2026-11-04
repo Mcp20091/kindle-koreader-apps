@@ -232,8 +232,18 @@ function FlashForge:readTime() return state.time end
 function FlashForge:lastWhy() return state.why end
 function FlashForge:reading() return state.reading end
 
---- Whether the printer says it has a light to switch (its /product; yes when unknown).
+-- What Settings > SHOW can hide, for a printer without it (all shown at first).
+FlashForge.SHOWS = { "light", "camera", "filter", "coolingFan", "chamberFan" }
+
+--- Whether Settings > SHOW shows this (light, camera, filter, coolingFan, chamberFan).
+function FlashForge:shows(what)
+    return G_reader_settings:nilOrTrue("flashforge_show_" .. what)
+end
+
+--- Whether the light button shows: not hidden in Settings, and the printer says it
+-- has a light to switch (its /product; yes when unknown) or Always show is on.
 function FlashForge:hasLight()
+    if not self:shows("light") then return false end
     if G_reader_settings:isTrue("flashforge_light_always") then return true end
     local p = state.product
     if not p then return true end
@@ -560,8 +570,9 @@ function FlashForge:webState()
     local c = self:cfg()
     local i = self:configured() and self:status(5) or nil
     local out = { configured = self:configured(), ip = c.ip, name = self:printerName(), model = c.model,
-        hasCode = c.code ~= nil, interval = self:interval(), leveling = self:leveling(),
+        hasCode = c.code ~= nil, interval = self:interval(), leveling = self:leveling(), show = {},
         read = state.time > 0 and state.time or nil, why = state.why and self:whyText(state.why) or nil }
+    for __, k in ipairs(FlashForge.SHOWS) do out.show[k] = self:shows(k) end
     if i then
         local twentyFour = not G_reader_settings:isTrue("twelve_hour_clock")
         out.state, out.stateText, out.summary = i.state, M.stateText(i.state), M.summary(i)
@@ -575,13 +586,13 @@ function FlashForge:webState()
         end
         if M.active(i.state) then
             out.tune = { speed = math.floor(i.speed + 0.5), zOffset = i.zOffset, zText = M.zText(i.zOffset),
-                coolingFan = math.floor(i.coolingFan + 0.5),
-                chamberFan = i.hasChamberFan and math.floor(i.chamberFan + 0.5) or nil,
+                coolingFan = self:shows("coolingFan") and math.floor(i.coolingFan + 0.5) or nil,
+                chamberFan = (i.hasChamberFan and self:shows("chamberFan")) and math.floor(i.chamberFan + 0.5) or nil,
                 speeds = M.SPEEDS, fans = M.FANS, zChoices = M.zChoices(i.zOffset) }
         end
-        out.hasCamera = i.camera
+        out.hasCamera = i.camera and self:shows("camera")
         out.light, out.hasLight = i.light, self:hasLight()
-        out.filtration, out.hasFiltration = i.filtration, i.hasFiltration
+        out.filtration, out.hasFiltration = i.filtration, i.hasFiltration and self:shows("filter")
         out.error = i.error
         out.slots = {}
         for __, s in ipairs(i.slots) do
@@ -595,7 +606,8 @@ end
 --- The web page's actions: pause, resume, cancel, clear, light { on },
 -- filtration { mode }, tune { speed, zOffset, coolingFan, chamberFan } (any of
 -- them, during a print), camera { on }, refresh (started in the background: the page reads
--- the state again after); settings { ip, serial, code, interval, leveling }.
+-- the state again after); settings { ip, serial, code, interval, leveling, show { light,
+-- camera, filter, coolingFan, chamberFan = true/false } }.
 -- Returns true, or false and why.
 function FlashForge:webAct(name, args)
     args = type(args) == "table" and args or {}
@@ -612,6 +624,11 @@ function FlashForge:webAct(name, args)
             G_reader_settings:saveSetting("flashforge_interval", math.max(5, math.min(300, math.floor(tonumber(args.interval)))))
         end
         if type(args.leveling) == "boolean" then G_reader_settings:saveSetting("flashforge_leveling", args.leveling) end
+        if type(args.show) == "table" then
+            for __, k in ipairs(FlashForge.SHOWS) do
+                if type(args.show[k]) == "boolean" then G_reader_settings:saveSetting("flashforge_show_" .. k, args.show[k]) end
+            end
+        end
         if self:configured() and next(t) then self:fetch() end
         return true
     end

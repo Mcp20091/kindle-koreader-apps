@@ -83,7 +83,7 @@ App.pages.flashforge = {
     return h('div', { class: 'card' }, h('h2', {}, 'This print'),
       App.setting('Speed', App.select(withNow(pct(t.speeds), t.speed), t.speed, (v) => send({ speed: Number(v) }))),
       App.setting('Z offset', App.select(z, t.zOffset, (v) => send({ zOffset: Number(v) })), 'Up lifts the nozzle, down presses the first layer in.'),
-      App.setting('Cooling fan', App.select(withNow(pct(t.fans), t.coolingFan), t.coolingFan, (v) => send({ coolingFan: Number(v) }))),
+      t.coolingFan != null ? App.setting('Cooling fan', App.select(withNow(pct(t.fans), t.coolingFan), t.coolingFan, (v) => send({ coolingFan: Number(v) }))) : null,
       t.chamberFan != null ? App.setting('Chamber fan', App.select(withNow(pct(t.fans), t.chamberFan), t.chamberFan, (v) => send({ chamberFan: Number(v) }))) : null);
   },
 
@@ -100,6 +100,7 @@ App.pages.flashforge = {
 
   settings(s) {
     const page = this;
+    const show = s.show || {};
     const save = (args, done) => App.api('/api/flashforge/act', { json: { name: 'settings', args } })
       .then(() => { App.toast(done || 'Saved'); setTimeout(() => page.reload(), 1500); }).catch(App.fail);
     const ip = h('input', { type: 'text', value: s.ip || '', placeholder: '192.168.1.50' });
@@ -109,6 +110,10 @@ App.pages.flashforge = {
       App.setting('Read every', App.select([[5, '5 seconds'], [10, '10 seconds'], [15, '15 seconds'], [30, '30 seconds'], [60, '1 minute'], [120, '2 minutes'], [300, '5 minutes']],
         s.interval || 10, (v) => save({ interval: Number(v) })), 'While FlashForge is open on the Kindle. Nothing is read once it closes.'),
       App.setting('Level the bed first', App.toggle(!!s.leveling, (v) => save({ leveling: v })), 'Before each print started from the Kindle.'),
+      h('h3', {}, 'Show'),
+      h('p', { class: 'small muted' }, 'Turn off what your printer doesn’t have. It’s hidden here and on the Kindle.'),
+      ...[['light', 'Light'], ['camera', 'Camera'], ['filter', 'Air filter'], ['coolingFan', 'Cooling fan'], ['chamberFan', 'Chamber fan']]
+        .map(([k, label]) => App.setting(label, App.toggle(show[k] !== false, (v) => save({ show: { [k]: v } })))),
       h('h3', {}, 'Printer'),
       App.setting('IP address', ip, 'Find it on the printer under Settings > Network.'),
       App.setting('Serial number', serial, 'Find it on the printer under Settings > About. Include the SN at the start.'),

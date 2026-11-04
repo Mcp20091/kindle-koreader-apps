@@ -46,7 +46,7 @@ The launcher's **Set up your Kindle** has the same step (**FlashForge printer**)
 ## The app
 
 - **The print box** at the top: the printer's state (**Printing 42% · 1 h 5 min left**, **Paused**, **Heating**, **Ready**…), and while it prints or just finished, the file's picture and name, a progress bar, the layer (**Layer 120 of 300**), how long it has printed and when it will be done (**done at 14:30**). An error shows its code (**Error code 5**), and the Creator 5 Pro says when its door is open.
-- **Buttons** under it, shown when they apply:
+- **Buttons** under it, shown when they apply (Settings > SHOW hides the ones your printer doesn't have):
   - **Pause** and **Resume**.
   - **Cancel**: asks **Cancel print?** first, because a cancelled print can't be resumed. **Keep printing** goes back.
   - **Clear**: after a print, tell the printer the plate is clear so it is ready for the next one.
@@ -111,7 +111,11 @@ The same page opens from the launcher's **Settings** list, under **Optional apps
   - **Read every**: how often the printer is read while FlashForge is open, from 5 seconds to 5 minutes.
 - **PRINTING**
   - **Level the bed first**: before each print started from the Kindle.
-  - **Always show the light button**: for a printer that says it has no light but has one.
+- **SHOW**: turn off what your printer doesn't have, and it's hidden on the Kindle and the web page. All are on to start with.
+  - **Light**: its button on the main page and the Camera page. **Even if the printer says it has none** shows it anyway, for a printer that has a light but doesn't say so.
+  - **Camera**: its button and the Camera page.
+  - **Air filter**: on the printers that have one.
+  - **Cooling fan** and **Chamber fan**: under PRINT while printing.
 - **PRINTER**
   - **Printer**: the one set up; tap to find printers again.
   - **IP address**, **Serial number** and **Check code**. The last two show only their end.
@@ -132,7 +136,7 @@ The web page (see the Web server chapter) has a **FlashForge** tab:
 - The temperatures, a **Light** switch, **Camera** **On** and **Off**, and, on the printers that have one, the **Air filter**.
 - While printing, **This print**: **Speed**, **Z offset**, **Cooling fan** and **Chamber fan**, each sent as soon as you pick it.
 - The **Material Station**'s slots.
-- **Settings**: **Read every**, **Level the bed first**, and the **IP address**, **Serial number** and **Check code**, with **Save** and **Test connection**.
+- **Settings**: **Read every**, **Level the bed first**, the **Show** switches (as on the Kindle), and the **IP address**, **Serial number** and **Check code**, with **Save** and **Test connection**.
 
 Starting a print and camera pictures are on the Kindle only. The tab updates itself while the printer is read.
 

@@ -72,6 +72,10 @@ it's installed, with nothing of it in their code.
 - The Camera page's Refresh automatically (`flashforge_camera_auto`, every `flashforge_camera_every` s,
   10 to 300, 30 by default) takes a picture only while that page is on top, quietly (no waiting box, no
   full refresh); off by default for the battery.
+- Settings > SHOW (`flashforge_show_<light|camera|filter|coolingFan|chamberFan>`, nil = shown; `plugin:shows(what)`,
+  `FlashForge.SHOWS`) hides a control the printer doesn't have, on the Kindle and in `webState` (the web tab
+  saves them with `settings { show = { … } }`). `hasLight()` checks it first. Quick buttons and the gesture
+  a user added on purpose still work.
 - Every request runs in a child process (`ffbg.run`) with a deadline; KOReader's loop only polls.
 - Pictures go to `koreader/cache/flashforge/`: thumbnails by file name (read once), camera pictures as a
   new file each time (the page keeps pictures by path), the one before removed. ffpage frees its pictures
