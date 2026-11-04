@@ -94,17 +94,17 @@ do
                 local token, why = PS.microsoft.accessToken(true)
                 table.insert(rows, { name = _("Your sign-in"), detail = PS.microsoft.account(),
                     ms = math.floor((require("socket").gettime() - started) * 1000), ok = token ~= nil,
-                    why = not token and (tostring(why):find("sign in again") and _("It has run out. Sign in again.") or Test.why(why)) or nil,
+                    why = not token and (tostring(why):find("sign in again") and _("It has expired. Sign in again.") or Test.why(why)) or nil,
                     raw = not token and tostring(why) or nil })
             end
             return rows
         end }
     PS.registerSetup{ key = "microsoft", order = 30, icon = "key-round", title = _("Microsoft"),
-        text = _("To Do and Notes' OneNote use your Microsoft account: one App ID (a free app registration with Microsoft) and one sign-in, with a code on your phone or computer."),
+        text = _("To Do and OneNote in Notes use your Microsoft account. You need an App ID (free from Microsoft) and to sign in once, with a code on your phone or computer."),
         done = function() return PS.microsoft.signedIn() end,
         doneText = _("Signed in"),
         action = _("Sign in"),
-        skipped = _("To Do keeps lists on this Kindle only, with everything but syncing, and Notes works without OneNote. Sign in any time in Settings > Microsoft."),
+        skipped = _("To Do keeps its lists on this Kindle only and does everything but sync. Notes works without OneNote. Sign in any time in Settings > Microsoft."),
         run = function()
             local M = require("appsmicrosoft")
             if PS.microsoft.clientId() then return M.signIn() end
@@ -112,7 +112,7 @@ do
         end,
         help = { button = _("How to get an App ID"), title = _("Getting an App ID"),
             steps = {
-                _("A personal Microsoft account first needs a free Azure account (azure.microsoft.com/free), which gives it the directory apps are registered in. A work or school account already has one."),
+                _("A personal Microsoft account first needs a free Azure account (azure.microsoft.com/free). A work or school account already has one."),
                 _("On a computer, sign in at portal.azure.com and open App registrations > New registration."),
                 _("Name it (\"Kindle\"), choose \"Accounts in any organizational directory and personal Microsoft accounts\", leave the redirect empty, and Register."),
                 _("Authentication: set \"Allow public client flows\" to Yes, and Save."),
@@ -223,7 +223,7 @@ do
         doneText = _("Set up"),
         action = _("Set up the AI"),
         run = function() require("appsaiview").show() end,
-        skipped = _("Everything works without it; the AI buttons stay hidden. Set one up any time in Settings > AI."),
+        skipped = _("Everything works without it, and the AI buttons stay hidden. Set one up any time in Settings > AI."),
         -- Where each service's key comes from (the steps and a QR code to the guide).
         help = {
             button = _("How to get a key"),
@@ -277,7 +277,7 @@ do
         done = function() return NetworkMgr:isWifiOn() and NetworkMgr:isConnected() ~= false end,
         doneText = _("Connected"),
         action = _("Turn on Wi-Fi"),
-        skipped = _("Reading, Notes, Crosswords you already have and lists on this Kindle all work. What syncs or downloads waits for Wi-Fi."),
+        skipped = _("Reading, Notes, crosswords you already have and lists on this Kindle all work. Syncing and downloads wait for Wi-Fi."),
         run = function() NetworkMgr:toggleWifiOn(nil, true, true) end }
     -- Updates, right after Wi-Fi: where they are (Settings > Updates), whether a newer version is
     -- out (looked up when the step shows, on Wi-Fi), and the optional apps with Install.
@@ -306,12 +306,12 @@ do
             if upd.busy and not upd.rel then
                 rows[#rows + 1] = { title = _("Looking for a new version…"), value = have, fn = function() end }
             elseif upd.rel and newer() then
-                rows[#rows + 1] = { title = T(_("%1 is out"), upd.rel.tag), sub = T(_("Installed: %1. Tap to see what's new and update."), have),
+                rows[#rows + 1] = { title = T(_("Version %1 is available"), upd.rel.tag), sub = T(_("You have %1. Tap to see what's new and update."), have),
                     fn = function() U.offer(plugin, upd.rel) end }
             elseif upd.rel then
                 rows[#rows + 1] = { title = _("Up to date"), value = have, fn = function() U.check(plugin) end }
             else
-                rows[#rows + 1] = { title = _("Check for updates"), sub = upd.why or _("Once the Kindle is on Wi-Fi."), value = have,
+                rows[#rows + 1] = { title = _("Check for updates"), sub = upd.why or _("Connect to Wi-Fi to check."), value = have,
                     fn = function(refresh) U.forget() lookUp() refresh() end }
             end
             rows[#rows + 1] = { title = _("Check automatically"), value = U.auto() and _("On") or _("Off"),
@@ -320,7 +320,7 @@ do
             -- are installed, and which), opening the list of them, each with Install or Remove (KOReader
             -- restarts after), as on the Updates page. One row however many there are, so the step fits.
             if upd.optional and #upd.optional > 0 then
-                local value, line = U.optionalSummary(upd.optional)
+                local value, line = U.optionalSummary(upd.optional, upd.optionalRel or upd.rel)
                 rows[#rows + 1] = { title = _("Optional apps"), sub = line, value = value,
                     fn = function() U.optionalList(plugin, upd.optional, upd.optionalRel or upd.rel) end }
             end
@@ -329,7 +329,7 @@ do
     -- The weather for At a glance, the widgets sleep screen and the Weather tile.
     -- Which tiles show, the layout, and the quick buttons.
     PS.registerSetup{ key = "launcher", order = 65, icon = "grid-3x3", title = _("Your home screen"),
-        text = _("Make the home screen yours. Tap a setting to change it. Gestures, Battery and KOReader settings start hidden: tick them under Tiles if you want them."),
+        text = _("Make the home screen yours. Tap a setting to change it. Gestures, Battery and KOReader settings start hidden. Tick them under Tiles to show them."),
         done = function() return Apps.instance ~= nil and Apps.instance.settings.launcher_setup_done == true end,
         doneText = _("Changed"),
         skipped = _("The home screen keeps the usual tiles and buttons. Change them any time in Settings > Edit home screen and Quick buttons."),
@@ -386,10 +386,10 @@ do
             }
         end }
     PS.registerSetup{ key = "weather", order = 25, icon = "cloud-sun", title = _("Weather"),
-        text = _("The weather on the launcher and the sleep screen: Home Assistant's, or without it a free forecast from Open-Meteo (no account). Pick your town or city."),
+        text = _("Shows the weather on the launcher and the sleep screen, from Home Assistant or a free forecast from Open-Meteo (no account needed). Pick your town or city."),
         done = function() return Apps.instance ~= nil and require("appsweather").source(Apps.instance) ~= nil end,
         doneText = _("Set"), action = _("Pick a place"),
-        skipped = _("The launcher and the sleep screen leave the weather out. Set a place any time: Settings > Launcher > WEATHER."),
+        skipped = _("The launcher and the sleep screen leave the weather out. Set a place any time in Settings > Launcher > WEATHER."),
         run = function() if Apps.instance then require("appsweather").choosePlace(Apps.instance) end end }
 end
 
@@ -553,7 +553,7 @@ function Apps.watchWifi()
         if now - idle.at >= minutes * 60 then
             idle.at = now
             NetworkMgr:toggleWifiOff(nil, true)
-            require("appsko").toast(T(_("Wi-Fi turned off: not used for %1 min"), minutes))
+            require("appsko").toast(T(_("Wi-Fi turned off after %1 min without use"), minutes))
         end
     end
     UIManager:scheduleIn(60, Apps.wifiTask)
@@ -934,7 +934,7 @@ end
 function Apps:setSleep(v)
     local Device = require("device")
     if Device.supportsScreensaver and not Device:supportsScreensaver() then
-        return require("appsko").message(_("On this device KOReader does not draw the sleep screen (on a Kindle: Amazon's ads, \"special offers\", are on), so it cannot show anything there."))
+        return require("appsko").message(_("KOReader can't draw the sleep screen on this device, so nothing can be shown there. On a Kindle, this happens when Amazon's ads (\"special offers\") are on."))
     end
     if v == "none" then G_reader_settings:delSetting("sleep_screen_app") else G_reader_settings:saveSetting("sleep_screen_app", v) end
     local todo = self:plugin("todo")

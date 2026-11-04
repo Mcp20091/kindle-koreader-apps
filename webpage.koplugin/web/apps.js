@@ -100,11 +100,11 @@ App.pages.apps = {
       const menu = async (e, inGroup) => {
         const groups = list.filter((g) => g.kind === 'group' && g.key !== e.key);
         const actions = [{ text: 'Cancel', result: null }, { text: 'Move up', result: 'up' }, { text: 'Move down', result: 'down' }, { text: 'Remove', danger: true, result: 'remove' }];
-        if (inGroup) actions.splice(1, 0, { text: 'Out of the group', result: 'out' });
+        if (inGroup) actions.splice(1, 0, { text: 'Take out of the group', result: 'out' });
         if (e.kind === 'group') actions.splice(1, 0, { text: 'Rename', result: 'rename' });
         const into = !inGroup && e.kind !== 'group' && groups.length ? App.select([['', 'Move to a group…'], ...groups.map((g) => [g.key, g.name])], '', () => {}) : null;
         const body = h('div', { class: 'stack' },
-          h('p', { class: 'muted small' }, e.kind === 'group' ? 'A group: one button that drops down its own. Removing it takes its buttons out too.' : 'Tap on the Kindle does the quick thing; hold opens what’s behind it.'),
+          h('p', { class: 'muted small' }, e.kind === 'group' ? 'A group: one button that drops down its own. Removing it takes its buttons out too.' : 'On the Kindle, tap a button to use it, or hold it for more.'),
           into);
         if (into) actions.splice(1, 0, { text: 'Move', result: 'into' });
         const r = await App.modal(e.name, body, actions);
@@ -184,7 +184,7 @@ App.pages.apps = {
         return left.length ? h('optgroup', { label }, left.map((x) => h('option', { value: x.key }, x.name))) : null;
       }));
       return h('div', { class: 'card stack' }, h('h2', {}, 'Quick buttons'),
-        h('p', { class: 'muted small' }, 'Drawn as on the Kindle. Drag to reorder, between sections, or onto a group to put it there; click one to remove it or move it. On the Kindle, tap does the quick thing and hold opens what’s behind it.'),
+        h('p', { class: 'muted small' }, 'Drawn as on the Kindle. Drag to reorder, between sections, or onto a group to put it there; click one to remove it or move it. On the Kindle, tap a button to use it, or hold it for more.'),
         App.setting('Show on the home screen', App.toggle(onHome, set('toggles')), 'Your first buttons, two rows under the clock, then More.'),
         h('div', { class: 'small', style: 'font-weight:600;margin-top:6px' }, onHome ? 'On the home screen' : 'On the home screen: none'),
         h('p', { class: 'muted small', style: 'margin:0' }, onHome ? 'Two rows under the clock, then More. Also in the control center.' : 'Turn on Show on the home screen to have your first buttons there.'),
@@ -193,7 +193,7 @@ App.pages.apps = {
         h('p', { class: 'muted small', style: 'margin:0' }, homeN ? 'More on the home screen opens these. Drag one up to put it on the home screen.' : 'Tap the time and battery at the top of any screen.'),
         area,
         App.arr(s.quickCore).length ? h('div', { class: 'small', style: 'font-weight:600;margin-top:6px' }, 'Always in the control center') : null,
-        App.arr(s.quickCore).length ? h('p', { class: 'muted small', style: 'margin:0' }, 'Built in. Click one to add it to your buttons and place it yourself.') : null,
+        App.arr(s.quickCore).length ? h('p', { class: 'muted small', style: 'margin:0' }, 'Built in. Click one to add it to your buttons, where you can move it.') : null,
         App.arr(s.quickCore).length ? coreArea : null,
         groupsBox,
         h('div', { class: 'row' }, pick,
@@ -252,7 +252,7 @@ App.pages.apps = {
         return [];
       };
       return h('div', { class: 'card stack' }, h('h2', {}, 'Home screen'),
-        h('p', { class: 'muted small' }, 'As the launcher shows them, in its layout and columns, left to right. Drag a tile to reorder it, into a group, or to Hidden; or tap one for the same as a menu (and Rename, Icon or Delete for a group, Remove for a shortcut).'),
+        h('p', { class: 'muted small' }, 'As the launcher shows them, in its layout and columns, left to right. Drag a tile to reorder it, put it in a group or move it to Hidden, or click one for its menu (with Rename, Icon and Delete for a group, Remove for a shortcut).'),
         App.visualZones(zones, { onChange: save, actions }),
         h('div', { class: 'row' }, h('button', { class: 'btn', onclick: async () => {
           const name = await App.prompt('New group', '', 'Group name');
@@ -272,7 +272,7 @@ App.pages.apps = {
       const card = (w) => h('div', { class: 've-card' }, h('div', { class: 'k' }, (SAMPLE[w.key] || [])[0] || w.name.toUpperCase()),
         h('div', { style: 'font-weight:600' }, w.key === 'clock' ? '9:41 PM' : w.name), h('div', { class: 'muted small' }, (SAMPLE[w.key] || [])[1] || ''));
       return h('div', { class: 'card stack' }, h('h2', {}, 'Widgets sleep screen'),
-        h('p', { class: 'muted small' }, 'Its parts, top to bottom, when the sleep screen is Widgets (the Home tab picks the sleep screen). Drag to reorder or to Off, or tap one for a menu.'),
+        h('p', { class: 'muted small' }, 'What it shows, top to bottom, when the sleep screen is Widgets (pick the sleep screen on the Home tab). Drag to reorder or to Off, or click one for a menu.'),
         App.visualZones([
           { id: 'on', title: 'On the sleep screen', short: 'On', className: 'column', items: items.filter((w) => w.on), render: card },
           { id: 'off', title: 'Off', short: 'Off', className: 'column tray', empty: 'Drop parts here to leave them out', items: items.filter((w) => !w.on), render: card },
@@ -307,10 +307,10 @@ App.pages.apps = {
       };
       const units = st.weather_units || ((place.cc || 'US') === 'US' ? 'f' : 'c');
       return h('div', { class: 'card' }, h('h2', {}, 'Weather'),
-        h('p', { class: 'muted small' }, 'For At a glance, the widgets sleep screen and the Weather tile. ', App.link('Open-Meteo', 'https://open-meteo.com'),
+        h('p', { class: 'muted small' }, 'Used by At a glance, the widgets sleep screen and the Weather tile. ', App.link('Open-Meteo', 'https://open-meteo.com'),
           ' is a free forecast with no account; in the US, alerts come from the ', App.link('National Weather Service', 'https://www.weather.gov'), '.'),
         App.setting('Weather from', App.select([['auto', 'Automatic'], ['ha', 'Home Assistant'], ['openmeteo', 'Open-Meteo (free)'], ['off', 'Off']], st.weather || 'auto', set('weather')),
-          'Automatic: Home Assistant’s when it has weather, else Open-Meteo once a place is set.'),
+          'Automatic uses Home Assistant’s weather if it has any, otherwise Open-Meteo once a place is set.'),
         App.setting('Place', h('span', { class: 'row' }, placeText, h('button', { class: 'btn small', onclick: change }, place.name ? 'Change' : 'Set'))),
         App.setting('Units', App.select([['f', '°F'], ['c', '°C']], units, set('weather_units'))),
         st.weather !== 'off' ? App.connectionTest('weather') : null);
@@ -353,7 +353,7 @@ App.pages.apps = {
       const turnOff = () => send({ off: true }, 'Turn off: enter your ' + word);
       const stays = [['sleep', 'Until the Kindle sleeps'], ['5', '5 minutes'], ['15', '15 minutes'], ['60', '1 hour']];
       return h('div', { class: 'card' }, h('h2', {}, 'App lock'),
-        h('p', { class: 'muted small' }, 'A passcode or password before the apps you tick, asked on the Kindle however an app is opened (its tile, Recent apps, a notification, search, a quick button or a gesture). Once it’s right, they stay unlocked until the Kindle sleeps. This web page has its own password: System > Password.'),
+        h('p', { class: 'muted small' }, 'The Kindle asks for a passcode or password before opening the apps you tick, however they’re opened (a tile, Recent apps, a notification, search, a quick button or a gesture). Once it’s entered, they stay unlocked until the Kindle sleeps. This web page has its own password, in System > Password.'),
         App.setting(lk.set && lk.kind === 'password' ? 'Password' : 'Passcode', h('span', { class: 'row' },
           h('span', { class: 'muted' }, lk.set ? 'On' : 'Off'),
           h('button', { class: 'btn small', onclick: setNew }, lk.set ? 'Change' : 'Set'),
@@ -381,7 +381,7 @@ App.pages.apps = {
         ...App.arr(s.buttonLabelApps).map((ap) => App.setting('Button labels: ' + ap.name,
           App.select([['default', 'Default'], ['on', 'On'], ['off', 'Off']], ap.value, (v) => post('/api/apps/settings', { button_labels_app: { key: ap.key, value: v } }).then(reload)))),
         App.setting('Page bar', App.select([['parts', 'Numbered parts'], ['next', 'Parts and Next'], ['words', 'Words']], st.page_bar || 'parts', set('page_bar')),
-          'At the foot of every app’s pages when there are several: a part per page to tap, the parts and a Next button, or “Page 1 of 4 · Next page”.'),
+          'At the bottom of every app’s screen when it has several pages: a part per page to tap, the parts and a Next button, or “Page 1 of 4 · Next page”.'),
         App.setting('At a glance', App.toggle(st.today !== false, set('today')), 'The weather, what’s next and the tasks due, under the clock.'),
         App.setting('Continue reading', App.toggle(!((tiles.find((t) => t.key === 'reading') || {}).hidden), (v) => post('/api/apps/tiles', { key: 'reading', hidden: !v }).then(reload)),
           'The tile with your current book and how far you are in it. The same as hiding it in Home screen.'),
@@ -398,6 +398,6 @@ App.pages.apps = {
       lockCard(),
       h('div', { class: 'card' }, h('h2', {}, 'Wi-Fi'),
         App.setting('Turn off when idle', App.select([['0', 'Off'], ['5', 'After 5 min'], ['15', 'After 15 min'], ['30', 'After 30 min']], String(st.wifi_idle || 0), (v) => set('wifi_idle')(Number(v))),
-          'With no network use for that long. Not while the web server is on.')));
+          'After that long without network use. Not while the web server is on.')));
   },
 };

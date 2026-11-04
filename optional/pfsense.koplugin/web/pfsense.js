@@ -465,10 +465,10 @@ App.pages.pfsense = {
     return h('div', { class: 'card' }, h('h2', {}, 'Settings'),
       App.setting('Read every', App.select([[15, '15 seconds'], [30, '30 seconds'], [60, '1 minute'], [120, '2 minutes'], [300, '5 minutes']],
         s.interval || 60, (v) => save({ interval: Number(v) })), 'While pfSense is open on the Kindle. Nothing is read once it closes.'),
-      App.setting('Gateways, interfaces and services going down', App.toggle(s.notify !== false, (v) => save({ notify: v })), 'A notification on the Kindle, seen while pfSense is read; it goes when they’re back.'),
+      App.setting('Gateways, interfaces and services going down', App.toggle(s.notify !== false, (v) => save({ notify: v })), 'A notification on the Kindle, checked whenever pfSense is read. Cleared when they’re back.'),
       h('h3', {}, 'Connection'),
-      App.setting('Address', url, 'The firewall’s web interface, such as https://192.168.1.1 (its own certificate is fine).'),
-      App.setting('API key', key, 'From pfSense: System > REST API > Keys. API keys must be allowed in System > REST API > Settings.'),
+      App.setting('Address', url, 'The firewall’s web interface, such as https://192.168.1.1 (a self-signed certificate is fine).'),
+      App.setting('API key', key, 'In pfSense, under System > REST API > Keys. API keys must be allowed in System > REST API > Settings.'),
       h('div', { class: 'row', style: 'gap:8px;margin-top:10px' },
         h('button', { class: 'btn primary', onclick: () => save({ url: url.value.trim(), key: key.value.trim() }, 'Saved. Reading pfSense…') }, 'Save'),
         s.configured ? App.connectionTest('pfsense') : null));

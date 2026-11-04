@@ -219,7 +219,7 @@ local function clock(t) return (os.date(KO.twentyFour() and "%H:%M" or "%I:%M %p
 local function whenReset(t)
     if not t then return nil end
     local left = t - os.time()
-    if left <= 0 then return _("reset since") end
+    if left <= 0 then return _("has reset") end
     if left < 3600 then return T(_("resets in %1 min"), math.max(1, math.floor(left / 60 + 0.5))) end
     return T(_("resets at %1"), clock(t))
 end
@@ -258,7 +258,7 @@ local function usageRow(id)
                     if u.monthly then table.insert(lines, T(_("Used this month: %1"), usd(u.monthly))) end
                     if u.limit then
                         local resets = { daily = _("resets daily"), weekly = _("resets weekly"), monthly = _("resets monthly") }
-                        table.insert(lines, T(_("This key's limit: %1 left of %2"), usd(u.remaining), usd(u.limit))
+                        table.insert(lines, T(_("This key's limit: %1 of %2 left"), usd(u.remaining), usd(u.limit))
                             .. (u.reset and resets[u.reset] and (", " .. resets[u.reset]) or ""))
                     end
                     if u.credits and u.spent then table.insert(lines, T(_("Credit left: %1"), usd(u.credits - u.spent))) end
@@ -270,7 +270,7 @@ local function usageRow(id)
     end
     local value, lines = limitsText(id)
     return { _("Usage"), value or _("After the next answer"), function()
-        KO.message(lines or T(_("%1 says what's left with each answer. Use Test it or Try a prompt, or any AI feature, then look again."), AI.name(id)))
+        KO.message(lines or T(_("%1 reports what's left after each answer. Use Test it, Try a prompt or any AI feature, then look again."), AI.name(id)))
     end }
 end
 View.usageRow = usageRow
@@ -350,7 +350,7 @@ local function serverRows()
         end },
         { _("API key (optional)"), shortKey(key, 8), function()
             input(_("API key (optional)"), key, "", function(v) AI.setSecret("server_key", v) end,
-                _("Sent as a Bearer token with the External URL."))
+                _("Sent with each request to the External URL."))
         end },
         { heading = _("MODEL") },
         { _("Model"), AI.get("server_model") or "gemma4", function() pickServerModel() end },
@@ -372,7 +372,7 @@ local function claudeRows()
             input(_("Claude API key"), key, "sk-ant-…", function(v)
                 v = v:gsub("%s", "")
                 if v ~= "" then AI.setSecret("anthropic_key", v) end
-            end, _("From platform.claude.com. Max and Team plans include monthly API credits: claude.ai > Settings > Billing."))
+            end, _("From platform.claude.com. Max and Team plans include monthly API credits (claude.ai > Settings > Billing)."))
         end },
         key and key ~= "" and { _("Remove the key"), "", function()
             KO.confirm{ text = _("Remove the API key from the Kindle?"), danger = true, ok = _("Remove"), onOk = function()
@@ -473,7 +473,7 @@ local function editWords(f)
     local okPen, pen = pcall(function() return hw and hw.available() end)
     require("appspopup").request{
         title = T(_("Instructions for %1"), f.name),
-        subtitle = _("How it should do it; the answer's form is added after it."),
+        subtitle = _("How it should do the job. The format for the answer is added at the end."),
         text = AI.words(f.key), lines = 6, typing = true,
         pen = (okPen and pen) and true or nil, penTitle = _("Write the instructions"),
         buttons = {

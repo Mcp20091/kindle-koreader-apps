@@ -1973,7 +1973,7 @@ function Screens.settingsItems(plugin, redo)
     if all == nil then all = 15 end
     t[#t + 1] = { band = _("CHECKS") }
     t[#t + 1] = { setting = true, text = _("Check hosts"), value = everyName(all),
-        hint = _("Their status and alerts, while the Kindle is awake and on Wi-Fi. A host can have its own."),
+        hint = _("Reads each host's status and alerts while the Kindle is awake and on Wi-Fi. A host can have its own."),
         callback = function()
             pickNumber(_("Check hosts"), all, EVERY, function(n)
                 data.check_every = n
@@ -1982,7 +1982,7 @@ function Screens.settingsItems(plugin, redo)
             end)
         end }
     t[#t + 1] = { band = _("THE SSH PAGE") }
-    t[#t + 1] = { toggle = data.main_stats ~= false, text = _("Stats under each host"), sub = _("Its first two, such as up 3 days · 52 °C"),
+    t[#t + 1] = { toggle = data.main_stats ~= false, text = _("Stats under each host"), sub = _("The first two stats, such as up 3 days · 52 °C"),
         callback = function()
             data.main_stats = data.main_stats == false and true or false
             plugin:saved()
@@ -1996,12 +1996,12 @@ function Screens.settingsItems(plugin, redo)
     if lock then
         local okL, locked = pcall(function() return lock.get():isLocked("ssh") end)
         t[#t + 1] = { setting = true, text = _("App lock"), value = okL and locked and _("On") or _("Off"),
-            hint = _("One passcode for the apps you choose, SSH among them: Settings > Launcher > App lock"),
+            hint = _("One passcode for the apps you choose. Set it in Settings > Launcher > App lock"),
             callback = function() lock.showSettings() end }
     end
     if not lock then
         t[#t + 1] = { setting = true, text = data.app_pin and _("Change app PIN") or _("Set an app PIN"), value = data.app_pin and _("On") or _("Off"),
-            hint = _("Asked when SSH opens, and before a host's page, a live session or a command from outside it (again after 5 minutes)"),
+            hint = _("Asked when SSH opens, and before a host's page, a live session or a command run from outside SSH. Asked again after 5 minutes."),
             callback = function()
                 UI().editPin(UI().appLock(plugin), function(hash)
                     data.app_pin = hash
@@ -2021,7 +2021,7 @@ function Screens.settingsItems(plugin, redo)
     end
     t[#t + 1] = { band = _("LIVE SESSION") }
     local Dark = require("sshdark")
-    t[#t + 1] = { toggle = Dark.isOn(), text = _("Dark terminal"), sub = _("Also in a live session's Keys"),
+    t[#t + 1] = { toggle = Dark.isOn(), text = _("Dark terminal"), sub = _("Also under Keys in a live session"),
         callback = function()
             Dark.set(not Dark.isOn())
             redo()
@@ -2029,7 +2029,7 @@ function Screens.settingsItems(plugin, redo)
     -- (KOReader's own setting, shared with its Terminal emulator.)
     local size = G_reader_settings:readSetting("terminal_font_size", 14)
     t[#t + 1] = { setting = true, text = _("Text size"), value = tostring(size),
-        hint = _("The next live session opens with it (the same as KOReader's Terminal emulator)"),
+        hint = _("Takes effect in the next live session (shared with KOReader's Terminal emulator)"),
         callback = function()
             local sizes = {}
             for __, n in ipairs({ 10, 12, 14, 16, 18, 20, 22, 24 }) do
@@ -2040,7 +2040,7 @@ function Screens.settingsItems(plugin, redo)
                 G_reader_settings:saveSetting("terminal_font_size", n)
                 redo()
                 local S = package.loaded["sshsession"]
-                if S and S.current and S.current.open then KO.toast(_("The next live session opens with it"), 3) end
+                if S and S.current and S.current.open then KO.toast(_("Takes effect in the next live session"), 3) end
             end)
         end }
     if require("pluginshare").ai then

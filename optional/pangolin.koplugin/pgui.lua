@@ -653,7 +653,7 @@ local function askOrg(plugin, cfg)
                 end
                 connect(plugin, c, name)
             end)
-        end, { description = _("It's in Pangolin's dashboard address, after /. Organization keys can't list organizations."),
+        end, { description = _("It's in the dashboard's address, just after the server name. An organization key can't list organizations."),
             ok = _("Connect"), okIcon = "check" })
     end
     plugin:orgs(cfg, function(list, why)
@@ -682,7 +682,7 @@ local function askKey(plugin, url)
         if v == "" then return KO.toast(_("Enter the API key")) end
         askOrg(plugin, { url = url, key = v })
     end, { password = true, ok = _("Next"), okIcon = "chevron-right",
-        description = _("From Pangolin's dashboard: the organization's Settings > API Keys. It looks like id.secret.") })
+        description = _("In Pangolin's dashboard, under the organization's Settings > API Keys. It looks like id.secret.") })
 end
 
 --- Setting up: the API URL, the key, then the organization.
@@ -722,7 +722,7 @@ function UI.settingsItems(plugin, redo)
         end }
     t[#t + 1] = { band = _("NOTIFICATIONS") }
     t[#t + 1] = { toggle = plugin:notifying(), text = _("Sites and resources going offline"),
-        sub = _("Seen while Pangolin is read; it goes when they're back"),
+        sub = _("Checked whenever Pangolin is read. Cleared when they're back."),
         callback = function()
             G_reader_settings:saveSetting("pangolin_notify", not plugin:notifying())
             redo()
@@ -744,7 +744,7 @@ function UI.settingsItems(plugin, redo)
             plugin:setCfg({ key = v })
             redo()
             if plugin:configured() then check(plugin) end
-        end, { password = true, description = _("From Pangolin's dashboard: the organization's Settings > API Keys.") })
+        end, { password = true, description = _("In Pangolin's dashboard, under the organization's Settings > API Keys.") })
     end }
     t[#t + 1] = { setting = true, text = _("Organization"), value = c.org and plugin:orgName() or _("Not set"), callback = function()
         if not (c.url and c.key) then return UI.setup(plugin) end

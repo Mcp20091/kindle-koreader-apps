@@ -539,5 +539,40 @@ do
     check("stable: two lists on one screen", ids(Stable.order(two, { { entries = { items.c, items.b } } }, { name = "x" })), ":b20 :c3")
 end
 
+-- Updates: an optional app's version against the one on offer (Optional apps' Update or Reinstall).
+do
+    local saved = {}
+    local stubs = {
+        datastorage = {}, ["ui/network/manager"] = {}, ["ui/uimanager"] = {}, ["libs/libkoreader-lfs"] = {}, appsko = {},
+        gettext = function(s) return s end,
+        ["ffi/util"] = { template = function(s, ...)
+            local a = { ... }
+            return (s:gsub("%%(%d)", function(i) return tostring(a[tonumber(i)]) end))
+        end },
+    }
+    for k, v in pairs(stubs) do saved[k] = package.loaded[k]; package.loaded[k] = package.loaded[k] or v end
+    local U = require("appsupdate")
+    check("update: a release's version", U.sourceText({ tag = "v1.0.15-test17" }), "v1.0.15-test17")
+    check("update: an optional app's install keeps the release", U.sourceText({ tag = "FlashForge v1.0.15", version = "v1.0.15" }), "v1.0.15")
+    check("update: a branch's version", U.sourceText({ branch = "main", sha = "1a2b3c4d5e" }), "main @ 1a2b3c4")
+    check("update: nothing on offer", U.sourceText(nil), nil)
+    check("update: not installed", U.optionalStatus({ installed = false }, "v1.0.15"), nil)
+    check("update: the same version", U.optionalStatus({ installed = true, version = "v1.0.15" }, "v1.0.15"), "current")
+    check("update: another version", U.optionalStatus({ installed = true, version = "v1.0.14" }, "v1.0.15"), "behind")
+    check("update: version not known", U.optionalStatus({ installed = true }, "v1.0.15"), "behind")
+    check("update: too old for a tile", U.optionalStatus({ installed = true, old = true, version = "v1.0.15" }, "v1.0.15"), "behind")
+    check("update: off Wi-Fi, a known version", U.optionalStatus({ installed = true, version = "v1.0.15" }, nil), "current")
+    check("update: line, up to date", U.optionalLabel({ installed = true, version = "v1.0.15" }, { tag = "v1.0.15" }), "v1.0.15  \u{00B7}  Up to date")
+    check("update: line, update available", U.optionalLabel({ installed = true, version = "v1.0.14" }, { tag = "v1.0.15" }), "v1.0.14  \u{00B7}  Update available")
+    check("update: line, off Wi-Fi", U.optionalLabel({ installed = true, version = "v1.0.14" }, nil), "v1.0.14")
+    check("update: line, not installed", U.optionalLabel({ installed = false }, { tag = "v1.0.15" }), "Not installed")
+    local value, line = U.optionalSummary({ { installed = true, title = "FlashForge", version = "v1.0.14" },
+        { installed = true, title = "NextDNS", version = "v1.0.15" }, { installed = false, title = "Pangolin" } }, { tag = "v1.0.15" })
+    check("update: summary count", value, "2 of 3 installed")
+    check("update: summary names the one behind", line, "Update available: FlashForge")
+    for k in pairs(stubs) do package.loaded[k] = saved[k] end
+    package.loaded["appsupdate"] = nil
+end
+
 print(string.format("%d passed, %d failed", passed, failed))
 os.exit(failed == 0 and 0 or 1)

@@ -121,7 +121,7 @@ App.pages.koreader = {
           h('span', { class: 'mark' }, mark),
           h('span', { class: 'grow' }, it.text),
           it.help ? h('span', { class: 'muted small', title: it.help }, 'ⓘ') : null,
-          it.hold ? h('button', { class: 'icon-btn', title: 'Long-press (as holding it on the Kindle)', onclick: (e) => { e.stopPropagation(); tap(path, true); } }, '⋯') : null,
+          it.hold ? h('button', { class: 'icon-btn', title: 'Long-press (like holding it on the Kindle)', onclick: (e) => { e.stopPropagation(); tap(path, true); } }, '⋯') : null,
           it.sub ? h('span', { class: 'muted' }, '›') : null);
         if (it.enabled && (it.sub || it.action)) {
           row.classList.add('tappable');
@@ -135,7 +135,7 @@ App.pages.koreader = {
         h('div', { class: 'spread' }, h('h2', {}, 'KOReader’s menu'),
           App.tabs(tabs.map((t, i) => [String(i + 1), t]), String(page.menuPath[0]), (k) => { page.menuPath = [Number(k)]; draw(); })),
         h('p', { class: 'muted small' }, (m.book ? 'The menu of the book open on the Kindle. ' : 'The library’s menu. ') +
-          'Switches change here; a choice that opens a dialog opens it on the Kindle, shown below to finish with the remote.'),
+          'Switches change here. A choice that opens a dialog opens it on the Kindle, shown below so you can finish it from here.'),
         crumbs,
         page.menuPath.length > 1 ? h('div', {}, h('button', { class: 'btn small', onclick: () => { page.menuPath.pop(); draw(); } }, '‹ Back')) : null,
         h('div', { class: 'menu-list' }, rows),

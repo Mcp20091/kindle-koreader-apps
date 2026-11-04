@@ -177,7 +177,7 @@ function S.items()
     local refresh = UIManager:getRefreshRate()
     table.insert(out, { key = "refresh", name = _("Full refresh"), kind = "choice", value = refresh,
         label = labelOf(REFRESH, refresh) or T(_("Every %1 pages"), refresh), options = REFRESH,
-        note = _("While reading: how often the page flashes clean.") })
+        note = _("How often the page flashes clean while you read.") })
     local rot = rotation()
     local rotOptions = rotationOptions()
     table.insert(out, { key = "rotation", name = _("Rotation"), kind = "choice", value = rot, label = labelOf(rotOptions, rot), options = rotOptions })
@@ -235,13 +235,13 @@ function S.fontItems()
     table.insert(out, { key = "font_size", name = _("Font size for new books"), kind = "choice", value = size, label = tostring(size), options = fontSizeOptions() })
     local fb = fallbackFont()
     table.insert(out, { key = "fallback", name = _("Fallback font"), kind = "choice", value = fb, label = fb, options = fonts,
-        note = _("For characters the book's font doesn't have (Chinese, Japanese, symbols…). In every book, also the open one.") })
+        note = _("For characters the book's font doesn't have (Chinese, Japanese, symbols…). In every book, including the open one.") })
     table.insert(out, { key = "more_fallbacks", name = _("Use more fallback fonts"), kind = "switch",
         value = G_reader_settings:nilOrTrue("additional_fallback_fonts"),
-        note = _("After the one above, KOReader's own list, for the widest coverage of languages.") })
+        note = _("Then KOReader's own list, after the one above, to cover more languages.") })
     local embedded = copt("embedded_fonts", 1) == 1
     table.insert(out, { key = "embedded", name = _("Use the book's own fonts"), kind = "switch", value = embedded,
-        note = _("Fonts that come inside a book, when it has any.") })
+        note = _("Fonts that come inside a book, if it has any.") })
     local weight = copt("font_base_weight", 0)
     table.insert(out, { key = "weight", name = _("Font weight"), kind = "choice", value = weight, label = labelOf(WEIGHTS, weight) or tostring(weight),
         options = WEIGHTS, note = _("Thinner (−) or bolder (+) text.") })
@@ -363,7 +363,7 @@ function S.rows(openMenu)
     local r = reader()
     table.insert(rows, { _("Status bar items"), r and _("KOReader's menu") or _("In a book"), function()
         if r then return S.openStatusBarMenu(r) end
-        require("appsko").message(_("Open a book, then come back here: the status bar's items are chosen in KOReader's menu, which a book has."))
+        require("appsko").message(_("The status bar's items are chosen in KOReader's menu, which only a book has. Open a book, then come back here."))
     end })
     table.insert(rows, { _("Open KOReader's full menu"), "", openMenu })
     return rows

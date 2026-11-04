@@ -185,13 +185,13 @@ App.pages.ha = {
           } })) : null,
       h('div', { class: 'card stack' }, h('div', { class: 'spread' }, h('h2', {}, 'Quick tiles'),
         h('button', { class: 'btn small', onclick: async () => { await App.api('/api/ha/prefs', { json: { quick: false } }).catch(App.fail); App.route(); } }, 'Reset to default')),
-        h('p', { class: 'muted small' }, 'As Home shows them. Drag to reorder; tap one to move it or take it off (star devices under Devices to add more).'),
+        h('p', { class: 'muted small' }, 'Laid out as on Home. Drag to reorder; tap one to move it or take it off (star devices under Devices to add more).'),
         quickItems.length ? App.visualZones([{ id: 'quick', title: 'Quick tiles', items: quickItems, render: qtile }], {
           onChange: (st) => { quickOrder = st.quick; saveQuick(); },
           actions: (x) => [{ text: 'Remove from Quick', danger: true, fn: async () => { quickOrder = quickOrder.filter((k) => k !== x.key); await saveQuick(); App.route(); } }],
         }) : h('div', { class: 'empty' }, 'No Quick tiles yet. Star devices under Devices.')),
       h('div', { class: 'card stack' }, h('h2', {}, 'Rooms'),
-        h('p', { class: 'muted small' }, 'Their order on Home and the dashboard. Drag to reorder or to Hidden.'),
+        h('p', { class: 'muted small' }, 'The rooms’ order on Home and the dashboard. Drag to reorder or to Hidden.'),
         two(roomItems.filter((x) => !hiddenRooms.has(x.key)).map((x) => x.key), [...hiddenRooms], roomItems, roomCard, {
           title: 'Rooms', cls: 'column', save: (order, hidden) => {
             roomOrder.splice(0, roomOrder.length, ...order); hiddenRooms.clear(); hidden.forEach((k) => hiddenRooms.add(k)); saveRooms();
@@ -208,9 +208,9 @@ App.pages.ha = {
           App.reorder(s.dashSections.map((x) => ({ key: x.key, label: x.name })),
             (keys) => { dashOrder.splice(0, dashOrder.length, ...keys); saveDash(); }, hideToggle(hiddenDash, saveDash))),
         pickList('Dashboard Quick tiles', 'dash_quick', s.dashQuick, s.devices.filter((d) => d.visible && d.domain !== 'scene' && d.domain !== 'script'),
-          'Tiles along the bottom of the dashboard. Until changed, the same as Home’s Quick tiles.'),
+          'Tiles along the bottom of the dashboard. Until you change them, they’re the same as Home’s Quick tiles.'),
         pickList('Dashboard scenes', 'dash_scenes', s.dashScenes, s.devices.filter((d) => d.visible && (d.domain === 'scene' || d.domain === 'script')),
-          'Buttons in the dashboard’s Scenes section. Until changed, every scene and script shown.'));
+          'Buttons in the dashboard’s Scenes section. Until you change them, every scene and script is shown.'));
     }
     if (s.cameraList.length) {
       const order = s.cameraList.map((x) => x.id);
@@ -275,21 +275,21 @@ App.pages.ha = {
       h('div', { class: 'card' }, h('h2', {}, 'Dashboard'),
         App.setting('Style', App.select([['clock', 'Clock and info'], ['security', 'Security'], ['info', 'Info cards'], ['camera', 'Camera'], ['clockonly', 'Clock only']], p.dash_layout || 'clock', set('dash_layout'))),
         App.setting('Camera', App.select([['cycle', 'Rotate through all'], ['none', 'None'], ...s.cameras.map((c) => [c.id, c.name])], p.dash_camera || 'cycle', set('dash_camera'))),
-        s.dashSections.length ? h('p', { class: 'muted small' }, 'Sections, Quick tiles and scenes: the Order tab.')
+        s.dashSections.length ? h('p', { class: 'muted small' }, 'Sections, Quick tiles and scenes are on the Order tab.')
           : [App.setting('Room temperatures', App.toggle(on('dash_temps'), set('dash_temps'))),
             App.setting('Status bar', App.toggle(on('dash_attention'), set('dash_attention')))],
         s.graphSensors.length ? App.setting('Graph', App.select([['auto', 'Auto'], ...s.graphSensors.map((g) => [g.id, g.name])], p.dash_graph || 'auto', set('dash_graph'))) : null,
-        App.setting('Auto brightness', App.toggle(p.auto_light === true, set('auto_light')), 'Uses the Kindle’s light sensor while the dashboard shows.'),
+        App.setting('Auto brightness', App.toggle(p.auto_light === true, set('auto_light')), 'Uses the Kindle’s light sensor while the dashboard is on screen.'),
         App.setting('Doorbell alerts', App.select([['motion', 'Ring and motion'], ['ring', 'Ring only'], ['off', 'Off']], p.doorbell || 'motion', set('doorbell')), 'Shows the doorbell camera full screen for a minute.'),
         App.setting('Update interval', App.select([['1', 'Every minute'], ['5', 'Every 5 min'], ['10', 'Every 10 min'], ['15', 'Every 15 min'], ['30', 'Every 30 min']], p.dash_minutes ?? 5, num('dash_minutes'))),
         App.setting('Keep awake', App.select([['charging', 'While charging'], ['always', 'Always'], ['never', 'Never']], p.dash_awake || 'charging', set('dash_awake')))),
       h('div', { class: 'card' }, h('h2', {}, 'Home'),
         App.setting('Keep rows in place', App.toggle(p.stable_lists !== false, set('stable_lists')),
           'After you switch a device, it stays where it is in the Activity list until you leave the screen or refresh it.'),
-        App.setting('Keep turned off in On now', App.select([['0', 'Off'], ['1', '1 min'], ['3', '3 min'], ['5', '5 min'], ['10', '10 min']], p.keep_off ?? 3, num('keep_off')),
-          'A device turned off on the Kindle stays in On now a while (shown as off), so a tap turns it back on.'),
+        App.setting('Keep turned-off devices in On now', App.select([['0', 'Off'], ['1', '1 min'], ['3', '3 min'], ['5', '5 min'], ['10', '10 min']], p.keep_off ?? 3, num('keep_off')),
+          'A device turned off on the Kindle stays in On now for a while (shown as off), so a tap turns it back on.'),
         s.weathers.length ? App.setting('Weather', App.select([['auto', 'Auto'], ...s.weathers.map((w) => [w.id, w.name])], p.weather || 'auto', set('weather')), 'For the dashboard, the Weather screen and the launcher.') : null,
-        App.setting('Wake alerts', App.toggle(p.wake_warning !== false, set('wake_warning')), 'When the Kindle wakes: a lock, the garage or a door left open.'),
+        App.setting('Wake alerts', App.toggle(p.wake_warning !== false, set('wake_warning')), 'Shows a lock, the garage or a door left open when the Kindle wakes.'),
         h('p', { class: 'muted small' }, 'Routines (one tap runs several actions) are on the Routines tab.')),
       h('div', { class: 'card' }, h('h2', {}, 'Confirm'),
         App.setting('Unlock doors', App.toggle(on('ask_unlock'), set('ask_unlock'))),

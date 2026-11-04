@@ -51,7 +51,7 @@ Every app's screens have the same bar:
 Tap **the time and battery** (the **▾** says you can) in any app's bar for the control center, a panel that drops down from the top:
 
 - The time, the date and the battery; tap the battery for the Battery screen.
-- Your **quick buttons** (see the launcher chapter), then **Wi-Fi**, **Night mode**, **Refresh**, **Web server** and **Keep awake** (the Kindle doesn't go to sleep until you turn it off again) when they aren't among them. Black means on. Tap does the quick thing; hold opens what's behind it. A group drops its buttons down; with lots of buttons there are pages.
+- Your **quick buttons** (see the launcher chapter), then **Wi-Fi**, **Night mode**, **Refresh**, **Web server** and **Keep awake** (the Kindle doesn't go to sleep until you turn it off again) when they aren't among them. Black means on. Tap a button to use it, or hold it for more. A group drops its buttons down; with lots of buttons there are pages.
 - **Light**, and **Warmth** on a Kindle that has it: **−** and **+**, or tap a spot on the bar.
 - The cog (**Settings**), the pencil (change your quick buttons), and over a book or the library **KOReader menu**.
 

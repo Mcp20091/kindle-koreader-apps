@@ -177,7 +177,7 @@ local function drawMine(view, c, F)
     if view.fontsChanged then
         F:block(64, function(y)
             c:box(14, y + 8, c.W - 28, 50, { r = 8, border = C.BLACK, bw = 1.4 })
-            c:text(28, y + 39, _("Books see the change after KOReader restarts."), 12, { maxw = c.W - 170 })
+            c:text(28, y + 39, _("Books show the change after KOReader restarts."), 12, { maxw = c.W - 170 })
             local label = _("Restart")
             local bw = c:width(label, 12) + 32
             c:box(c.W - 24 - bw, y + 16, bw, 34, { r = 17, fill = C.FILL })
@@ -333,7 +333,7 @@ local function getHeader(view, c, y, gs, getting)
     end
     local status = getting and T(_("Getting %1…"), getting)
         or gs.status == "getting" and _("Getting the list…")
-        or gs.at and T(_("List from %1"), shortDate(gs.at))
+        or gs.at and T(_("List updated %1"), shortDate(gs.at))
         or nil
     if status then
         local sw = c:width(status, 10.5)
@@ -383,12 +383,12 @@ local function drawGet(view, c, gTop)
     end
     local r = G.query{ q = q, cat = cat, sort = view.fontsGetSort }
     -- A name that isn't in the list: get it by name anyway.
-    if q and not r.exact then row(q, _("Get it by its name from Google Fonts"), true) end
+    if q and not r.exact then row(q, _("Get this name from Google Fonts"), true) end
     if r.total == 0 and not (cat == "suggested" and not q) then
         F:block(64, function(y)
             local text
-            if gs.status == "getting" then text = _("Getting the list of every family from Google Fonts…")
-            elseif gs.count == 0 then text = gs.message or _("The list of every family comes from Google Fonts, over Wi-Fi.")
+            if gs.status == "getting" then text = _("Getting the list of font families from Google Fonts…")
+            elseif gs.count == 0 then text = gs.message or _("The list of font families comes from Google Fonts over Wi-Fi.")
             else text = q and T(_("Nothing in the list matches “%1”."), q) or _("No families here.") end
             c:text(14, y + 30, text, 11.5, { color = C.GREY, maxw = c.W - 28 })
             if gs.count == 0 and gs.status ~= "getting" then

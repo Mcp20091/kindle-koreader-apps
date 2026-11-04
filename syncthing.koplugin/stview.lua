@@ -718,7 +718,7 @@ function View.settingsRows(st, view)
             view:refresh()
         end },
         { _("NOTIFICATIONS") },
-        { _("Warn about stuck sync and conflicts"), st:warnsOfProblems(), function()
+        { _("Warn about stuck syncs and conflicts"), st:warnsOfProblems(), function()
             st:setWarnsOfProblems(not st:warnsOfProblems())
             view:refresh()
         end },
@@ -765,7 +765,7 @@ end
 
 function View:askPort()
     if self.st:isRunning() then return self:say(_("Turn Syncthing off to change the port")) end
-    self:askText{ title = _("Port"), subtitle = _("Syncthing's web GUI and API (8384 unless something else uses it)."),
+    self:askText{ title = _("Port"), subtitle = _("The port for Syncthing's web GUI and API (8384 unless something else uses it)."),
         text = self.st:port(), number = true,
         check = function(v)
             if not M.validPort(v) then return _("Pick a port from 1024 to 65535") end

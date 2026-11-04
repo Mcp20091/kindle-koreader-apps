@@ -1,4 +1,5 @@
-2026-10-27 23:58
+2026-11-03 16:00
+Nov 3  Home Assistant: Keep turned-off devices in On now (was Keep turned off in On now), and clearer hints in Settings and on the web page
 Oct 27  Home Assistant: App lock (Settings > Launcher > App lock) asks before it opens, from the Tools menu and gestures too
 Oct 27  Home Assistant: says what it is to the launcher and the web page (its tiles and their lines, its web tab, now in this folder)
 Oct 25  A screen closed during a KOReader gesture's action no longer hands its close on to the file browser (which tore itself down: Home Assistant, the web server and the other apps stopped answering until a restart)

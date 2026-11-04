@@ -363,14 +363,14 @@ function Web.routes(server, plugin)
         return nil, "That isn't in the list any more: look the repo up again."
     end
     -- The optional apps of the release picked ({ tag }): looked up,
-    -- then the page asks GET until they're in ({ pending, apps = { folder, title, description,
-    -- installed } }). The main install updates the installed ones with the rest.
+    -- then the page asks GET until they're in ({ pending, from, apps = { folder, title, description,
+    -- installed, version, status } }). The main install updates the installed ones with the rest.
     server:route("POST", "^/api/update/optional$", function(req, res)
         local U = updater()
         if not U then return res:error(404, "The launcher (apps.koplugin) isn't installed") end
         local rel, why = picked(U, req.json())
         if not rel then return res:error(400, why) end
-        local state = { pending = true, tag = rel.tag }
+        local state = { pending = true, tag = rel.tag, from = U.sourceText and U.sourceText(rel) or rel.tag }
         Web.optional = state
         U.optionalApps(plugin, rel, function(apps, why2)
             if Web.optional ~= state then return end
@@ -380,11 +380,14 @@ function Web.routes(server, plugin)
     end)
     server:route("GET", "^/api/update/optional$", function(req, res)
         local state = Web.optional or {}
+        local U = updater()
         local apps = {}
         for __, o in ipairs(state.apps or {}) do
-            apps[#apps + 1] = { folder = o.folder, title = o.title, description = o.description, installed = o.installed, old = o.old }
+            -- status: "current" (the same version as `from`) or "behind" (another one, or not known)
+            apps[#apps + 1] = { folder = o.folder, title = o.title, description = o.description, installed = o.installed, old = o.old,
+                version = o.version, status = U and U.optionalStatus and U.optionalStatus(o, state.from) or nil }
         end
-        res:json({ pending = state.pending or false, tag = state.tag, error = state.error, apps = apps })
+        res:json({ pending = state.pending or false, tag = state.tag, from = state.from, error = state.error, apps = apps })
     end)
     -- Takes an optional app off ({ folder }, one of those just looked up): set aside, so Undo a
     -- plugin update can bring it back; KOReader restarts.

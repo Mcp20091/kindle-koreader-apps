@@ -1,4 +1,5 @@
-2026-10-27 23:58
+2026-11-03 16:00
+Nov 3  Syncthing: Warn about stuck syncs and conflicts, and clearer port and warning hints
 Oct 27  Syncthing: App lock (Settings > Launcher > App lock) asks before it opens, from the Tools menu and gestures too
 Oct 27  Syncthing: the Kindle's program is Syncthing v2.1.7 (was v2.1.2), as released and checked
 Oct 27  Syncthing: says what it is to the launcher and the web page (its tile, gestures, its web tab, now in this folder)

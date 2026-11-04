@@ -3270,7 +3270,7 @@ function Editor:tickOnCard(id)
     local area = self:padded(self:clueCardRect(), self.ui:u(6))
     self:freeClueCard()
     self:repaint(area, "full")
-    -- (how long Undo shows: Crossword settings > Undo after a tick; 0 is none)
+    -- (how long Undo shows: Crossword settings > Undo after ticking a clue; 0 is none)
     local secs = tonumber(Settings.get("crossword_undo")) or 3
     local PS = require("pluginshare")
     local okp, bar = pcall(function() return PS.popup and PS.popup.undo end)

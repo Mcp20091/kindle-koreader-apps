@@ -328,7 +328,7 @@ function UI.mainItems(plugin)
     t[#t + 1] = { band = _("MORE") }
     t[#t + 1] = { tiles = {
         { icon = "file", text = _("Recent files"), sub = _("Start a print"), fn = function() UI.files(plugin) end },
-        { icon = "camera", text = _("Camera"), sub = i.camera and _("A picture") or _("None reported"), fn = function() UI.camera(plugin) end },
+        { icon = "camera", text = _("Camera"), sub = i.camera and _("Take a picture") or _("None reported"), fn = function() UI.camera(plugin) end },
         { icon = "info", text = _("Details"), sub = i.firmware ~= "" and T(_("Firmware %1"), i.firmware) or i.model,
             fn = function() UI.details(plugin) end },
     }, cols = 3 }
@@ -440,12 +440,12 @@ function UI.camera(plugin)
         local t = {}
         t[#t + 1] = { picture = shot or "", h = 420, empty = why and plugin:whyText(why) or _("Taking a picture…") }
         if not cameraAuto() then
-            t[#t + 1] = { note = _("One picture at a time, to keep the Kindle's battery: tap Take again or ⟳ for a new one.") }
+            t[#t + 1] = { note = _("One picture at a time, to save battery. Tap Take again or ⟳ for a new one.") }
         end
         local tiles = {
             { icon = "camera", text = _("Take again"), primary = true, fn = function() p.take() end },
-            { icon = "play", text = _("Camera on"), sub = _("Start its stream"), fn = function() p.power(true) end },
-            { icon = "x", text = _("Camera off"), sub = _("Stop its stream"), fn = function() p.power(false) end },
+            { icon = "play", text = _("Camera on"), sub = _("Start the stream"), fn = function() p.power(true) end },
+            { icon = "x", text = _("Camera off"), sub = _("Stop the stream"), fn = function() p.power(false) end },
         }
         if plugin:hasLight() then
             local light = plugin:info() and plugin:info().light
@@ -759,14 +759,14 @@ local function askCode(plugin, p)
             plugin:setCfg({ ip = p.ip, serial = serial, code = v, name = p.name ~= "" and p.name or false, model = p.model or false })
             if #UI.pages == 0 then UI.show(plugin) end
             check(plugin)
-        end, { description = _("On the printer: Settings > Network > LAN-only mode shows it."), ok = _("Connect"), okIcon = "check" })
+        end, { description = _("Find it on the printer under Settings > Network > LAN-only mode."), ok = _("Connect"), okIcon = "check" })
     end
     if p.serial and p.serial ~= "" then return code(p.serial) end
     ask(_("Serial number"), plugin:cfg().serial or "", function(v)
         v = trim(v)
         if v == "" then return KO.toast(_("Enter the serial number")) end
         code(v)
-    end, { description = _("On the printer: Settings > About. Include the SN at the start."), ok = _("Next"), okIcon = "chevron-right" })
+    end, { description = _("Find it on the printer under Settings > About. Include the SN at the start."), ok = _("Next"), okIcon = "chevron-right" })
 end
 
 --- Find printers on this Wi-Fi, then pick one.
@@ -793,7 +793,7 @@ function UI.manual(plugin)
         v = trim(v)
         if not M.isIp(v) then return KO.toast(_("Enter the printer's IP address, such as 192.168.1.50")) end
         askCode(plugin, { ip = v, name = "" })
-    end, { description = _("On the printer: Settings > Network shows it."), ok = _("Next"), okIcon = "chevron-right" })
+    end, { description = _("Find it on the printer under Settings > Network."), ok = _("Next"), okIcon = "chevron-right" })
 end
 
 -- ------------------------------------------------------------------ settings
@@ -839,7 +839,7 @@ function UI.settingsItems(plugin, redo)
             plugin:setCfg({ ip = v })
             redo()
             if plugin:configured() then check(plugin) end
-        end, { description = _("On the printer: Settings > Network shows it.") })
+        end, { description = _("Find it on the printer under Settings > Network.") })
     end }
     t[#t + 1] = { setting = true, text = _("Serial number"), value = c.serial and M.masked(c.serial) or _("Not set"), callback = function()
         ask(_("Serial number"), c.serial or "", function(v)
@@ -848,7 +848,7 @@ function UI.settingsItems(plugin, redo)
             plugin:setCfg({ serial = v })
             redo()
             if plugin:configured() then check(plugin) end
-        end, { description = _("On the printer: Settings > About. Include the SN at the start.") })
+        end, { description = _("Find it on the printer under Settings > About. Include the SN at the start.") })
     end }
     t[#t + 1] = { setting = true, text = _("Check code"), value = c.code and M.masked(c.code) or _("Not set"), callback = function()
         ask(_("Check code"), "", function(v)
@@ -857,7 +857,7 @@ function UI.settingsItems(plugin, redo)
             plugin:setCfg({ code = v })
             redo()
             if plugin:configured() then check(plugin) end
-        end, { description = _("On the printer: Settings > Network > LAN-only mode shows it.") })
+        end, { description = _("Find it on the printer under Settings > Network > LAN-only mode.") })
     end }
     if plugin:configured() and PS().showConnectionTest then
         t[#t + 1] = { setting = true, text = _("Test connection"), callback = function() PS().showConnectionTest("flashforge") end }

@@ -1614,7 +1614,7 @@ end
 function Todo:chooseSleepContent()
     local current = self:opt("sleep_content")
     choose(_("Sleep screen content"), {
-        { text = _("Today + Up next"), value = "today_next", fn = function() self:setOpt("sleep_content", "today_next") end },
+        { text = _("Today and Up next"), value = "today_next", fn = function() self:setOpt("sleep_content", "today_next") end },
         { text = _("Today"), value = "today", fn = function() self:setOpt("sleep_content", "today") end },
         { text = _("Starred"), value = "starred", fn = function() self:setOpt("sleep_content", "starred") end },
         { text = _("Pinned list"), value = "pinned", fn = function() self:setOpt("sleep_content", "pinned") end },
@@ -2028,14 +2028,14 @@ function Todo:previewFromTodo()
         end
         local gone = 0
         for id in pairs(old) do if not seen[id] then gone = gone + 1 end end
-        require("todoko").message(T(_("Since the last sync, To Do has:\n\n%1 new tasks\n%2 changed\n%3 done or deleted\n\nNothing was changed on the reader. Sync to take them."),
+        require("todoko").message(T(_("Since the last sync, To Do has:\n\n%1 new tasks\n%2 changed\n%3 done or deleted\n\nNothing has changed on this Kindle yet. Sync to get them."),
             new, changed, gone))
     end)
 end
 
 function Todo:resetToTodo()
     local n = self.store:pending()
-    local text = n > 0 and T(_("Reset to To Do?\n\n%1 unsent changes on the reader are thrown away and To Do's version is downloaded."), n)
+    local text = n > 0 and T(_("Reset to To Do?\n\n%1 unsent changes on this Kindle are thrown away and To Do's copy is downloaded again."), n)
         or _("Download To Do's copy again?")
     confirm(text, _("Reset"), function()
         self.store:discardQueue()
@@ -2262,8 +2262,8 @@ end
 
 function Todo:signOut()
     local n = self.store:pending()
-    local text = n > 0 and T(_("Sign out?\n\n%1 unsent changes and the tasks kept on the reader are removed."), n)
-        or _("Sign out?\n\nThe tasks kept on the reader are removed.")
+    local text = n > 0 and T(_("Sign out?\n\n%1 unsent changes and the tasks kept on this Kindle are removed."), n)
+        or _("Sign out?\n\nThe tasks kept on this Kindle are removed.")
     confirm(text, _("Sign out"), function()
         -- The shared account signs out every app (and tells To Do: afterSignOut).
         if self.api.account then return self.api.account.signOut() end

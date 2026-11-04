@@ -990,7 +990,7 @@ function Views.sync(c, view)
     table.insert(rows, { h = 52, draw = function(p, y, zone)
         p:icon("rotate-ccw", 14, y + 10, 15)
         p:text(38, y + 22, _("Reset to To Do"), 11.5, true, BLACK)
-        p:text(38, y + 38, #queue > 0 and T(_("Throws away the reader's %1 unsent changes"), #queue)
+        p:text(38, y + 38, #queue > 0 and T(_("Throws away %1 unsent changes"), #queue)
             or _("Downloads To Do's copy again"), 9.5, false, GREY, "start", W - 52)
         zone(0, y, W, 52, function() c:resetToTodo() end)
     end })
@@ -1050,7 +1050,7 @@ function Views.settings(c, view)
     add(Views.settingRow(_("Postpone by"), T(_("%1 days"), c:opt("push_days")), nil, function() c:choosePushDays() end))
     add(Views.settingRow(_("Reminder alerts"), nil, c:opt("reminders"), function() c:flip("reminders") end))
     add(Views.settingRow(_("Lists on this Kindle"), nil, c:opt("local_lists"), function() c:flip("local_lists") end,
-        _("Lists kept only here, never synced. Off hides them (they're kept).")))
+        _("Lists kept only on this Kindle, never synced. Off hides them without deleting them.")))
     add(Views.settingsHeading(_("SYNC")))
     add(Views.settingRow(_("Background sync"), c:opt("sync_interval") > 0 and T(_("Every %1 min"), c:opt("sync_interval")) or _("Off"),
         nil, function() c:chooseInterval() end))
@@ -1069,9 +1069,9 @@ function Views.settings(c, view)
     else
         add(Views.settingRow(_("Sleep screen"), supported and c:sleepSourceName() or _("Not on this device"), nil,
             function() c:chooseSleepScreen() end,
-            not supported and _("Not on this device: KOReader does not draw its sleep screen here") or nil))
+            not supported and _("KOReader doesn't draw the sleep screen on this device") or nil))
     end
-    local shows = { today_next = _("Today + Up next"), today = _("Today"), starred = _("Starred"), pinned = _("Pinned list") }
+    local shows = { today_next = _("Today and Up next"), today = _("Today"), starred = _("Starred"), pinned = _("Pinned list") }
     add(Views.settingRow(_("Sleep screen content"), shows[c:opt("sleep_content")] or shows.today_next, nil, function() c:chooseSleepContent() end))
     if not PS.showSleepSettings then
         add(Views.settingRow(_("Sleep screen updates"), KO.sleepUpdateName(KO.sleepMinutes()), nil, function() c:chooseSleepUpdate() end))

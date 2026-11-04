@@ -14,7 +14,9 @@ The launcher, its search, settings, notifications and the web page pick an optio
 installed (from what it says about itself: `PS.appInfo`, apps.koplugin/appsinfo.lua), and show nothing of it
 otherwise. The launcher's updater (appsupdate.lua) lists them, installs
 one on request (a release's kindle-<app>.zip, which the release workflow makes, or the optional/ folder of
-a branch's zip) and updates the installed ones with the rest.
+a branch's zip) and updates the installed ones with the rest. Each install writes the version it came from
+into the app's folder (`release.txt`: "v1.0.15", or "main @ 1a2b3c4"), so Optional apps can show it and offer
+Update (another version, or one not known) or Reinstall (the same one).
 
 After changing an app here, build its zip again: `python optional/build-zip.py`. A new one: see
 [MAKING-AN-APP.md](../MAKING-AN-APP.md).

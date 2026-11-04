@@ -570,7 +570,7 @@ function Quick.drawAll(c, top, list, open, toggle, done, close, pager)
         local r2 = #inner > 0 and flow(c, inner, 40, c.W - 40, y, nil, 11.5, nil, function(it, x, yy, w)
             pill(c, x, yy, w, it, 11.5, tapOf(it), it.hold or tapOf(it))
         end) or 0
-        if #inner == 0 then c:text(40, y + 22, _("Nothing in it yet. Settings > Launcher > Quick buttons adds some."), 11, { color = C.GREY, maxw = c.W - 80 }) r2 = 1 end
+        if #inner == 0 then c:text(40, y + 22, _("Nothing in it yet. Add some in Settings > Launcher > Quick buttons."), 11, { color = C.GREY, maxw = c.W - 80 }) r2 = 1 end
         y = y + r2 * (H + GAP) + 4
         c:box(28, h0, c.W - 56, y - h0, { r = 12, border = C.BLACK, bw = 1.2 })
         y = y + GAP
@@ -646,7 +646,7 @@ local function entryMenu(view, e, inGroup)
             if g.group and Model.quickKey(g) ~= key then table.insert(groups, g) end
         end
         if inGroup then
-            table.insert(items, { text = _("Out of the group"), fn = function() Model.quickPut(list, key, nil) saved(view) end })
+            table.insert(items, { text = _("Take out of the group"), fn = function() Model.quickPut(list, key, nil) saved(view) end })
         end
         if #groups > 0 then
             table.insert(items, { text = _("Move to a group…"), fn = function()
@@ -788,7 +788,7 @@ function Quick.drawEditor(view, c)
         c:hit(0, y, c.W, 48, function() s.toggles = not onHome saved(view) end)
     end)
     F:block(34, function(y)
-        c:text(14, y + 24, _("Tap does the quick thing; hold opens what's behind it."), 10.5, { color = C.GREY, maxw = c.W - 28 })
+        c:text(14, y + 24, _("Tap a button to use it, or hold it for more."), 10.5, { color = C.GREY, maxw = c.W - 28 })
     end)
     -- A section's name and what it means.
     local function section(title, note)
@@ -803,7 +803,7 @@ function Quick.drawEditor(view, c)
             local x = 14 + indent
             c:icon((item and item.icon) or (e.group and "folder") or "app-window", x, y + 15, 18)
             c:text(x + 30, y + 30, nameOf(e), 12.5, { maxw = c.W - x - 120, bold = e.group ~= nil })
-            local note = not item and _("Not here") or (e.group and T(_("%1 in it"), #(e.items or {}))) or nil
+            local note = not item and _("Not available") or (e.group and (#(e.items or {}) == 1 and _("1 button") or T(_("%1 buttons"), #(e.items or {})))) or nil
             if note then c:text(c.W - 44, y + 30, note, 10.5, { align = "end", color = C.GREY }) end
             c:icon("ellipsis-vertical", c.W - 34, y + 15, 18)
             c:hline(x, y + 48, c.W - 14 - x)
@@ -839,7 +839,7 @@ function Quick.drawEditor(view, c)
     -- The ones every control center has: tap one to add it to yours and place it.
     local core = Quick.coreMissing(list)
     if #core > 0 then
-        section(_("ALWAYS IN THE CONTROL CENTER"), _("Built in. Tap one to add it to your buttons and place it yourself."))
+        section(_("ALWAYS IN THE CONTROL CENTER"), _("Built in. Tap one to add it to your buttons, where you can move it."))
         local items = Quick.items(core)
         F:block(2 * (H + GAP) + 10, function(y)
             flow(c, items, 14, c.W - 14, y + 4, nil, 11.5, nil, function(it, x, py, w)

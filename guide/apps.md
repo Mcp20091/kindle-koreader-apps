@@ -58,7 +58,7 @@ The buttons you can have:
 - **From the other apps**: **Random article**, **Today** and **Search** from Wikipedia (hold: the front page), **Syncthing** (on or off; hold: the app), a saved **SSH command** (tap runs it; hold: its host), **Sync To Do** (how many changes wait; hold: the Sync screen) and **Refresh Home Assistant** (hold: Home Assistant). They're under **Add a button** when those apps are installed.
 - **Groups**: one button that drops its own buttons down in the control center (hold to rename it, change its icon or edit the buttons).
 
-Settings > **Quick buttons** (or **Edit quick buttons** on a group's hold, or the pencil in the control center) lists them: **Show on the home screen** turns the rows under the clock on or off. The list is in sections, so you can see where each button shows: **ON THE HOME SCREEN** (the ones that fit in the two rows, which depends on how long their names are), **ONLY IN THE CONTROL CENTER** (the rest, under **More**), and **ALWAYS IN THE CONTROL CENTER** (Wi-Fi, Night mode, Refresh, Web server and Keep awake when they aren't among yours; tap one to add it and place it yourself). Each button's **⋮** has **Move to top**, **Move up**, **Move down**, **Move to bottom**, **Move to a group…** (or **Out of the group**) and **Remove** (with Undo), and **Add a button** adds a built-in, a shortcut or a new group. The web page's Launcher tab has the same sections, drawn as on the Kindle, with drag and drop between them. While Wi-Fi, Light, Night mode or Web server is a button, its tile leaves the main page, so you don't have both.
+Settings > **Quick buttons** (or **Edit quick buttons** on a group's hold, or the pencil in the control center) lists them: **Show on the home screen** turns the rows under the clock on or off. The list is in sections, so you can see where each button shows: **ON THE HOME SCREEN** (the ones that fit in the two rows, which depends on how long their names are), **ONLY IN THE CONTROL CENTER** (the rest, under **More**), and **ALWAYS IN THE CONTROL CENTER** (Wi-Fi, Night mode, Refresh, Web server and Keep awake when they aren't among yours; tap one to add it and place it yourself). Each button's **⋮** has **Move to top**, **Move up**, **Move down**, **Move to bottom**, **Move to a group…** (or **Take out of the group**) and **Remove** (with Undo), and **Add a button** adds a built-in, a shortcut or a new group. The web page's Launcher tab has the same sections, drawn as on the Kindle, with drag and drop between them. While Wi-Fi, Light, Night mode or Web server is a button, its tile leaves the main page, so you don't have both.
 
 > Turned on its side, the launcher puts the At a glance line and the buttons on one line.
 
@@ -220,7 +220,7 @@ The **Fonts** tile (also in **Settings** and search) has everything about the fo
   - Under them, the order: **Popular first**, **A–Z** or **Newest first**.
   - Each family says its kind and its styles (**4 styles** is regular, bold, italic and bold italic). **Get** downloads it; one you have says **Installed**.
   - A name that isn't in the list can still be got: search for it and tap **Get** on the row that says **Get it by its name from Google Fonts**.
-  - The list itself comes from Google Fonts the first time you open the tab, and again after a month. The line on the right says when (**List from Oct 28**); **⟳** gets it again now.
+  - The list itself comes from Google Fonts the first time you open the tab, and again after a month. The line on the right says when (**List updated Oct 28**); **⟳** gets it again now.
 - **Settings**: KOReader's font settings, in groups.
   - **NEW BOOKS**: the font, **Font size for new books**, **Font weight** and **Use the book's own fonts**. A book you've already opened keeps its own.
   - **FALLBACK FONTS**: **Fallback font** (for characters the book's font doesn't have) and **Use more fallback fonts**. These apply to every book, the open one too.
@@ -286,7 +286,7 @@ Both are part of every app's bar; see "Finding your way around" in Getting start
 
 Hold a row for **Move up**, **Move down**, **Move to a group…** (or **New group…**) and **Hide**; hold a group's name to **Rename**, move or **Delete** it (its rows go to **Other**), or make a **New group…**. At the end, under **THIS LIST**: **Layout** (**Groups**, or **One list** without headings) and **Reset this list** (back to the suggested groups, nothing hidden). A hidden row is still found by search, marked **hidden from Settings**: hold it there and choose **Show in Settings**; the list says how many are hidden.
 
-**Updates** has its own page: **Check for updates**, **Repository**, **Select version**, **Show test versions**, **Check automatically**, **Undo a plugin update** and the optional apps (see "Updates" below); on the list it shows the version installed, or **Update available**. **Web server** there opens its settings as a page: on or off, its address, **Keep the Kindle awake while on**, **Stop after unused**, the **Port**, the **Password** and **Undo a plugin update**. **Stop after unused** is **15 min**, **30 min**, **1 hour** or **Never**. **KOReader** opens KOReader's most-used settings on one page (see "KOReader settings" below).
+**Updates** has its own page: **Check for updates**, **Repository**, **Select version**, **Show test versions**, **Check automatically**, **Undo a plugin update** and the optional apps (see "Updates" below); on the list it shows the version installed, or **Update available**. **Web server** there opens its settings as a page: on or off, its address, **Keep the Kindle awake while it runs**, **Stop when idle**, the **Port**, the **Password** and **Undo a plugin update**. **Stop when idle** is **15 min**, **30 min**, **1 hour** or **Never**. **KOReader** opens KOReader's most-used settings on one page (see "KOReader settings" below).
 
 ### KOReader settings
 
@@ -391,15 +391,26 @@ The web page's Launcher tab has the same settings; there, each change asks for y
 
 Settings > **Updates**:
 
-- **Check for updates**: shows the version installed. Tap it to look for a newer release; when there is one, you see its notes and **Update**, which downloads it, checks it, installs it and offers to restart KOReader. If anything goes wrong, nothing changes. When you're up to date it offers **Reinstall**, to install the same version again.
+- **Check for updates**: shows the version you have. Tap it to look for a newer release. When there is one, you see what's new and **Update**, which downloads it, checks it, installs it and offers to restart KOReader. If anything goes wrong, nothing changes. When you're up to date, it offers **Reinstall**, to install the same version again.
 - **Repository**: where updates come from, as owner/repository on GitHub (this project's own, Mcp20091/kindle-koreader-apps, to start with). Change it to follow a fork; leave it empty to go back.
-- **Select version**: the releases to pick from, the installed one and the latest marked. Picking a previous one goes back to it.
-- **Show test versions**: off to start with. Test versions are for trying changes before they're released: they may have bugs or be unfinished. Turned on (past a warning), they show in **Select version**, marked **test**; they're never offered as updates. **Select version** or **Undo a plugin update** takes you back to a release.
-- **Back to the releases**: only on a Kindle that was installed from a branch (an option of earlier versions). It installs the latest release, and updates come from the releases again.
+- **Select version**: every release, with the one you have and the latest marked. Pick an older one to go back to it.
+- **Show test versions**: off to start with. Test versions are for trying changes before they're released, so they may have bugs or be unfinished. Once it's on (past a warning), they show in **Select version**, marked **test**. They're never offered as updates. To go back, pick a release in **Select version**, or use **Undo a plugin update**.
+- **Check automatically**: on to start with. Once a day, only while the Kindle is already on Wi-Fi, a notification says when there's a newer release; tap it to see what's new and update. Until it's installed, the launcher's **Settings** tile says **Update available**.
+- **Undo a plugin update**: puts back the version an update replaced.
+- **Back to the releases**: only on a Kindle that was installed from a branch (an option of earlier versions). It installs the latest release, and updates come from releases again.
 
 While an update installs, a pop-up says how far it is: **Downloading… 40%**, then **Checking the update: notes (5 of 10)** and **Installing notes (5 of 10)**, a plugin at a time. The Kindle keeps answering meanwhile, so there's no need to restart it.
-- **OPTIONAL APPS**: apps that aren't in the main install (FlashForge, for a FlashForge 3D printer; Pangolin, for a Pangolin server; NextDNS, for a NextDNS profile; pfSense, for a pfSense firewall), in one **Optional apps** row (how many are installed, and which) that opens the list, from the latest release (or from the test version installed, which can have newer ones) once the Kindle is on Wi-Fi. Each shows **Install**, or **Remove** once it's installed. Once installed, they update automatically with each new version of the primary apps. **Update** shows only when the copy on the Kindle is too old for the launcher (it has no tile then): it installs it again. If one can't be updated with the rest, a notification says so. Removing one keeps it under **Undo a plugin update**, which can bring it back. KOReader restarts after each.
-- **Check automatically**: on to start with. Once a day, only while the Kindle is already on Wi-Fi, a notification says when there's a newer release; tap it to see what's new and update. Until it's installed, the launcher's **Settings** tile says **Update available**.
+
+**OPTIONAL APPS** are extra apps that aren't in the main install: FlashForge (for a FlashForge 3D printer), Pangolin (for a Pangolin server), NextDNS (for a NextDNS profile) and pfSense (for a pfSense firewall). Once installed, they update whenever the main apps do.
+
+The **Optional apps** row says how many are installed, and names any that have an update. Tap it for the list, once the Kindle is on Wi-Fi. Each app shows **Not installed**, or the version it has with **Up to date** or **Update available**. Tap one:
+
+- **Install**, when it isn't installed.
+- **Update to …**, when it has another version than the one on offer (or its version isn't known, for an app installed before versions were kept).
+- **Reinstall …**, when it's up to date: downloads the same version again, for an app that isn't working as it should.
+- **Remove**: takes it off the Kindle. **Undo a plugin update** can bring it back.
+
+An app's settings are kept when it's updated or reinstalled, and KOReader restarts afterwards. The versions on offer are from the latest release, or from the test version you have, which can be newer. If an app can't be updated with the others, a notification says so; **Update** in this list then tries again.
 
 After an update, its notes show once when KOReader starts again (**What's new in …**).
 - **Undo a plugin update**: lists the plugins that have an earlier version, each as "name (before <date>)". Pick one and confirm with **Go back**; KOReader restarts. With none to undo it says "No plugin has an earlier version to go back to."

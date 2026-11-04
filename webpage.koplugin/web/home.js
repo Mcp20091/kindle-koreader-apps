@@ -23,7 +23,7 @@ App.pages.home = {
         card('#apps', 'Launcher', 'Tiles, shortcuts and settings.', s.plugins.apps),
         // (Each app's, as it says: only those installed.)
         ...(App.webApps || []).map((a) => card('#' + a.page, a.name, a.card || '', true)),
-        card('#fonts', 'Fonts', 'Your fonts, getting more, the default and the font settings.', s.plugins.apps),
+        card('#fonts', 'Fonts', 'Your fonts, more to download, the default and the font settings.', s.plugins.apps),
         card('#koreader', 'KOReader', 'Folders, common settings and KOReader’s whole menu.', true),
         card('#system', 'System', 'Update plugins, backups, logs, gestures and the password.', true)),
       ...[notificationsCard(), App.kindleControls(), screenCard(), sendCard(), sleepCard()].filter(Boolean));

@@ -76,7 +76,7 @@ App.pages.ai = {
             const x = r.limits[part];
             if (!x || x.remaining == null) continue;
             let line = names[part] + ': ' + x.remaining + (x.limit != null ? ' of ' + x.limit : '') + ' left';
-            if (x.reset) line += x.reset <= r.now ? ', reset since' : ', resets ' + (x.reset - r.now < 3600 ? 'in ' + Math.max(1, Math.round((x.reset - r.now) / 60)) + ' min' : 'at ' + when(x.reset));
+            if (x.reset) line += x.reset <= r.now ? ', has reset' : ', resets ' + (x.reset - r.now < 3600 ? 'in ' + Math.max(1, Math.round((x.reset - r.now) / 60)) + ' min' : 'at ' + when(x.reset));
             lines.push(line);
           }
           if (lines.length) lines.unshift('As of ' + when(r.limits.at) + ':');
@@ -119,7 +119,7 @@ App.pages.ai = {
       h('p', { class: 'muted small' }, 'Your own AI, speaking the OpenAI-style API. The Internal URL is used when the Kindle can reach it on the home network; the External URL from anywhere else. The model must read pictures.'),
       h('label', { class: 'field' }, h('span', {}, 'Internal URL (your AI on the home network)'), text('server_home', 'http://192.168.1.50:11434')),
       h('label', { class: 'field' }, h('span', {}, 'External URL (reachable from anywhere)'), text('server_pangolin', 'https://ai.example.com/v1')),
-      h('label', { class: 'field' }, h('span', {}, 'API key (optional, sent as a Bearer token with the External URL)'),
+      h('label', { class: 'field' }, h('span', {}, 'API key (optional, sent with each request to the External URL)'),
         h('div', { class: 'row' }, serverKey,
           h('button', { class: 'btn', onclick: () => { if (serverKey.value.trim()) saveKey('server', serverKey.value); } }, 'Save'),
           s.serverKeySet ? h('button', { class: 'btn danger', onclick: () => clearKey('server') }, 'Remove') : null)),

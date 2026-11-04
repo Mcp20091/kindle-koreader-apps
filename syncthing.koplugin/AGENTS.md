@@ -39,7 +39,7 @@ credit in README.md and ../guide/syncthing.md.
   folder name `syncthing.koplugin` too).
 - `G_reader_settings`: `syncthing_port` (default "8384"), `syncthing_with_wifi` (Start with Wi-Fi; falls back to
   upstream's `syncthing_autostart`), `syncthing_notified` (notification keys already sent, so a restart doesn't
-  send them again), `syncthing_warn` (Warn about stuck sync and conflicts; on unless false). The home folder (`home_dir`) is where accepted folders go by default.
+  send them again), `syncthing_warn` (Warn about stuck syncs and conflicts; on unless false). The home folder (`home_dir`) is where accepted folders go by default.
 
 ## How it runs
 

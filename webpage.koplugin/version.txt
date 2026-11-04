@@ -1,4 +1,6 @@
-2026-10-28 19:30
+2026-11-03 16:00
+Nov 3  Updates: optional apps show their version with Install, Update, Reinstall or Remove, as on the Kindle; clearer wording in the Updates card
+Nov 3  Web server: Keep the Kindle awake while it runs, Stop when idle, and clearer certificate and password text; the Library's Browse books with hint reads naturally
 Oct 28  Web server: System > Updates says installed optional apps update automatically with each new version
 Oct 28  Web server: the Fonts tab in the Kindle's three tabs (Your fonts, Get more, Settings); Get more browses all of Google Fonts, each name drawn in its own typeface; Set as default with Undo
 Oct 27  Web server: App lock on the Launcher tab, each change asking for the passcode first

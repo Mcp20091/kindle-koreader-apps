@@ -265,31 +265,52 @@ App.pages.system = {
             if (o.error) throw new Error(o.error);
             const apps = App.arr(o.apps);
             const mine2 = apps.filter((a) => a.installed).map((a) => a.title);
-            also.textContent = mine2.length ? 'Also updates: ' + mine2.join(', ') + '.' : '';
+            also.textContent = mine2.length ? 'Installing also updates ' + mine2.join(', ') + '.' : '';
             optional.replaceChildren();
-            if (!apps.length) optional.append(h('div', {}, h('span', { class: 'small muted grow' }, 'None in ' + o.tag + '.')));
+            if (!apps.length) optional.append(h('div', {}, h('span', { class: 'small muted grow' }, 'No optional apps in ' + o.tag + '.')));
+            const v = o.from || o.tag;
+            const kept = ' Its settings are kept. KOReader restarts afterwards.';
+            const install = (a) => run(() => App.api('/api/update/install', { json: { ...from, optional: a.folder } }));
             for (const a of apps) {
+              // Installed: its version and Update (another version, or one not known) or Reinstall
+              // (the same one again), and Remove. Not installed: Install.
+              const line = a.installed
+                ? (a.version || 'Version not known') + ' · ' + (a.status === 'behind' ? 'Update available' : 'Up to date')
+                : 'Not installed';
+              const buttons = [];
+              if (!a.installed) {
+                buttons.push(h('button', { class: 'btn small primary', onclick: async () => {
+                  if (!await App.confirm('Install ' + a.title, (a.description ? a.description + ' ' : '') + 'Version ' + v + '. KOReader restarts afterwards.', 'Install')) return;
+                  install(a);
+                } }, 'Install'));
+              } else if (a.status === 'behind') {
+                buttons.push(h('button', { class: 'btn small primary', onclick: async () => {
+                  const text = a.old ? 'This copy of ' + a.title + ' is too old to show on the launcher. Install version ' + v + ' in its place?'
+                    : a.version ? 'Replace version ' + a.version + ' with ' + v + '?'
+                    : 'Install version ' + v + ' in place of the copy on the Kindle?';
+                  if (!await App.confirm('Update ' + a.title, text + kept, 'Update')) return;
+                  install(a);
+                } }, 'Update'));
+              } else {
+                buttons.push(h('button', { class: 'btn small', onclick: async () => {
+                  if (!await App.confirm('Reinstall ' + a.title, 'Download version ' + v + ' again and put it in place of the copy on the Kindle. Useful when the app isn’t working as it should.' + kept, 'Reinstall')) return;
+                  install(a);
+                } }, 'Reinstall'));
+              }
+              if (a.installed) {
+                buttons.push(h('button', { class: 'btn small danger', onclick: async () => {
+                  if (!await App.confirm('Remove ' + a.title, 'The app is taken off the Kindle. Undo a plugin update can bring it back. KOReader restarts afterwards.', 'Remove', true)) return;
+                  run(() => App.api('/api/update/remove', { json: { folder: a.folder } }));
+                } }, 'Remove'));
+              }
               optional.append(h('div', {},
-                h('span', { class: 'grow' }, h('div', {}, a.title), a.description ? h('div', { class: 'small muted' }, a.description) : null),
-                // (Installed but older than the launcher, so it has no tile: Update, not Remove.)
-                a.old
-                  ? h('button', { class: 'btn small primary', onclick: async () => {
-                      if (!await App.confirm('Update ' + a.title, 'This copy of ' + a.title + ' is older than the launcher, so it has no tile. Install it again from ' + o.tag + '? KOReader restarts after.', 'Update')) return;
-                      run(() => App.api('/api/update/install', { json: { ...from, optional: a.folder } }));
-                    } }, 'Update')
-                : a.installed
-                  ? h('button', { class: 'btn small danger', onclick: async () => {
-                      if (!await App.confirm('Remove ' + a.title, a.title + ' is taken off the Kindle; Undo a plugin update can bring it back. KOReader restarts after.', 'Remove', true)) return;
-                      run(() => App.api('/api/update/remove', { json: { folder: a.folder } }));
-                    } }, 'Remove')
-                  : h('button', { class: 'btn small primary', onclick: async () => {
-                      if (!await App.confirm('Install ' + a.title, (a.description ? a.description + ' ' : '') + 'From ' + o.tag + '. KOReader restarts after.', 'Install')) return;
-                      run(() => App.api('/api/update/install', { json: { ...from, optional: a.folder } }));
-                    } }, 'Install')));
+                h('span', { class: 'grow' }, h('div', {}, a.title), h('div', { class: 'small muted' }, line),
+                  a.description ? h('div', { class: 'small muted' }, a.description) : null),
+                h('span', { class: 'row', style: 'gap:6px;white-space:nowrap' }, ...buttons)));
             }
           } catch (e) {
             if (mine !== oseq) return;
-            optional.replaceChildren(h('div', {}, h('span', { class: 'small muted grow' }, 'Couldn’t look them up: ' + e.message)));
+            optional.replaceChildren(h('div', {}, h('span', { class: 'small muted grow' }, 'Couldn’t load optional apps: ' + e.message)));
           }
         };
         let seq = 0;
@@ -314,14 +335,14 @@ App.pages.system = {
               if (latest) version.value = latest;
             } else {
               version.replaceChildren(h('option', {}, 'No releases'));
-              note.textContent = l.repo + ' has no releases with kindle-plugins.zip.';
+              note.textContent = 'No releases found at ' + l.repo + '.';
             }
             version.disabled = versionGo.disabled = !rel.length;
             if (back) back.disabled = !latest;
             if (optTag) lookOptional();
           } catch (e) {
             if (mine !== seq) return;
-            version.replaceChildren(h('option', {}, 'Couldn’t look it up'));
+            version.replaceChildren(h('option', {}, 'Couldn’t look up versions'));
             note.textContent = e.message;
           }
         };
@@ -330,12 +351,12 @@ App.pages.system = {
         // (Installed from a branch: back to the latest release.)
         const back = u.branch ? h('button', { class: 'btn', disabled: true, onclick: async () => {
           if (!latest) return;
-          if (!await App.confirm('Install ' + latest, 'Back to the releases: ' + latest + ' is installed in place of the ' + u.branch + ' branch, and updates come from the releases again. KOReader restarts after.', 'Install')) return;
+          if (!await App.confirm('Install ' + latest, latest + ' replaces the version from the ' + u.branch + ' branch, and updates come from releases again. KOReader restarts afterwards.', 'Install')) return;
           run(() => App.api('/api/update/install', { json: { tag: latest } }));
         } }, 'Back to the releases') : null;
         // Show test versions: on only past a warning, as on the Kindle.
         const tests = App.toggle(!!u.tests, async (on) => {
-          if (on && !await App.confirm('Show test versions', 'Test versions are for trying changes before they’re released. They may have bugs or be unfinished, and aren’t offered as updates: you pick one in Select version. Select version or Undo a plugin update takes you back to a release.', 'Show them')) {
+          if (on && !await App.confirm('Show test versions', 'Test versions are for trying changes before they’re released. They may have bugs or be unfinished. They’re never offered as updates: you install one yourself from the version list. To go back, pick a release there, or use Undo a plugin update.', 'Show them')) {
             tests.querySelector('input').checked = false;
             return;
           }
@@ -346,18 +367,18 @@ App.pages.system = {
         });
         versionGo.addEventListener('click', async () => {
           const tag = version.value;
-          if (!await App.confirm('Install ' + tag, 'Download ' + tag + ' from ' + repoName() + ' and install it? KOReader restarts after. Installed now: ' + (u.installed || 'not known') + '.', 'Install')) return;
+          if (!await App.confirm('Install ' + tag, 'Download ' + tag + ' from ' + repoName() + ' and install it? You have ' + (u.installed || 'a version that isn’t known') + '. KOReader restarts afterwards.', 'Install')) return;
           run(() => App.api('/api/update/install', { json: { tag } }));
         });
         box.append(...[
-          h('p', { class: 'muted small' }, 'Installed: ' + (u.installed || 'not known') + '. Everything is checked before anything is put in place; the version replaced is kept (Undo a plugin update can go back).'),
+          h('p', { class: 'muted small' }, 'You have ' + (u.installed || 'a version that isn’t known') + '. Each update is checked before it’s installed, and the version it replaces is kept, so Undo a plugin update can go back to it.'),
           App.setting('Repository', repo),
           back ? App.setting('Branch', back, 'This Kindle has the ' + u.branch + ' branch. Updates come from its newer commits until it goes back to the releases.') : null,
-          App.setting('Select version', h('div', { class: 'row' }, version, versionGo), 'The latest or a previous one.'),
-          App.setting('Show test versions', tests, 'Versions for trying changes before they’re released, in Select version.'),
+          App.setting('Select version', h('div', { class: 'row' }, version, versionGo), 'Any release, including older ones.'),
+          App.setting('Show test versions', tests, 'Test versions try out changes before they’re released. They appear in the version list.'),
           also, note,
           h('div', { class: 'group-head' }, 'Optional apps'),
-          h('div', { class: 'small muted' }, 'Install optional apps here. Once installed, they update automatically with each new version of the primary apps.'),
+          h('div', { class: 'small muted' }, 'Extra apps you can add. Once installed, they update whenever the main apps do.'),
           optional, p.panel].filter(Boolean));
         look();
       }, () => box.append(h('p', { class: 'muted small' }, 'Not available.')));
@@ -539,8 +560,8 @@ App.pages.system = {
         const names = { 0: 'Never', 60: '1 hour' };
         const port = h('input', { type: 'number', min: 1024, max: 65535, value: s.port, style: 'width:90px' });
         box.append(
-          App.setting('Keep the Kindle awake while on', App.toggle(s.awake, (on) => save({ awake: on }).catch(App.fail))),
-          App.setting('Stop after unused', App.select(s.choices.map((m) => [String(m), names[m] || m + ' min']), s.idle_minutes,
+          App.setting('Keep the Kindle awake while it runs', App.toggle(s.awake, (on) => save({ awake: on }).catch(App.fail))),
+          App.setting('Stop when idle', App.select(s.choices.map((m) => [String(m), names[m] || m + ' min']), s.idle_minutes,
             (v) => save({ idle_minutes: Number(v) }).catch(App.fail))),
           App.setting('Port', h('div', { class: 'row' }, port, h('button', { class: 'btn', onclick: () => {
             save({ port: Number(port.value) }).then((r) => {
@@ -565,7 +586,7 @@ App.pages.system = {
         const pw = h('input', { type: 'password', placeholder: p.set ? 'New password' : 'Password', autocomplete: 'new-password' });
         box.append(
           h('p', { class: 'muted small' }, (p.set ? 'This page asks for a password. ' : 'Anyone on your Wi-Fi can open this page. ') +
-            (location.protocol === 'https:' ? 'The page is encrypted (HTTPS), the password with it. '
+            (location.protocol === 'https:' ? 'The page is encrypted (HTTPS), and so is the password. '
               : 'It’s plain HTTP on your home network: a password keeps casual visitors out, but it isn’t encryption (HTTPS, below, is). ') +
             'On the Kindle, Tools > Web server > Remove password removes it.'),
           h('div', { class: 'row' }, pw,
@@ -594,7 +615,7 @@ App.pages.system = {
       const until = (c) => !c ? 'none yet' : (c.daysLeft < 0 ? 'ended ' + c.until : 'until ' + c.until + (c.daysLeft < 30 ? ' (' + c.daysLeft + ' days left)' : ''));
       App.api('/api/https').then((s) => {
         const notRunning = s.on && !s.running
-          ? h('p', { class: 'small', style: 'color:var(--danger)' }, 'HTTPS is on but didn’t start (the Kindle said why): the page is on plain HTTP. Use the Kindle’s own certificate, put yours in again, or turn HTTPS off.')
+          ? h('p', { class: 'small', style: 'color:var(--danger)' }, 'HTTPS is on but didn’t start (the Kindle said why), so the page is on plain HTTP. Use the Kindle’s own certificate, put yours in again, or turn HTTPS off.')
           : null;
         // Yours: two boxes to paste into, each with a file button that fills it.
         const area = (placeholder) => h('textarea', { rows: 4, placeholder, spellcheck: false, style: 'width:100%;font-family:monospace;font-size:12px' });
@@ -612,7 +633,7 @@ App.pages.system = {
         box.append(...[
           h('p', { class: 'muted small' }, 'Encrypts the page and everything on it, the password too. The Kindle makes its own certificate: '
             + 'browsers warn about it once (Advanced > Proceed). With a certificate of yours for a name your network knows, they don’t. '
-            + 'No HSTS: turned off, the page works over plain HTTP again. On the Kindle: Tools > Web server > HTTPS.'),
+            + 'Turn it off and the page works over plain HTTP again at once. On the Kindle: Tools > Web server > HTTPS.'),
           notRunning,
           App.setting('HTTPS', App.toggle(s.on, async (on) => {
             await App.api('/api/https', { json: { on } }).then((r) => moveTo(r, on ? 'HTTPS on' : 'HTTPS off'), App.fail);

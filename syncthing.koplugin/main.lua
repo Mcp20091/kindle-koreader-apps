@@ -252,7 +252,7 @@ function Syncthing:setWithWifi(on)
     G_reader_settings:saveSetting("syncthing_with_wifi", on)
 end
 
---- Warn about stuck sync and conflicts in the shared notifications (on unless turned off).
+--- Warn about stuck syncs and conflicts in the shared notifications (on unless turned off).
 function Syncthing:warnsOfProblems()
     return G_reader_settings:readSetting("syncthing_warn") ~= false
 end
@@ -620,7 +620,7 @@ function Syncthing:notifyChanges(snap)
             note("syncthing:err:" .. f.folder.id, T(_("Errors in %1"), f.folder.label))
         end
     end
-    -- Stuck folders and folders with conflicting copies (Warn about stuck sync and conflicts).
+    -- Stuck folders and folders with conflicting copies (Warn about stuck syncs and conflicts).
     if self:warnsOfProblems() then
         state.since = state.since or {}
         for __, p in ipairs(M.problems(snap, state.since, os.time())) do note(p.key, p.text) end

@@ -28,7 +28,7 @@ App.pages.fonts = {
 
   restartNotice() {
     return this.changedFonts ? h('div', { class: 'row', style: 'margin:6px 0' },
-      h('span', { class: 'small' }, 'KOReader reads its fonts when it starts: restart it to use the change in books.'),
+      h('span', { class: 'small' }, 'Books show the change after KOReader restarts.'),
       h('button', { class: 'btn small primary', onclick: async () => {
         if (!await App.confirm('Restart KOReader', 'Restart KOReader? The web server stops; start it again on the Kindle.', 'Restart', true)) return;
         await App.api('/api/kindle/control', { json: { action: 'restart' } }).catch(App.fail);
@@ -209,7 +209,7 @@ App.pages.fonts = {
       h('button', { class: 'btn small' + (k === page.cat ? ' primary' : ''), onclick: () => go('cat', k) }, label));
     const sort = (page.cat !== 'suggested' || page.q) ? App.select(App.arr(r.sorts), page.sort, (v) => go('sort', v)) : null;
     const listLine = st.status === 'getting' ? h('span', { class: 'small muted' }, 'Getting the list…')
-      : st.at ? h('span', { class: 'small muted' }, 'List from ' + new Date(st.at * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' · ',
+      : st.at ? h('span', { class: 'small muted' }, 'List updated ' + new Date(st.at * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' · ',
         h('a', { href: '#', onclick: (e) => {
           e.preventDefault();
           App.api('/api/fonts/catalogue/update', { json: {} }).then(() => setTimeout(reload, 1000), App.fail);
@@ -232,15 +232,15 @@ App.pages.fonts = {
           : h('button', { class: 'btn small', onclick: () => get(name) }, 'Get'));
 
     const rows = [];
-    if (page.q && !r.exact) rows.push(row(page.q, 'Get it by its name from Google Fonts'));
+    if (page.q && !r.exact) rows.push(row(page.q, 'Get this name from Google Fonts'));
     for (const e of App.arr(r.items)) {
       const parts = [e.category, e.styles, e.note].filter(Boolean);
       rows.push(row(e.name, parts.join(' · ')));
     }
     let empty = null;
     if (!r.total && !(page.cat === 'suggested' && !page.q)) {
-      empty = st.status === 'getting' ? 'Getting the list of every family from Google Fonts…'
-        : !st.count ? (st.message || 'The list of every family comes from Google Fonts, over the Kindle’s Wi-Fi.')
+      empty = st.status === 'getting' ? 'Getting the list of font families from Google Fonts…'
+        : !st.count ? (st.message || 'The list of font families comes from Google Fonts over the Kindle’s Wi-Fi.')
           : page.q ? 'Nothing in the list matches “' + page.q + '”.' : 'No families here.';
     }
     const pages = r.pages || 1;

@@ -551,7 +551,7 @@ function Settings.show(changed, extra)
     add(row(T(_("Eraser: %1"), Settings.get("whole_eraser") and _("Whole stroke") or _("Partial")), function()
         Settings.set("whole_eraser", not Settings.get("whole_eraser"))
     end))
-    add(row(T(_("Eraser: highlighter only: %1"), onOff(Settings.get("eraser_hl"))), function()
+    add(row(T(_("Erase highlighter only: %1"), onOff(Settings.get("eraser_hl"))), function()
         Settings.set("eraser_hl", not Settings.get("eraser_hl"))
     end))
     add(pick(T(_("Pen pressure: %1"), FEEL[Settings.get("pen_feel")] or FEEL.normal), _("Pen pressure"),

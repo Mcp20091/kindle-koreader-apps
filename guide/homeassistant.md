@@ -66,7 +66,7 @@ Your routines as play buttons (see Routines below). Tap one to run it, hold it t
 
 Everything that is on: lights, switches, fans, players. Tap one to turn it off, hold it for its controls. **Turn all off** turns them all off.
 
-Something you turn off here stays in On now for a few minutes, drawn as off (white), so a tap turns it straight back on if it was a mistake. Settings > **Keep turned off in On now** sets how long (**Off**, 1, 3, 5 or 10 minutes; 3 to start with).
+Something you turn off here stays in On now for a few minutes, drawn as off (white), so a tap turns it straight back on if it was a mistake. Settings > **Keep turned-off devices in On now** sets how long (**Off**, 1, 3, 5 or 10 minutes; 3 to start with).
 
 ![On now, with a light just turned off](img/apps/ha-on-now.png)
 
@@ -249,7 +249,7 @@ With **Sleep screen** set to **Home Assistant**, the sleeping Kindle shows:
 - **Home sections**, **Shortcuts**, **Quick tiles** and **Rooms**: each opens a list to order (see below).
 - **Routines**.
 - **Keep rows in place**: on to start with. A device you switch stays where it is in Activity until you leave the screen or refresh it.
-- **Keep turned off in On now** (see On now).
+- **Keep turned-off devices in On now** (see On now).
 
 ### Devices and cameras
 

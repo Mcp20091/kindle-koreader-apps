@@ -4,7 +4,7 @@ Wi-Fi (as CrossInk's web page): files, and pages for the Home Assistant, To
 Do and Notes plugins (setup, sign-ins, app IDs, reordering, and more).
 
 Tools > Web server starts it and shows the address (and a QR code). It runs
-until stopped, or after the time chosen in Stop after unused (30 minutes to start with); meanwhile the reader stays
+until stopped, or after the time chosen in Stop when idle (30 minutes to start with); meanwhile the reader stays
 awake.
 
 @module koplugin.webpage
@@ -47,7 +47,7 @@ local function setSetting(key, value)
     G_reader_settings:saveSetting("webpage_" .. key, value)
 end
 
--- Stop after unused: minutes, 0 = never. The older on/off switch (30 minutes or never) is read once.
+-- Stop when idle: minutes, 0 = never. The older on/off switch (30 minutes or never) is read once.
 local IDLE_CHOICES = { 15, 30, 60, 0 }
 local function idleMinutes()
     local m = setting("idle_minutes", nil)
@@ -133,11 +133,11 @@ function WebPage:shareWithApps()
                 { heading = _("WEB SERVER") },
                 { _("Web server"), running ~= nil, function() if running then w:stop() else w:start() end end },
                 { _("Address"), running and w:address() or _("Off"), function() if running then w:showAddress() else w:start() end end },
-                { _("Keep the Kindle awake while on"), setting("awake", true), function()
+                { _("Keep the Kindle awake while it runs"), setting("awake", true), function()
                     setSetting("awake", not setting("awake", true))
                     w:keepAwake()
                 end },
-                { _("Stop after unused"), idleName(idleMinutes()), function() w:askIdle() end },
+                { _("Stop when idle"), idleName(idleMinutes()), function() w:askIdle() end },
                 { _("Port"), tostring(setting("port", 8080)), function() w:askPort() end },
                 { heading = _("SECURITY") },
                 { _("HTTPS (encrypted)"), setting("https", false), function() w:setHttps(not setting("https", false)) end },
@@ -192,7 +192,7 @@ function WebPage:addToMainMenu(menu_items)
                 callback = function() self:showAddress() end,
             },
             {
-                text = _("Keep Kindle awake while running"),
+                text = _("Keep the Kindle awake while it runs"),
                 checked_func = function() return setting("awake", true) end,
                 callback = function()
                     setSetting("awake", not setting("awake", true))
@@ -200,7 +200,7 @@ function WebPage:addToMainMenu(menu_items)
                 end,
             },
             {
-                text_func = function() return T(_("Stop after unused: %1"), idleName(idleMinutes())) end,
+                text_func = function() return T(_("Stop when idle: %1"), idleName(idleMinutes())) end,
                 keep_menu_open = true,
                 callback = function(touchmenu) self:askIdle(touchmenu) end,
             },
@@ -258,7 +258,7 @@ function WebPage:askPassword(touchmenu)
     local KO = require("pluginshare").ko
     if KO and KO.askText then
         return KO.askText{ title = _("Web server password"), hint = _("At least 4 characters"), password = true, pen = false,
-            subtitle = _("Browsers ask for it. It keeps visitors out; it isn't encryption."),
+            subtitle = _("Browsers ask for it. It keeps visitors out, but it isn't encryption."),
             ok = _("Set"), check = function(pw) if #pw < 4 then return _("Use at least 4 characters.") end end, done = set }
     end
     local dialog
@@ -342,12 +342,12 @@ function WebPage:restart(ready)
     self:start(ready)
 end
 
---- Which certificate HTTPS uses and until when ("the Kindle's, until 2027-11-27").
+--- Which certificate HTTPS uses and until when ("The Kindle's own, until 2027-11-27").
 function WebPage:certificateText()
     local own = setting("https_own", false)
     local info = require("webtls").info(own)
-    if not info then return own and _("yours, can't be read") or _("made when HTTPS starts") end
-    local who = own and _("yours") or _("the Kindle's")
+    if not info then return own and _("Yours, can't be read") or _("Made when HTTPS starts") end
+    local who = own and _("Yours") or _("The Kindle's own")
     if info.daysLeft < 0 then return T(_("%1, ended %2"), who, info["until"]) end
     return T(_("%1, until %2"), who, info["until"])
 end
@@ -379,12 +379,12 @@ function WebPage:certificateMenu(touchmenu)
         UIManager:close(dialog)
         local ok, why = Tls.make(localIp())
         if not ok then return require("webcommon").message(why) end
-        require("webcommon").toast(_("A new certificate. Browsers warn about it once more."), 3)
+        require("webcommon").toast(_("New certificate made. Browsers warn about it once more."), 3)
         use(false)
     end } })
     table.insert(buttons, { { text = _("Close"), callback = function() UIManager:close(dialog) end } })
     dialog = require("webcommon").buttonDialog{
-        title = T(_("Certificate: %1\n\nThe Kindle's own is made here; browsers warn about it once. Yours is pasted or uploaded on the web page (System > HTTPS)."), self:certificateText()),
+        title = T(_("Certificate: %1\n\nThe Kindle's own is made here, and browsers warn about it once. To use yours, paste or upload it on the web page (System > HTTPS)."), self:certificateText()),
         buttons = buttons,
     }
 end
@@ -673,7 +673,7 @@ function WebPage:start(ready)
             logger.warn("Web server: HTTPS didn't start:", tlsWhy)
             require("webcommon").message(T(_("HTTPS didn't start (%1), so the web server is on plain HTTP.\n\nTools > Web server > HTTPS turns HTTPS off; Certificate there switches to the Kindle's own."), tlsWhy))
         elseif made then
-            require("webcommon").toast(_("A new certificate. Browsers warn about it once more."), 3)
+            require("webcommon").toast(_("New certificate made. Browsers warn about it once more."), 3)
         end
     end)
 end
@@ -756,7 +756,7 @@ function WebPage:showAddress()
     }
 end
 
---- Stop after unused: 15 min, 30 min, 1 hour or never.
+--- Stop when idle: 15 min, 30 min, 1 hour or never.
 function WebPage:askIdle(touchmenu)
     local KO = require("pluginshare").ko
     local function save(m)
@@ -764,7 +764,7 @@ function WebPage:askIdle(touchmenu)
         if touchmenu then touchmenu:updateItems() end
     end
     if KO and KO.choose then
-        return KO.choose(_("Stop after unused"), idleOptions(), idleMinutes(), save)
+        return KO.choose(_("Stop when idle"), idleOptions(), idleMinutes(), save)
     end
     local i = 1
     for n, m in ipairs(IDLE_CHOICES) do if m == idleMinutes() then i = n end end

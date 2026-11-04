@@ -2427,7 +2427,7 @@ function View:settingsRows()
             return options, s.wifi_idle or false, function(v) s.wifi_idle = v or nil end
         end },
         -- Every app that's set up, tested the way its own Test connection does (appstest.lua).
-        { _("Connection check"), _("Every app that's set up"), function() require("appstest").open(self) end },
+        { _("Connection check"), _("Tests every app that's set up"), function() require("appstest").open(self) end },
         -- (Updates and Undo a plugin update: Settings > Updates, appsupdate.lua.)
     }
     local list = {}

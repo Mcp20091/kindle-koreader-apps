@@ -119,7 +119,7 @@ Tap a clue's number (in the clue list) with the pen or a finger, and its squares
 Tap a number in the grid, and the clues that start in that square are outlined: the Across one and the Down one.
 
 - The clues are pinned in a card just above where you tapped (below, if there's no room above), just as wide as the clue needs.
-  - Its tick box ticks the clue off, just as the box in the clue list does. Once every clue on the card is ticked, the card closes, and **Undo** at the bottom unticks the last one and brings the card back (for 3 seconds; **Crossword settings > Undo after a tick** sets how long, or Off).
+  - Its tick box ticks the clue off, just as the box in the clue list does. Once every clue on the card is ticked, the card closes, and **Undo** at the bottom unticks the last one and brings the card back (for 3 seconds; **Crossword settings > Undo after ticking a clue** sets how long, or Off).
   - Drag the card out of the way with the pen or a finger. When you let go, the screen is cleaned up where it moved.
   - To get the card only for clues on another clue page (the ones on the same page are just outlined in the list), set **Crossword settings > Clue card** to **Clues on other pages**.
   - Tap its **X** to close it. Otherwise it stays while you work.
@@ -324,7 +324,7 @@ Crosswords has its own settings, full screen like the other apps' settings: tap 
   - **Clue boxes**: the tick box before each clue. **On** to start with.
   - **Swap grid and clues**: the clues above and the grid at the bottom (on its side, the grid on the right). **Off** to start with.
   - **Clue card**: when you tap a number in the grid, a card for **Every clue** (to start with) or for **Clues on other pages** only.
-  - **Undo after a tick**: how long Undo shows after you tick a clue on its card: **Off**, **2**, **3** (to start with), **5** or **8 seconds**.
+  - **Undo after ticking a clue**: how long Undo shows after you tick a clue on its card: **Off**, **2**, **3** (to start with), **5** or **8 seconds**.
   - **Swipes change the light**: off to start with, so a hand brushing the screen's edge while you solve doesn't change the brightness or warmth (KOReader's light swipes). The same switch as in Notes > Settings.
   - **Notes settings** (at the bottom): crosswords are Notes pages, so the pen, the toolbar, gestures and the rest are set in Notes' settings; this opens them without leaving the puzzle.
   - **Toolbar side**: **Left** or **Right**.

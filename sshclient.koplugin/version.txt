@@ -1,4 +1,5 @@
-2026-10-28 00:05
+2026-11-03 16:00
+Nov 3  SSH: clearer hints in Settings (Check hosts, stats, Dark terminal, Text size, App lock)
 Oct 28  SSH: a gesture for a deleted command says so in the apps' message box, not KOReader's
 Oct 27  SSH: App lock asks before it opens; its own app PIN joins App lock (it becomes the passcode the first time it's typed), hosts' PINs stay
 Oct 27  SSH: says what it is to the launcher and the web page (its tile, its web tab, now in this folder)

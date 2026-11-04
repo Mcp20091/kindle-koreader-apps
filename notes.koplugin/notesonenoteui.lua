@@ -212,7 +212,7 @@ function Notes:editOneNoteClientId()
         title = _("App ID (Microsoft Entra application ID)"),
         input = Settings.get("onenote_client_id") or "",
         input_hint = self:oneNoteClientId() or "",
-        description = _("Empty: the To Do plugin's app ID."),
+        description = _("Leave empty to use To Do's app ID."),
         buttons = { {
             { text = _("Cancel"), id = "close", callback = function()
                 UIManager:close(dialog)

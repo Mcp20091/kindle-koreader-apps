@@ -1637,11 +1637,11 @@ function V.settings(jump)
             end })
         table.insert(items, { band = _("KOREADER") })
         table.insert(items, { setting = _("Browse books with"), value = S.isBrowser() and _("Library") or _("KOReader's file browser"),
-            hint = _("What Back from a book and the launcher's Library open"), tap = function()
+            hint = _("What opens when you leave a book or tap Library on the launcher"), tap = function()
                 KO.choose(_("Browse books with"), { { label = _("Library"), value = "library" }, { label = _("KOReader's file browser"), value = "koreader" } },
                     S.get("browser", "library"), function(val) S.set("browser", val) page:redraw() end)
             end })
-        table.insert(items, { note = _("KOReader's own file browser is always in the menu: KOReader file browser. Covers and titles come from KOReader's Cover browser plugin, reading time from its Reading statistics plugin.") })
+        table.insert(items, { note = _("KOReader's own file browser is always in ⋮ > KOReader file browser. Covers and titles come from KOReader's Cover browser plugin, reading time from its Reading statistics plugin.") })
         return items
     end
     page = Page:new{

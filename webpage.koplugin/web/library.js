@@ -363,7 +363,7 @@ App.library = (() => {
           'After you change a book’s status, it stays where it is until you leave the screen or refresh it'),
         App.setting('Show hidden files', App.toggle(s.hidden === true, (on) => save({ hidden: on })), 'Names starting with a dot'),
         App.setting('Browse books with', App.select([['library', 'Library'], ['koreader', 'KOReader’s file browser']], s.browser, (v) => save({ browser: v })),
-          'What Back from a book and the launcher’s Library open'));
+          'What opens when you leave a book or tap Library on the launcher'));
     }, (e) => el.replaceChildren(h('div', { class: 'empty' }, e.message)));
     return el;
   }

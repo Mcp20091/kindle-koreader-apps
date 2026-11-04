@@ -142,8 +142,8 @@ local function signInSteps(ha, done)
     end
     local SPEC = {
         home = { sub = _("The address on your home Wi-Fi"), hint = "http://homeassistant.local:8123" },
-        away = { sub = _("External URL: an address that works from anywhere"), hint = "https://…" },
-        user = { sub = _("Your Home Assistant user name"), hint = _("User name") },
+        away = { sub = _("The External URL, which works from anywhere"), hint = "https://…" },
+        user = { sub = _("Your Home Assistant username"), hint = _("Username") },
         password = { sub = _("Password"), hint = "", password = true },
     }
     local show
@@ -358,8 +358,8 @@ local function rowsOf(view)
             prefs.stable_lists = not ha:stableLists()
             save()
         end },
-        { _("Keep turned off in On now"), keepOff > 0 and T(_("%1 min"), keepOff) or _("Off"), function()
-            choose(_("Keep turned off in On now"), {
+        { _("Keep turned-off devices in On now"), keepOff > 0 and T(_("%1 min"), keepOff) or _("Off"), function()
+            choose(_("Keep turned-off devices in On now"), {
                 { label = _("Off"), value = 0 }, { label = T(_("%1 min"), 1), value = 1 }, { label = T(_("%1 min"), 3), value = 3 },
                 { label = T(_("%1 min"), 5), value = 5 }, { label = T(_("%1 min"), 10), value = 10 },
             }, keepOff, function(v) prefs.keep_off = v save() end)
@@ -459,7 +459,7 @@ local function rowsOf(view)
                 view:refresh("ui")
             end)
         end },
-        PS.showConnectionTest and (api:get("home_url") or api:get("away_url")) and { _("Test connection"), _("Each address on its own"), function()
+        PS.showConnectionTest and (api:get("home_url") or api:get("away_url")) and { _("Test connection"), _("Tries each address"), function()
             PS.showConnectionTest("homeassistant")
         end } or false,
         { _("Account"), api:signedIn() and (api:get("token") and _("Using a token") or _("Signed in")) or _("Sign in"), function()
@@ -615,7 +615,7 @@ local function reorderList(view)
         end
         L.save = function(order) prefs.dash_sections = order end
         L.hide = function(k) Model.setDashHidden(prefs, k, not Model.dashHidden(prefs, k)) end
-        L.hint = _("Clock and info style. Tap a section, then use the arrows to move it. The eye shows or hides it.")
+        L.hint = _("For the Clock and info style. Tap a section, then use the arrows to move it. The eye shows or hides it.")
     elseif what == "dash_quick" or what == "dash_scenes" then
         local scenes = what == "dash_scenes"
         L.title = scenes and _("Dashboard scenes") or _("Dashboard Quick tiles")
@@ -629,8 +629,8 @@ local function reorderList(view)
             for __, id in ipairs(L.keys) do if id ~= k then table.insert(list, id) end end
             prefs[what] = list
         end
-        L.hint = scenes and _("Tap one, then use the arrows to move it. The \u{2715} removes it. To add one, hold it: Quick & dashboard.")
-            or _("Tap one, then use the arrows to move it. The \u{2715} removes it. To add one, hold a device: Quick & dashboard.")
+        L.hint = scenes and _("Tap one, then use the arrows to move it. The \u{2715} removes it. To add one, hold a scene or script and choose Quick & dashboard.")
+            or _("Tap one, then use the arrows to move it. The \u{2715} removes it. To add one, hold a device and choose Quick & dashboard.")
     elseif what == "cameras" then
         L.title = _("Cameras")
         for __, e in ipairs(snap and Model.cameraList(snap, prefs, true) or {}) do
@@ -643,7 +643,7 @@ local function reorderList(view)
             prefs.cameras_hidden = prefs.cameras_hidden or {}
             prefs.cameras_hidden[k] = not prefs.cameras_hidden[k] or nil
         end
-        L.hint = _("Cameras screen and the dashboard's rotation. Tap a camera, then use the arrows to move it. The eye shows or hides it.")
+        L.hint = _("For the Cameras screen and the dashboard's rotation. Tap a camera, then use the arrows to move it. The eye shows or hides it.")
     elseif what == "security_cams" then
         L.title = _("Security cameras")
         for __, e in ipairs(snap and Model.securityCams(snap, prefs, true) or {}) do
@@ -656,7 +656,7 @@ local function reorderList(view)
             prefs.security_hidden = prefs.security_hidden or {}
             prefs.security_hidden[k] = not L.hidden[k]
         end
-        L.hint = _("Security and the Security dashboard. Tap a camera, then use the arrows to move it. The eye shows or hides it.")
+        L.hint = _("For Security and the Security dashboard. Tap a camera, then use the arrows to move it. The eye shows or hides it.")
     elseif what == "sleep_alerts" then
         -- The chosen first (in their order), then the rest to choose from.
         L.title = _("Sleep screen alerts")
@@ -686,7 +686,7 @@ local function reorderList(view)
             L.hidden[k] = not L.hidden[k] or nil
             keep(L.keys)
         end
-        L.hint = _("Shown on the sleep screen when they need attention; a sensor always. The eye picks one.")
+        L.hint = _("Shown on the sleep screen when they need attention. A sensor always shows its value. The eye picks one.")
     elseif what == "rooms" then
         L.title = _("Rooms")
         for __, r in ipairs(snap and Model.rooms(snap, prefs, true) or {}) do

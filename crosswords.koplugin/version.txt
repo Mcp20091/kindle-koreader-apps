@@ -1,4 +1,5 @@
-2026-10-27 23:58
+2026-11-03 16:00
+Nov 3  Crosswords: Undo after ticking a clue (was Undo after a tick), and clearer hints for the clue card, new crosswords and swipes
 Oct 27  Crosswords: App lock (Settings > Launcher > App lock) asks before it opens, from the Tools menu and gestures too
 Oct 27  Crosswords: says what it is to the launcher and the web page (its tile and line, its web tab, now in this folder); its gesture works over the apps
 Oct 25  Crossword settings: Notes settings at the bottom (the pen, toolbar and gestures are Notes'), opened without leaving the puzzle

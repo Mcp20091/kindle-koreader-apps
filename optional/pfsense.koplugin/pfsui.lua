@@ -2280,7 +2280,7 @@ local function askKey(plugin, url)
             check(plugin)
         end)
     end, { password = true, ok = _("Connect"), okIcon = "check",
-        description = _("From pfSense: System > REST API > Keys. API keys must be allowed in System > REST API > Settings.") })
+        description = _("In pfSense, under System > REST API > Keys. API keys must be allowed in System > REST API > Settings.") })
 end
 
 --- Setting up: the address, then the key.
@@ -2290,7 +2290,7 @@ function UI.setup(plugin)
         if not url then return KO.toast(_("Enter the firewall's address, such as https://192.168.1.1")) end
         askKey(plugin, url)
     end, { ok = _("Next"), okIcon = "chevron-right",
-        description = _("The firewall's web interface, such as https://192.168.1.1 (its own certificate is fine).") })
+        description = _("The firewall's web interface, such as https://192.168.1.1 (a self-signed certificate is fine).") })
 end
 
 -- ------------------------------------------------------------------ settings
@@ -2320,7 +2320,7 @@ function UI.settingsItems(plugin, redo)
         end }
     t[#t + 1] = { band = _("NOTIFICATIONS") }
     t[#t + 1] = { toggle = plugin:notifying(), text = _("Gateways, interfaces and services going down"),
-        sub = _("Seen while pfSense is read; it goes when they're back"),
+        sub = _("Checked whenever pfSense is read. Cleared when they're back."),
         callback = function()
             G_reader_settings:saveSetting("pfsense_notify", not plugin:notifying())
             redo()
@@ -2342,7 +2342,7 @@ function UI.settingsItems(plugin, redo)
             plugin:setCfg({ key = v })
             redo()
             if plugin:configured() then check(plugin) end
-        end, { password = true, description = _("From pfSense: System > REST API > Keys.") })
+        end, { password = true, description = _("In pfSense, under System > REST API > Keys.") })
     end }
     if plugin:configured() and PS().showConnectionTest then
         t[#t + 1] = { setting = true, text = _("Test connection"), callback = function() PS().showConnectionTest("pfsense") end }

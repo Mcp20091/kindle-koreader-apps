@@ -41,7 +41,7 @@ The service watchdog and cron jobs need their pfSense packages (Service Watchdog
 - **The REST API package** (pfSense-pkg-RESTAPI) installed on pfSense. It isn't in pfSense's Package Manager: its website has the one command that installs it for your pfSense version.
 - **API keys allowed**: in pfSense, **System > REST API > Settings**, tick **Key** under **Authentication methods** and save.
 - **An API key**: **System > REST API > Keys > Add**. The key can do what the user who made it can do. For everything, that user needs **page-all** (the admin user has it). For less, make a user with only the REST API privileges for what you want, such as `api-v2-status-system-get` to read the system.
-- **The firewall's address**, such as `https://192.168.1.1` (its web interface). pfSense's own certificate is fine.
+- **The firewall's address**, such as `https://192.168.1.1` (its web interface). pfSense's own self-signed certificate is fine.
 
 ## Setting it up
 

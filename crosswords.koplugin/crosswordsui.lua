@@ -773,7 +773,7 @@ function Notes:crosswordAutoSettings(done)
             self:crosswordAutoSettings(done)
         end })
     end
-    require("notesko").list(_("Get new crosswords automatically\nWhen Crosswords opens or Wi-Fi comes on. Up to the last 3 days."), items,
+    require("notesko").list(_("Get new crosswords automatically\nChecked when Crosswords opens or Wi-Fi comes on, for puzzles from the last 3 days."), items,
         function() if done then done() end end)
 end
 
@@ -1812,8 +1812,8 @@ function Notes:crosswordSettings(changed, rowsOnly)
         local UNDO = { { "0", _("Off") }, { "2", _("2 seconds") }, { "3", _("3 seconds") }, { "5", _("5 seconds") }, { "8", _("8 seconds") } }
         local undoName = undo
         for __, o in ipairs(UNDO) do if o[1] == undo then undoName = o[2] end end
-        pick(_("Undo after a tick"), undoName, function()
-            Settings.choose(_("Undo after a tick\nHow long Undo shows after ticking a clue on its card."), UNDO, undo, function(v)
+        pick(_("Undo after ticking a clue"), undoName, function()
+            Settings.choose(_("Undo after ticking a clue\nHow long Undo shows after ticking a clue on its card."), UNDO, undo, function(v)
                 if v == nil then return end
                 Settings.set("crossword_undo", v ~= "3" and v or nil)
                 done()
@@ -1822,7 +1822,7 @@ function Notes:crosswordSettings(changed, rowsOnly)
         -- (Notes' own switch: crosswords are Notes pages.)
         local light = Settings.get("light_swipes") == true
         pick(_("Swipes change the light"), light and _("On") or _("Off"), function()
-            Settings.choose(_("Swipes change the light") .. "\n" .. _("KOReader's brighter, dimmer and warmth swipes along the screen's edge. Off, a hand brushing the edge while you write doesn't change the light. The same switch as Notes > Settings."),
+            Settings.choose(_("Swipes change the light") .. "\n" .. _("KOReader's brighter, dimmer and warmth swipes along the screen's edge. When it's off, a hand brushing the edge while you write doesn't change the light. The same switch as Notes > Settings."),
                 { { "off", _("Off") }, { "on", _("On") } }, light and "on" or "off", function(v)
                     if v == nil then return end
                     Settings.set("light_swipes", v == "on")

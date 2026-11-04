@@ -42,7 +42,7 @@ local Test = {}
 function Test.why(err)
     local s = tostring(err or "")
     if s:find("timeout") or s:find("timed out") then return _("No answer (timed out)") end
-    if s:find("host not found") or s:find("Name or service") or s:find("not known") then return _("Its name couldn't be looked up (DNS)") end
+    if s:find("host not found") or s:find("Name or service") or s:find("not known") then return _("The address couldn't be found (DNS)") end
     if s:find("refused") then return _("Connection refused (nothing answering on that port)") end
     if s:find("unreachable") then return _("Network unreachable") end
     if s:find("certificate") or s:find("handshake") or s:find("ssl") then return _("Secure connection failed (certificate)") end
@@ -256,7 +256,7 @@ function Test.draw(view, c)
     local C = require("appscanvas")
     local F = c:flow(56, c.H - 8, view.conntestPage or 1)
     F:block(46, function(y)
-        c:text(14, y + 24, _("Each address on its own: the same test as each app's Test connection."), 10.5,
+        c:text(14, y + 24, _("Tests each address on its own, the same way each app's Test connection does."), 10.5,
             { color = C.GREY, maxw = c.W - 28 })
     end)
     -- What to test: the apps set up, ticked to start with.

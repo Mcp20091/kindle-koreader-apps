@@ -228,8 +228,8 @@ App.pages.crosswords = {
       App.setting('Swap grid and clues', App.toggle(st.crossword_swap === true, (v) => save('crossword_swap', v)),
         'The clues on top and the grid at the bottom (on its side, the grid on the right). Writing in the grid moves with it.'),
       App.setting('Clue card', App.select([['other', 'Clues on other pages'], ['all', 'Every clue']], st.crossword_card === 'other' ? 'other' : 'all', (v) => save('crossword_card', v === 'other' ? 'other' : '')),
-        'The card a number in the grid opens: only for clues on another page, or for every clue.'),
-      App.setting('Undo after a tick', App.select([['0', 'Off'], ['2', '2 seconds'], ['3', '3 seconds'], ['5', '5 seconds'], ['8', '8 seconds']], st.crossword_undo || '3', (v) => save('crossword_undo', v === '3' ? '' : v)),
+        'Which clues get a card when you tap a number in the grid.'),
+      App.setting('Undo after ticking a clue', App.select([['0', 'Off'], ['2', '2 seconds'], ['3', '3 seconds'], ['5', '5 seconds'], ['8', '8 seconds']], st.crossword_undo || '3', (v) => save('crossword_undo', v === '3' ? '' : v)),
         'How long Undo shows after ticking a clue on its card.'),
       App.setting('Tap a number to find it', App.toggle(st.crossword_find !== false, (v) => save('crossword_find', v)),
         'Tap a clue’s number with the pen to outline its squares, or a number in the grid to outline its clue.'),
@@ -237,7 +237,7 @@ App.pages.crosswords = {
         'Each puzzle times itself while it is open and being written on.'),
       App.setting('Finished puzzles', App.select([['keep', 'Keep'], ['hide', 'Hide after 7 days'], ['remove', 'Remove after 30 days']], st.crossword_finished || 'keep', (v) => save('crossword_finished', v))),
       h('h3', {}, 'Get new ones automatically'),
-      h('p', { class: 'small muted' }, 'When Crosswords opens or Wi-Fi comes on. Up to the last 3 days.'),
+      h('p', { class: 'small muted' }, 'Checked when Crosswords opens or Wi-Fi comes on, for puzzles from the last 3 days.'),
       autoBoxes);
   },
 };

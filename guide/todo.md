@@ -178,7 +178,7 @@ If To Do refuses a change (say, a task already deleted on your phone), it's left
 
 With **Sleep screen** set to **To Do tasks**, the sleeping Kindle shows the day and date, how many are due and overdue, and the tasks. **Sleep screen content** chooses:
 
-- **Today + Up next**: overdue, today and the next days.
+- **Today and Up next**: overdue, today and the next days.
 - **Today**: overdue and today.
 - **Starred**.
 - **Pinned list**.

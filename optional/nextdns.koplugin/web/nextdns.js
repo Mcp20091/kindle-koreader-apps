@@ -53,7 +53,7 @@ App.pages.nextdns = {
     const page = this;
     if (!s.configured) {
       return h('div', { class: 'card' }, h('h2', { style: 'margin-top:0' }, 'NextDNS isn’t set up yet'),
-        h('p', { class: 'muted' }, 'Enter your NextDNS account’s API key below (on NextDNS’s website: Account, then API at the bottom), then pick the profile. Or use Set up in NextDNS on the Kindle.'));
+        h('p', { class: 'muted' }, 'Enter your NextDNS account’s API key below (on NextDNS’s website, under Account > API at the bottom), then pick the profile. Or use Set up in NextDNS on the Kindle.'));
     }
     if (!s.summary) {
       return h('div', { class: 'card' }, h('h2', { style: 'margin-top:0' }, s.name),
@@ -163,7 +163,7 @@ App.pages.nextdns = {
       App.setting('Read every', App.select([[30, '30 seconds'], [60, '1 minute'], [120, '2 minutes'], [300, '5 minutes'], [600, '10 minutes']],
         s.interval || 60, (v) => save({ interval: Number(v) })), 'While NextDNS is open on the Kindle. Nothing is read once it closes.'),
       h('h3', {}, 'Connection'),
-      App.setting('API key', key, 'On NextDNS’s website: Account, then API at the bottom.'),
+      App.setting('API key', key, 'On NextDNS’s website, open Account. It’s under API at the bottom.'),
       s.hasKey ? App.setting('Profile', profile, 'The profile the Kindle shows and changes.') : null,
       h('div', { class: 'row', style: 'gap:8px;margin-top:10px' },
         h('button', { class: 'btn primary', onclick: () => { if (key.value.trim()) save({ key: key.value.trim() }, 'Saved'); } }, 'Save'),

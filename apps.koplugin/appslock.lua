@@ -437,7 +437,7 @@ function Lock.rows()
             return options, l:stay(), function(v) l:setStay(v) end
         end }
         rows[#rows + 1] = { l:kind() == "password" and _("Turn off password") or _("Turn off passcode"), "", function(refresh)
-            Popup.confirm{ title = _("Turn off"), text = _("Every app opens without asking. The apps ticked stay ticked for when you set one again."),
+            Popup.confirm{ title = _("Turn off"), text = _("Every app opens without asking. The apps you ticked stay ticked, for when you set one again."),
                 ok = _("Turn off"), onOk = function() l:clear() if refresh then refresh() end end }
         end }
     end

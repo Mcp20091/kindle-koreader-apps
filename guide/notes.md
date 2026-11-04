@@ -541,7 +541,7 @@ Light and Night mode are KOReader's own: use the drop-down panel (tap the time a
 
 - **Pen side button**: Eraser, Lasso, Highlighter, Ruler (straight lines) or Nothing.
 - **Turn pages with a finger**: Swipe up and down, Swipe left and right, or Off.
-- **Eraser**: Partial or Whole stroke. **Eraser: highlighter only**.
+- **Eraser**: Partial or Whole stroke. **Erase highlighter only**.
 - **Pen pressure**: Soft, Normal or Firm.
 - **Two pages when turned on its side**.
 - **Stroke smoothing**: Off, Light or Strong.

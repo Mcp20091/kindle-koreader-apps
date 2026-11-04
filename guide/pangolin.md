@@ -22,7 +22,7 @@ By hand: copy `kindle-pangolin.zip` (from the release) to the Kindle, unzip it i
   - **List Sites** and **Get Organization** at least.
   - **List Resources**, **List Site Resources** and **List Clients** to see public resources, private resources and clients.
   - The **Update**, **Block** and **Archive** permissions to change them.
-- **The organization's ID**: it is in the dashboard's address, after the `/`.
+- **The organization's ID**: it is in the dashboard's address, just after the server name (`home` in `https://pangolin.example.com/home/sites`).
 
 A list the key can't read is left out and says which permission it needs; give the key that permission in the dashboard, then tap **⟳**.
 
@@ -110,7 +110,7 @@ The same page opens from the launcher's **Settings** list, under **Optional apps
 - **DISPLAY**
   - **Read every**: how often Pangolin is read while the app is open, from 10 seconds to 5 minutes.
 - **NOTIFICATIONS**
-  - **Sites and resources going offline**: a notification in the bell, seen while Pangolin is read; it goes when they are back. Tap it to open Pangolin.
+  - **Sites and resources going offline**: a notification in the bell, checked whenever Pangolin is read. It goes away when they are back. Tap it to open Pangolin.
 - **CONNECTION**
   - **API URL**, **API key** and **Organization**. The key shows only its end.
   - **Test connection**: checks the API, then the key and the organization.

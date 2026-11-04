@@ -130,7 +130,7 @@ function Weather.test(apps, Test)
     if s.weather == "off" then return {} end
     local rows = {}
     if Weather.source(apps) == "ha" then
-        table.insert(rows, { name = _("From Home Assistant"), ok = true, why = _("Tested under Home Assistant") })
+        table.insert(rows, { name = _("From Home Assistant"), ok = true, why = _("Home Assistant's own test covers it") })
     end
     local p = s.weather_place
     local okJson = function(status, body)
@@ -421,7 +421,7 @@ function Weather.draw(view, c)
     if not d then
         F:block(90, function(y)
             c:text(14, y + 30, p and _("Getting the forecast…") or _("No place set."), 13, { color = C.GREY })
-            c:text(14, y + 56, _("It needs Wi-Fi. Settings > Launcher > WEATHER sets the place."), 11, { color = C.GREY, maxw = c.W - 28 })
+            c:text(14, y + 56, _("It needs Wi-Fi. Set the place in Settings > Launcher > WEATHER."), 11, { color = C.GREY, maxw = c.W - 28 })
         end)
     else
         local cur = d.current

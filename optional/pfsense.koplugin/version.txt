@@ -1,4 +1,5 @@
-2026-10-28 18:40
+2026-11-03 16:00
+Nov 3  pfSense: clearer hints for the API key, the certificate and notifications
 Oct 28  pfSense: the web page adds a cron job only when it has a password (a cron job runs a command as root on the firewall)
 Oct 28  pfSense: Packages to install and Remove; pf tables (look up an address, empty a block list); the DHCP server's settings, address pools and options; the DNS Resolver's settings
 Oct 28  pfSense: the service watchdog, cron jobs (add, change, delete), NTP on or off with its time servers, and SSH on or off with its port

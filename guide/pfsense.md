@@ -22,7 +22,7 @@ On pfSense:
 - **The REST API package** (pfSense-pkg-RESTAPI) installed. It isn't in pfSense's Package Manager: the package's website (pfrest.org) has the one command that installs it for your version of pfSense.
 - **API keys allowed**: in pfSense, open **System > REST API > Settings**, tick **Key** under **Authentication methods** and save.
 - **An API key**: **System > REST API > Keys > Add**. The key can do what the user who made it can do. For everything, that user needs **page-all** (the admin user has it). For less, make a user with only the REST API privileges for what you want, such as `api-v2-status-system-get` to read the system.
-- **The firewall's address**: the address of its web interface, such as `https://192.168.1.1`. pfSense's own certificate is fine.
+- **The firewall's address**: the address of its web interface, such as `https://192.168.1.1`. pfSense's own self-signed certificate is fine.
 
 A list the key's user can't read is left out and says which privilege it needs.
 
@@ -133,7 +133,7 @@ The same page opens from the launcher's **Settings** list, under **Optional apps
 - **DISPLAY**
   - **Read every**: how often pfSense is read while the app is open, from 15 seconds to 5 minutes.
 - **NOTIFICATIONS**
-  - **Gateways, interfaces and services going down**: a notification in the bell, seen while pfSense is read; it goes when they are back. Tap it to open pfSense.
+  - **Gateways, interfaces and services going down**: a notification in the bell, checked whenever pfSense is read. It goes away when they are back. Tap it to open pfSense.
 - **CONNECTION**
   - **Address** and **API key**. The key shows only its end.
   - **Test connection**: checks the API, then the key.

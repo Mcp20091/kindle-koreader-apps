@@ -531,7 +531,7 @@ function M.zChoices(z)
         local v = round(z + s, 0.001)
         if math.abs(v) <= M.Z_LIMIT + 0.0005 then
             local dir = s > 0 and _("up") or _("down")
-            table.insert(out, { label = T(_("%1  (%2 %3)"), M.zText(v), dir, string.format("%.3f", math.abs(s))), value = v })
+            table.insert(out, { label = T(_("%1  (%2 %3 mm)"), M.zText(v), dir, string.format("%.3f", math.abs(s))), value = v })
         end
     end
     if math.abs(z) >= 0.0005 then table.insert(out, { label = T(_("%1  (reset)"), M.zText(0)), value = 0 }) end

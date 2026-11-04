@@ -63,10 +63,10 @@ App.pages.ssh = {
     size.addEventListener('change', () => save({ text_size: Number(size.value) }));
     return h('div', { class: 'card' },
       h('h2', { style: 'margin:0' }, 'SSH settings'),
-      row('Check hosts', 'Their status and alerts, while the Kindle is awake and on Wi-Fi. A host can have its own.', every),
-      row('Stats under each host', 'Its first two, such as up 3 days · 52 °C', toggle('main_stats', st.main_stats)),
-      row('Dark terminal', 'Also in a live session’s Keys', toggle('dark', st.dark)),
-      row('Text size', 'The next live session opens with it (the same as KOReader’s Terminal emulator)', size));
+      row('Check hosts', 'Reads each host’s status and alerts while the Kindle is awake and on Wi-Fi. A host can have its own.', every),
+      row('Stats under each host', 'The first two stats, such as up 3 days · 52 °C', toggle('main_stats', st.main_stats)),
+      row('Dark terminal', 'Also under Keys in a live session', toggle('dark', st.dark)),
+      row('Text size', 'Takes effect in the next live session (shared with KOReader’s Terminal emulator)', size));
   },
 
   // AI help (the launcher's AI, Settings > AI): explain or summarize output (pasted, or the last output on

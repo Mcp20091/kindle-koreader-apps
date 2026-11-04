@@ -226,7 +226,7 @@ local function shift(view, keys, key, dir)
 end
 
 local function newGroup(view, done)
-    KO.askText{ title = _("New group"), hint = _("Its name"), ok = _("Create"), okIcon = "plus", needsText = true, done = function(name)
+    KO.askText{ title = _("New group"), hint = _("Group name"), ok = _("Create"), okIcon = "plus", needsText = true, done = function(name)
         if name == "" then return end
         local list = groups(view, true)
         local g = { id = "g" .. os.time() .. math.random(100, 999), name = name, keys = {} }
@@ -279,7 +279,7 @@ local function rowMenu(view, e, section)
     end
     items[#items + 1] = { text = _("Hide"), fn = function()
         Hub.setHidden(view, e.key, true)
-        KO.toast(_("Hidden. Search still finds it: hold it there to show it again."), 4)
+        KO.toast(_("Hidden. To show it again, find it with Search and hold it."), 4)
     end }
     KO.list(_(e.name), items)
 end
@@ -308,7 +308,7 @@ local function groupMenu(view, g)
         { text = _("Move down"), fn = function() move(1) end },
         { text = _("New group…"), fn = function() newGroup(view) end },
         { text = _("Delete group"), fn = function()
-            KO.confirm{ title = T(_("Delete %1"), _(g.name)), text = _("Its rows go to the end of the list (OTHER)."), ok = _("Delete"),
+            KO.confirm{ title = T(_("Delete %1"), _(g.name)), text = _("Its rows move to OTHER, at the end of the list."), ok = _("Delete"),
                 onOk = function()
                     local __, i = find()
                     if i then table.remove(groups(view, true), i) save(view) end
@@ -402,7 +402,7 @@ function Hub.draw(view, c)
     end
     rows[#rows + 1] = { heading = _("THIS LIST") }
     if hiddenN > 0 then
-        rows[#rows + 1] = { note = T(_("%1 hidden. Search finds them: hold one there to show it again."), hiddenN) }
+        rows[#rows + 1] = { note = T(_("%1 hidden. To show one again, find it with Search and hold it."), hiddenN) }
     end
     rows[#rows + 1] = { _("Layout"), h.layout == "list" and _("One list") or _("Groups"), pick = function()
         return { { _("Groups"), "groups" }, { _("One list"), "list" } }, h.layout or "groups", function(v)
@@ -413,7 +413,7 @@ function Hub.draw(view, c)
     rows[#rows + 1] = { note = _("Hold a row or a group's name to move, group or hide it.") }
     if h.layout ~= nil or h.groups or h.order or h.hidden then
         rows[#rows + 1] = { _("Reset this list"), "", function()
-            KO.confirm{ title = _("Reset this list"), text = _("Back to the suggested groups, with nothing hidden."), ok = _("Reset"),
+            KO.confirm{ title = _("Reset this list"), text = _("The list goes back to the suggested groups, with nothing hidden."), ok = _("Reset"),
                 onOk = function() view.apps.settings.hub = nil save(view) end }
         end }
     end

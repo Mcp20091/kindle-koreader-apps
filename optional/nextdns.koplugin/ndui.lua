@@ -237,7 +237,7 @@ function UI.mainItems(plugin)
     local t = {}
     if not plugin:configured() then
         t[#t + 1] = { message = _("NextDNS isn't set up yet.") }
-        t[#t + 1] = { note = _("You need your NextDNS account's API key (on NextDNS's website: Account, then API at the bottom).") }
+        t[#t + 1] = { note = _("You need your NextDNS account's API key (on NextDNS's website, under Account > API at the bottom).") }
         t[#t + 1] = { gap = 10 }
         t[#t + 1] = { tiles = {
             { icon = "key-round", text = _("Set up"), sub = _("API key and profile"), primary = true, fn = function() UI.setup(plugin) end },
@@ -602,7 +602,7 @@ function UI.setup(plugin)
         if v == "" then return KO.toast(_("Enter the API key")) end
         askProfile(plugin, v)
     end, { password = true, ok = _("Next"), okIcon = "chevron-right",
-        description = _("On NextDNS's website: Account, then API at the bottom.") })
+        description = _("On NextDNS's website, open Account. It's under API at the bottom.") })
 end
 
 -- ------------------------------------------------------------------ settings
@@ -639,7 +639,7 @@ function UI.settingsItems(plugin, redo)
             plugin:setCfg({ key = v })
             redo()
             check(plugin)
-        end, { password = true, description = _("On NextDNS's website: Account, then API at the bottom.") })
+        end, { password = true, description = _("On NextDNS's website, open Account. It's under API at the bottom.") })
     end }
     t[#t + 1] = { setting = true, text = _("Profile"), value = c.profile and plugin:profileName() or _("Not set"), callback = function()
         if not c.key then return UI.setup(plugin) end
@@ -693,7 +693,7 @@ The denylist and allowlist: each domain has a switch to turn it off without dele
 
 Protection has the security, privacy and parental control switches. ⋮ > Profile picks another profile.
 
-It talks to NextDNS's API with your account's API key (on NextDNS's website: Account, then API at the bottom). NextDNS is read while the app is open, and when the launcher shows its tile or a quick button. Nothing runs in the background.]])
+It talks to NextDNS's API with your account's API key (on NextDNS's website, under Account > API at the bottom). NextDNS is read while the app is open, and when the launcher shows its tile or a quick button. Nothing runs in the background.]])
     if read then
         return read{ title = _("NextDNS"), text = text, buttons = { { icon = "check", text = _("Done"), primary = true } } }
     end

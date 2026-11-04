@@ -65,7 +65,7 @@ App.pages.flashforge = {
         s.filtration || 'off', (v) => page.act('filtration', { mode: v }))) : null,
       s.hasCamera ? App.setting('Camera', h('div', { class: 'row', style: 'gap:6px' },
         btn('On', () => page.act('camera', { on: true }, 'Camera on')),
-        btn('Off', () => page.act('camera', { on: false }, 'Camera off'))), 'Its stream. Pictures are in FlashForge on the Kindle.') : null,
+        btn('Off', () => page.act('camera', { on: false }, 'Camera off'))), 'Starts or stops its stream. Take pictures in FlashForge on the Kindle.') : null,
       h('p', { class: 'small muted' }, (s.read ? 'Read ' + App.ago(s.read) : '') + (s.why ? ' · ' + s.why : '') +
         ' · Starting a print and camera pictures are in FlashForge on the Kindle.'));
   },
@@ -110,9 +110,9 @@ App.pages.flashforge = {
         s.interval || 10, (v) => save({ interval: Number(v) })), 'While FlashForge is open on the Kindle. Nothing is read once it closes.'),
       App.setting('Level the bed first', App.toggle(!!s.leveling, (v) => save({ leveling: v })), 'Before each print started from the Kindle.'),
       h('h3', {}, 'Printer'),
-      App.setting('IP address', ip, 'On the printer: Settings > Network shows it.'),
-      App.setting('Serial number', serial, 'On the printer: Settings > About. Include the SN at the start.'),
-      App.setting('Check code', code, 'On the printer: Settings > Network > LAN-only mode shows it.'),
+      App.setting('IP address', ip, 'Find it on the printer under Settings > Network.'),
+      App.setting('Serial number', serial, 'Find it on the printer under Settings > About. Include the SN at the start.'),
+      App.setting('Check code', code, 'Find it on the printer under Settings > Network > LAN-only mode.'),
       h('div', { class: 'row', style: 'gap:8px;margin-top:10px' },
         h('button', { class: 'btn primary', onclick: () => save({ ip: ip.value.trim(), serial: serial.value.trim(), code: code.value.trim() }, 'Saved. Reading the printer…') }, 'Save'),
         s.configured ? App.connectionTest('flashforge') : null));
