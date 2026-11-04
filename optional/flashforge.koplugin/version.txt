@@ -1,4 +1,6 @@
-2026-11-03 18:00
+2026-11-03 22:00
+Nov 3  FlashForge: Monitor prints (Settings): reads the printer in the background while the Kindle is awake, for the notifications; new Print paused and Print hasn't moved in 20 min notifications
+Nov 3  FlashForge: Camera: Refresh every 2, 3 or 5 seconds too; 10 seconds to start with
 Nov 3  FlashForge: Settings > SHOW turns off the light, camera, air filter, cooling fan or chamber fan for a printer without them (hidden on the web page too)
 Nov 3  FlashForge: clearer hints (Z offset steps in mm, where to find the printer's address, serial number and check code, the camera's stream)
 Nov 3  FlashForge: Refresh automatically on the Camera page (off at first), with Refresh every from 10 seconds to 5 minutes

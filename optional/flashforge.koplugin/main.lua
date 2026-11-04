@@ -7,8 +7,10 @@ camera, the Material Station's slots, and starting one of the printer's
 recent files (with material matching on the AD5X).
 
 For the Adventurer 5M, 5M Pro, AD5X, Creator 5 and Creator 5 Pro, in
-LAN-only mode. Nothing runs in the background: the printer is read while
-the app is open, and when the launcher's tile or a quick button shows it.
+LAN-only mode. The printer is read while the app is open, when the
+launcher's tile or a quick button shows it, and with Monitor prints on,
+every minute during a print (every 5 minutes otherwise) while KOReader runs
+and the Kindle is awake.
 
 Also: the launcher's tile line (appsLine, event ShowFlashForge), its
 settings, search, setup step, quick buttons, connection test and backup,
@@ -47,6 +49,9 @@ local state = {
     files = nil,       -- the recent files as last read
     line = nil,        -- the launcher's line as last shown
     lastState = nil,   -- for "Print finished" and errors
+    track = nil,       -- for "Print hasn't moved" (ffmodel.stuck)
+    ourPause = 0,      -- when Pause was tapped here (no "Print paused" for it)
+    monitorOn = false, -- Monitor prints' loop is running
 }
 
 local FlashForge = WidgetContainer:extend{
@@ -75,6 +80,7 @@ function FlashForge:init()
     require("ffko").flashOnUncover()
     require("ffui").plugin = self
     self:shareWithApps()
+    self:monitor()
 end
 
 function FlashForge:onDispatcherRegisterActions()
@@ -147,6 +153,37 @@ end
 
 function FlashForge:leveling()
     return G_reader_settings:isTrue("flashforge_leveling")
+end
+
+-- ------------------------------------------------------------------ Monitor prints
+
+-- How often Monitor prints reads the printer (seconds): during a print, and otherwise.
+local MONITOR_PRINTING, MONITOR_IDLE = 60, 300
+
+function FlashForge:monitoring()
+    return G_reader_settings:isTrue("flashforge_monitor")
+end
+
+-- One loop for all the plugin's copies (each book and the library has one): it reads
+-- through the one of the moment, and stops when Monitor prints is turned off. Timers
+-- don't run while the Kindle sleeps, and nothing is read off Wi-Fi.
+local function monitorTick()
+    if not G_reader_settings:isTrue("flashforge_monitor") then
+        state.monitorOn = false
+        return
+    end
+    local i = state.info
+    local wait = (i and M.active(i.state)) and MONITOR_PRINTING or MONITOR_IDLE
+    local ff = current()
+    if ff and ff:configured() then ff:status(wait - 5) end
+    UIManager:scheduleIn(wait, monitorTick)
+end
+
+--- Starts Monitor prints' loop when it's on (and not running already).
+function FlashForge:monitor()
+    if state.monitorOn or not self:monitoring() then return end
+    state.monitorOn = true
+    UIManager:scheduleIn(5, monitorTick)
 end
 
 -- ------------------------------------------------------------------ reading the printer
@@ -256,9 +293,26 @@ function FlashForge:notifyChanges(i)
     local PS = require("pluginshare")
     local before = state.lastState
     state.lastState = i.state
+    local function open() local ff = current() if ff then ff:show() end end
+    local file = i.file ~= "" and i.file or self:printerName()
+    -- (a print that stopped moving: said once, taken away once it moves again)
+    local stuck
+    state.track, stuck = M.stuck(state.track, i, os.time())
+    if PS.notify and stuck then
+        pcall(PS.notify, { app = "flashforge", name = _("FlashForge"), icon = "printer", key = "flashforge:stuck",
+            text = T(_("Print hasn't moved in %1 min: %2"), math.floor(M.STUCK / 60), file), open = open, route = {} })
+    elseif PS.unnotify and not (state.track and state.track.said) then
+        pcall(PS.unnotify, "flashforge:stuck")
+    end
     if not PS.notify or before == nil or before == i.state then return end
     local key = "flashforge:job"
-    local function open() local ff = current() if ff then ff:show() end end
+    if (i.state == "paused" or i.state == "pausing") and (before == "printing" or before == "heating")
+        and os.time() - state.ourPause > 300 then
+        -- (paused at the printer, or by the printer itself: filament out, say)
+        pcall(PS.notify, { app = "flashforge", name = _("FlashForge"), icon = "printer", key = key,
+            text = T(_("Print paused: %1"), file), open = open, route = {} })
+        return
+    end
     if i.state == "completed" and M.active(before) then
         pcall(PS.notify, { app = "flashforge", name = _("FlashForge"), icon = "printer", key = key,
             text = T(_("Print finished: %1"), i.file ~= "" and i.file or self:printerName()), open = open, route = {} })
@@ -325,6 +379,7 @@ function FlashForge:act(name, args, done, opts)
     if not NetworkMgr:isConnected() then return done and done(false, "offline") end
     local api = self:api()
     args = args or {}
+    if name == "pause" then state.ourPause = os.time() end
     require("ffbg").run(function()
         local ok, why = fn(api, args)
         if not ok then return { why = why or "refused" } end
@@ -570,7 +625,7 @@ function FlashForge:webState()
     local c = self:cfg()
     local i = self:configured() and self:status(5) or nil
     local out = { configured = self:configured(), ip = c.ip, name = self:printerName(), model = c.model,
-        hasCode = c.code ~= nil, interval = self:interval(), leveling = self:leveling(), show = {},
+        hasCode = c.code ~= nil, interval = self:interval(), leveling = self:leveling(), monitor = self:monitoring(), show = {},
         read = state.time > 0 and state.time or nil, why = state.why and self:whyText(state.why) or nil }
     for __, k in ipairs(FlashForge.SHOWS) do out.show[k] = self:shows(k) end
     if i then
@@ -606,7 +661,7 @@ end
 --- The web page's actions: pause, resume, cancel, clear, light { on },
 -- filtration { mode }, tune { speed, zOffset, coolingFan, chamberFan } (any of
 -- them, during a print), camera { on }, refresh (started in the background: the page reads
--- the state again after); settings { ip, serial, code, interval, leveling, show { light,
+-- the state again after); settings { ip, serial, code, interval, leveling, monitor, show { light,
 -- camera, filter, coolingFan, chamberFan = true/false } }.
 -- Returns true, or false and why.
 function FlashForge:webAct(name, args)
@@ -624,6 +679,10 @@ function FlashForge:webAct(name, args)
             G_reader_settings:saveSetting("flashforge_interval", math.max(5, math.min(300, math.floor(tonumber(args.interval)))))
         end
         if type(args.leveling) == "boolean" then G_reader_settings:saveSetting("flashforge_leveling", args.leveling) end
+        if type(args.monitor) == "boolean" then
+            G_reader_settings:saveSetting("flashforge_monitor", args.monitor)
+            self:monitor()
+        end
         if type(args.show) == "table" then
             for __, k in ipairs(FlashForge.SHOWS) do
                 if type(args.show[k]) == "boolean" then G_reader_settings:saveSetting("flashforge_show_" .. k, args.show[k]) end

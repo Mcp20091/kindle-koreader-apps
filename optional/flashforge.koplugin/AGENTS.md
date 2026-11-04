@@ -70,8 +70,13 @@ it's installed, with nothing of it in their code.
   10 s by default, 5 to 300), when the launcher draws the tile (at most once a minute) and when a quick
   button shows. Only on Wi-Fi already (`NetworkMgr:isConnected()`); it never turns Wi-Fi on.
 - The Camera page's Refresh automatically (`flashforge_camera_auto`, every `flashforge_camera_every` s,
-  10 to 300, 30 by default) takes a picture only while that page is on top, quietly (no waiting box, no
+  2 to 300, 10 by default; a picture still being taken is not started again) takes a picture only while that page is on top, quietly (no waiting box, no
   full refresh); off by default for the battery.
+- Monitor prints (`flashforge_monitor`, off by default): one loop for all the plugin's copies (`state.monitorOn`,
+  `monitorTick` in main.lua), `status(wait - 5)` every 60 s while `M.active`, 300 s otherwise; stops when turned off.
+  UIManager timers don't run while the Kindle sleeps. `notifyChanges` adds Print paused (not within 5 min of Pause
+  tapped here: `state.ourPause`) and Print hasn't moved (`M.stuck`, `M.STUCK` = 20 min of the same progress and
+  layer while printing; key `flashforge:stuck`, taken away when it moves).
 - Settings > SHOW (`flashforge_show_<light|camera|filter|coolingFan|chamberFan>`, nil = shown; `plugin:shows(what)`,
   `FlashForge.SHOWS`) hides a control the printer doesn't have, on the Kindle and in `webState` (the web tab
   saves them with `settings { show = { … } }`). `hasLight()` checks it first. Quick buttons and the gesture

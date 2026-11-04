@@ -64,7 +64,7 @@ The launcher's **Set up your Kindle** has the same step (**FlashForge printer**)
 - **MORE**: **Recent files**, **Camera** and **Details**.
 - **At the bottom**: when the printer was last read (**Updated 14:02**), or **Not answering · last read 14:02**, and the printer's address.
 
-While FlashForge is open the printer is read every 10 seconds (change it in Settings). Nothing is read once it closes, and nothing runs in the background.
+While FlashForge is open the printer is read every 10 seconds (change it in Settings). Once it closes, nothing is read unless **Monitor prints** is on (see Notifications).
 
 ### Recent files
 
@@ -87,7 +87,7 @@ While FlashForge is open the printer is read every 10 seconds (change it in Sett
 Under **REFRESH**:
 
 - **Refresh automatically**: takes a new picture by itself while the Camera page is open, so you can watch a print. It uses more battery, so it's off until you turn it on.
-- **Refresh every**: how often, from 10 seconds to 5 minutes (30 seconds to start with).
+- **Refresh every**: how often, from 2 seconds to 5 minutes (10 seconds to start with).
 
 ### Details
 
@@ -110,6 +110,7 @@ The same page opens from the launcher's **Settings** list, under **Optional apps
 - **DISPLAY**
   - **Read every**: how often the printer is read while FlashForge is open, from 5 seconds to 5 minutes.
 - **PRINTING**
+  - **Monitor prints**: reads the printer in the background for the notifications (see Notifications). Off to start with.
   - **Level the bed first**: before each print started from the Kindle.
 - **SHOW**: turn off what your printer doesn't have, and it's hidden on the Kindle and the web page. All are on to start with.
   - **Light**: its button on the main page and the Camera page. **Even if the printer says it has none** shows it anyway, for a printer that has a light but doesn't say so.
@@ -124,7 +125,16 @@ The same page opens from the launcher's **Settings** list, under **Optional apps
 
 ## Notifications and the backup
 
-FlashForge adds two notifications to the bell, so you see them from the other apps: **Print finished** (with the file's name) and **Printer error** (with its code). Each goes when the next print starts or the printer is ready again. Tap one to open FlashForge.
+FlashForge adds notifications to the bell, so you see them from the other apps:
+
+- **Print finished**, with the file's name.
+- **Printer error**, with its code.
+- **Print paused**: paused at the printer, or by the printer itself (out of filament, say). Not when you tap **Pause** on the Kindle.
+- **Print hasn't moved in 20 min**: printing, but the progress and layer haven't changed. It goes once the print moves again.
+
+They come when the printer is read. With **Monitor prints** on (Settings), it's read every minute during a print and every 5 minutes otherwise, even with FlashForge closed, while KOReader runs and the Kindle is awake. Nothing is read while the Kindle sleeps or is off Wi-Fi: the notification comes after it wakes. Without it, they come only while FlashForge is open or the launcher shows its tile.
+
+Each goes when the next print starts or the printer is ready again. Tap one to open FlashForge.
 
 The web page's backup (**System**) includes the printer and the settings; the serial number and check code only if you tick **Include keys and sign-ins**.
 
@@ -136,7 +146,7 @@ The web page (see the Web server chapter) has a **FlashForge** tab:
 - The temperatures, a **Light** switch, **Camera** **On** and **Off**, and, on the printers that have one, the **Air filter**.
 - While printing, **This print**: **Speed**, **Z offset**, **Cooling fan** and **Chamber fan**, each sent as soon as you pick it.
 - The **Material Station**'s slots.
-- **Settings**: **Read every**, **Level the bed first**, the **Show** switches (as on the Kindle), and the **IP address**, **Serial number** and **Check code**, with **Save** and **Test connection**.
+- **Settings**: **Read every**, **Monitor prints**, **Level the bed first**, the **Show** switches (as on the Kindle), and the **IP address**, **Serial number** and **Check code**, with **Save** and **Test connection**.
 
 Starting a print and camera pictures are on the Kindle only. The tab updates itself while the printer is read.
 

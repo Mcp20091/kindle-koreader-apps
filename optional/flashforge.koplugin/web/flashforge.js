@@ -109,6 +109,7 @@ App.pages.flashforge = {
     return h('div', { class: 'card' }, h('h2', {}, 'Settings'),
       App.setting('Read every', App.select([[5, '5 seconds'], [10, '10 seconds'], [15, '15 seconds'], [30, '30 seconds'], [60, '1 minute'], [120, '2 minutes'], [300, '5 minutes']],
         s.interval || 10, (v) => save({ interval: Number(v) })), 'While FlashForge is open on the Kindle. Nothing is read once it closes.'),
+      App.setting('Monitor prints', App.toggle(!!s.monitor, (v) => save({ monitor: v })), 'While the Kindle is awake.'),
       App.setting('Level the bed first', App.toggle(!!s.leveling, (v) => save({ leveling: v })), 'Before each print started from the Kindle.'),
       h('h3', {}, 'Show'),
       h('p', { class: 'small muted' }, 'Turn off what your printer doesn’t have. It’s hidden here and on the Kindle.'),

@@ -434,12 +434,12 @@ local function everyName(s)
 end
 
 -- How often the Camera page can refresh its picture by itself (seconds).
-local CAMERA_EVERY = { 10, 15, 30, 60, 120, 300 }
+local CAMERA_EVERY = { 2, 3, 5, 10, 15, 30, 60, 120, 300 }
 
 local function cameraAuto() return G_reader_settings:isTrue("flashforge_camera_auto") end
 local function cameraEvery()
-    local s = tonumber(G_reader_settings:readSetting("flashforge_camera_every")) or 30
-    return math.max(10, math.min(300, s))
+    local s = tonumber(G_reader_settings:readSetting("flashforge_camera_every")) or 10
+    return math.max(2, math.min(300, s))
 end
 
 function UI.camera(plugin)
@@ -826,6 +826,12 @@ function UI.settingsItems(plugin, redo)
             end)
         end }
     t[#t + 1] = { band = _("PRINTING") }
+    t[#t + 1] = { toggle = plugin:monitoring(), text = _("Monitor prints"), sub = _("While the Kindle is awake"),
+        callback = function()
+            G_reader_settings:saveSetting("flashforge_monitor", not plugin:monitoring())
+            plugin:monitor()
+            redo()
+        end }
     t[#t + 1] = { toggle = plugin:leveling(), text = _("Level the bed first"), sub = _("Before each print started from the Kindle"),
         callback = function()
             G_reader_settings:saveSetting("flashforge_leveling", not plugin:leveling())

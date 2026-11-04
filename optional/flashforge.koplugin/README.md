@@ -16,7 +16,7 @@ For the **Adventurer 5M**, **Adventurer 5M Pro**, **AD5X**, **Creator 5** and **
 - **With the launcher**: its tile (`ShowFlashForge`, line "Printing 42% · 1 h 5 min left"), Settings, search (the printer, the recent files), a step in Set up your Kindle, quick buttons (status, pause or resume, the light), Test connection, the backup (the serial number and check code only with Include keys and sign-ins), notifications (print finished, printer error), and a FlashForge tab on the web page.
 - **Gestures**: **FlashForge** (opens it) and **FlashForge: light on or off**.
 
-Nothing runs in the background: the printer is read while FlashForge is open (every 10 seconds; Settings > Read every), and when the launcher's tile or a quick button shows it.
+The printer is read while FlashForge is open (every 10 seconds; Settings > Read every), when the launcher's tile or a quick button shows it, and with Settings > Monitor prints on, every minute during a print (5 minutes otherwise) while KOReader runs and the Kindle is awake.
 
 ## Install
 

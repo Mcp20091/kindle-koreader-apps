@@ -585,4 +585,23 @@ function M.parseDiscovery(buf, ip)
     end
 end
 
+--- A print that has stopped moving: how long (seconds) the progress and layer may stay
+-- the same while printing before it's said.
+M.STUCK = 20 * 60
+
+--- Whether the print has stopped moving. track: what the last call returned (nil at
+-- first); i: the printer as read now. Returns the new track and true once, when it has
+-- been printing with the same progress and layer for M.STUCK seconds (not again until it
+-- moves). Paused, heating or not printing: no track.
+function M.stuck(track, i, now)
+    if not (i and i.state == "printing") then return nil, false end
+    local key = string.format("%s|%.4f|%d", tostring(i.file or ""), tonumber(i.progress) or 0, tonumber(i.layer) or 0)
+    if not track or track.key ~= key then return { key = key, since = now }, false end
+    if not track.said and now - track.since >= M.STUCK then
+        track.said = true
+        return track, true
+    end
+    return track, false
+end
+
 return M

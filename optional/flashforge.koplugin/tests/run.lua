@@ -201,6 +201,25 @@ eq(#M.zChoices(0), 6, "zChoices no reset at 0")
 eq(#M.zChoices(0.95), 6, "zChoices within limit (+0.1 left out, reset in)")
 eq(M.zChoices(0.95)[5].value, 1, "zChoices up to the limit")
 
+-- Print hasn't moved
+do
+    local p = { state = "printing", file = "a.gcode", progress = 0.42, layer = 120 }
+    local t, s = M.stuck(nil, p, 1000)
+    eq(s, false, "stuck: first read")
+    t, s = M.stuck(t, p, 1000 + M.STUCK - 1)
+    eq(s, false, "stuck: not yet")
+    t, s = M.stuck(t, p, 1000 + M.STUCK)
+    eq(s, true, "stuck: after M.STUCK")
+    t, s = M.stuck(t, p, 1000 + M.STUCK * 2)
+    eq(s, false, "stuck: said once")
+    t, s = M.stuck(t, { state = "printing", file = "a.gcode", progress = 0.43, layer = 121 }, 1000 + M.STUCK * 2)
+    eq(s, false, "stuck: moved again")
+    eq(t.said, nil, "stuck: moved, can be said again")
+    t, s = M.stuck(t, { state = "paused", file = "a.gcode", progress = 0.43, layer = 121 }, 1000 + M.STUCK * 5)
+    eq(t, nil, "stuck: paused has no track")
+    eq(s, false, "stuck: paused isn't stuck")
+end
+
 b = M.printBody(i, "Clip.gcode", false)
 eq(b.useMatlStation, false, "printBody AD5X single")
 b = M.printBody(c5, "X.3mf", false)
