@@ -1,4 +1,5 @@
-2026-11-03 16:00
+2026-11-03 19:00
+Nov 3  Updates: Update all for the optional apps when two or more have an update
 Nov 3  Updates: optional apps show their version with Install, Update, Reinstall or Remove, as on the Kindle; clearer wording in the Updates card
 Nov 3  Web server: Keep the Kindle awake while it runs, Stop when idle, and clearer certificate and password text; the Library's Browse books with hint reads naturally
 Oct 28  Web server: System > Updates says installed optional apps update automatically with each new version

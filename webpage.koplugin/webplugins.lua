@@ -406,7 +406,8 @@ function Web.routes(server, plugin)
         res:json({ ok = true, restart = restarts })
     end)
     -- { tag }, from the list just looked up (with { optional = folder }: only that
-    -- optional app from it): installed, then KOReader restarts.
+    -- optional app from it; with { all = true }: every installed optional app that has an
+    -- update from it, Update all): installed, then KOReader restarts.
     server:route("POST", "^/api/update/install$", function(req, res)
         local U = updater()
         if not U then return res:error(404, "The launcher (apps.koplugin) isn't installed") end
@@ -414,7 +415,12 @@ function Web.routes(server, plugin)
         local b = req.json()
         local rel, why = picked(U, b)
         if not rel then return res:error(400, why) end
-        if b.optional then
+        local apps
+        if b.all then
+            apps = U.optionalBehind((Web.optional or {}).apps, rel)
+            if #apps == 0 then return res:error(400, "Every optional app is up to date. Look them up again to check.") end
+            rel = { tag = "the optional apps", optional = true }
+        elseif b.optional then
             local o
             for __, a in ipairs((Web.optional or {}).apps or {}) do if a.folder == b.optional then o = a end end
             if not o then return res:error(400, "Look its optional apps up again.") end
@@ -424,7 +430,10 @@ function Web.routes(server, plugin)
         local job = { stage = "downloading", done = 0, total = rel.size }
         Web.job = job
         say(string.format("Downloading %s…", rel.tag))
-        U.installAll(plugin, rel, function(names, why)
+        local installer = apps and function(...) U.updateOptional(plugin, picked(U, b), apps, ...) end
+            or function(...) U.installAll(plugin, rel, ...) end
+        installer(function(names, why)
+            if names and why then require("webcommon").message("Some apps weren't updated and keep their old version:\n\n" .. tostring(why)) end
             if not names then
                 job.stage, job.error = "failed", tostring(why)
                 closeBox()

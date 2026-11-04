@@ -632,6 +632,17 @@ end
 -- (Settings > Updates and Set up your Kindle open it from their Optional apps row).
 function U.optionalList(plugin, list, rel)
     local items = {}
+    local behind = U.optionalBehind(list, rel)
+    if #behind > 1 and rel and rel.tag then
+        local titles = {}
+        for __, o in ipairs(behind) do titles[#titles + 1] = o.title end
+        items[#items + 1] = { text = T(_("Update all (%1)"), #behind), fn = function()
+            KO.confirm{ title = _("Update all"),
+                text = T(_("Update %1 to %2?"), table.concat(titles, ", "), U.sourceText(rel))
+                    .. "\n\n" .. _("Their settings are kept. KOReader restarts afterwards."),
+                ok = _("Update all"), onOk = function() U.forget() U.runAll(plugin, rel, behind) end }
+        end }
+    end
     for __, o in ipairs(list or {}) do
         items[#items + 1] = { text = o.title .. "  \u{00B7}  " .. U.optionalLabel(o, rel), fn = function() U.optionalAction(plugin, o, rel) end }
     end
@@ -726,6 +737,45 @@ function U.optionalRelease(rel, o)
     return { tag = o.title .. " " .. rel.tag, version = U.sourceText(rel), zip = o.zip, size = o.size, optional = true, only = { o.folder } }
 end
 
+--- The installed optional apps that have an update from `rel` (U.optionalStatus "behind").
+function U.optionalBehind(list, rel)
+    local from, out = U.sourceText(rel), {}
+    for __, o in ipairs(list or {}) do
+        if U.optionalStatus(o, from) == "behind" and (o.zip or (rel and rel.branch)) then out[#out + 1] = o end
+    end
+    return out
+end
+
+--- Update all: installs each of `apps` (from U.optionalBehind) from `rel`, one after another
+-- (a branch's zip once, with all of them): done(names) or done(nil, why) when none went in.
+-- One that fails leaves its old copy and is named in why (`names` has the rest).
+function U.updateOptional(plugin, rel, apps, done, progress)
+    if rel.branch then
+        local only = {}
+        for __, o in ipairs(apps) do only[#only + 1] = o.folder end
+        return U.install(plugin, { tag = T(_("Optional apps from %1"), rel.tag), version = U.sourceText(rel), zip = rel.zip,
+            optional = true, only = only }, done, progress)
+    end
+    local names, failed, i = {}, {}, 0
+    local function nextOne()
+        i = i + 1
+        local o = apps[i]
+        if not o then
+            if #names == 0 then return done(nil, table.concat(failed, "\n")) end
+            return done(names, #failed > 0 and table.concat(failed, "\n") or nil)
+        end
+        U.install(plugin, U.optionalRelease(rel, o), function(more, why)
+            if more then
+                for __, n in ipairs(more) do names[#names + 1] = n end
+            else
+                failed[#failed + 1] = o.title .. ": " .. tostring(why)
+            end
+            nextOne()
+        end, progress)
+    end
+    nextOne()
+end
+
 --- Takes an optional app off: its folder set aside (plugins/.backup, so Undo a plugin
 -- update can bring it back). KOReader restarts after. Returns true, or nil and why.
 function U.removeOptional(plugin, folder)
@@ -743,16 +793,17 @@ end
 
 -- ------------------------------------------------------------------ on the Kindle
 
-local function restart(plugin)
+local function restart(plugin, now)
     local Device = require("device")
     if (Device.canRestart == nil or Device:canRestart()) and UIManager.restartKOReader then
-        KO.confirm{ title = _("Updated"), text = _("Restart KOReader now to use the new version?"), ok = _("Restart"),
-            onOk = function()
-                -- (the web server stopped first: its firewall opening closes)
-                local web = plugin and plugin.ui and plugin.ui.webpage
-                if web and web.stop then pcall(web.stop, web, nil, true) end
-                UIManager:restartKOReader()
-            end }
+        local function go()
+            -- (the web server stopped first: its firewall opening closes)
+            local web = plugin and plugin.ui and plugin.ui.webpage
+            if web and web.stop then pcall(web.stop, web, nil, true) end
+            UIManager:restartKOReader()
+        end
+        if now then return go() end
+        KO.confirm{ title = _("Updated"), text = _("Restart KOReader now to use the new version?"), ok = _("Restart"), onOk = go }
     else
         KO.message(_("Updated. Restart KOReader to use the new version."))
     end
@@ -780,6 +831,29 @@ local function run(plugin, rel)
     end)
 end
 U.run = run
+
+--- Update all on the Kindle: the optional apps that have an update, then the restart.
+function U.runAll(plugin, rel, apps)
+    local wait = KO.wait and KO.wait(_("Updating the optional apps…"))
+    local said
+    U.updateOptional(plugin, rel, apps, function(names, why)
+        if wait then wait:close() end
+        if not names then return KO.message(T(_("The update didn't go through, so nothing changed.\n\n%1"), tostring(why))) end
+        if why then
+            -- (some went in: say which didn't, then offer the restart)
+            return KO.confirm{ title = _("Updated"), text = T(_("Some apps weren't updated and keep their old version:\n\n%1"), why)
+                .. "\n\n" .. _("Restart KOReader now to use the new versions?"), ok = _("Restart"),
+                onOk = function() restart(plugin, true) end }
+        end
+        restart(plugin)
+    end, function(__, ___, ____, text)
+        if wait and wait.redraw and text ~= said then
+            said = text
+            wait.text = text
+            wait:redraw()
+        end
+    end)
+end
 
 --- After an update: its notes, once, when that version is the one running.
 function U.whatsNew(plugin)

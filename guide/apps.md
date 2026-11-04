@@ -410,6 +410,8 @@ The **Optional apps** row says how many are installed, and names any that have a
 - **Reinstall …**, when it's up to date: downloads the same version again, for an app that isn't working as it should.
 - **Remove**: takes it off the Kindle. **Undo a plugin update** can bring it back.
 
+When two or more have an update, **Update all** at the top of the list updates them together, then KOReader restarts once. If one of them can't be updated, it keeps its old version and the Kindle says which.
+
 An app's settings are kept when it's updated or reinstalled, and KOReader restarts afterwards. The versions on offer are from the latest release, or from the test version you have, which can be newer. If an app can't be updated with the others, a notification says so; **Update** in this list then tries again.
 
 After an update, its notes show once when KOReader starts again (**What's new in …**).

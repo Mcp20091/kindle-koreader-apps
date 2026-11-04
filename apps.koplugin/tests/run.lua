@@ -570,6 +570,15 @@ do
         { installed = true, title = "NextDNS", version = "v1.0.15" }, { installed = false, title = "Pangolin" } }, { tag = "v1.0.15" })
     check("update: summary count", value, "2 of 3 installed")
     check("update: summary names the one behind", line, "Update available: FlashForge")
+    local behind = U.optionalBehind({ { installed = true, title = "FlashForge", version = "v1.0.14", zip = "a" },
+        { installed = true, title = "NextDNS", zip = "b" }, { installed = true, title = "pfSense", version = "v1.0.15", zip = "c" },
+        { installed = false, title = "Pangolin", zip = "d" }, { installed = true, title = "No zip", version = "v1.0.1" } }, { tag = "v1.0.15" })
+    check("update all: the ones behind with a zip", #behind, 2)
+    check("update all: first", behind[1].title, "FlashForge")
+    check("update all: version not known", behind[2].title, "NextDNS")
+    check("update all: a branch needs no zip", #U.optionalBehind({ { installed = true, title = "X", version = "old" } },
+        { tag = "main", branch = "main", sha = "1a2b3c4d" }), 1)
+    check("update all: none off Wi-Fi", #U.optionalBehind({ { installed = true, title = "X" } }, nil), 0)
     for k in pairs(stubs) do package.loaded[k] = saved[k] end
     package.loaded["appsupdate"] = nil
 end

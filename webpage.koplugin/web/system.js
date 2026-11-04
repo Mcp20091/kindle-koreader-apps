@@ -227,7 +227,7 @@ App.pages.system = {
 
     // Updates, as on the Kindle (Settings > Updates): the repository updates come from, a version
     // to install (test versions too with Show test versions on, past a warning), and the optional
-    // apps with Install or Remove. A Kindle installed from a branch (as could be done before) gets
+    // apps with Install, Update, Reinstall or Remove (Update all when two or more have an update). A Kindle installed from a branch (as could be done before) gets
     // Back to the releases.
     function githubCard() {
       const box = h('div', { class: 'card stack', style: 'margin-top:16px' }, h('h2', {}, 'Updates'));
@@ -267,6 +267,16 @@ App.pages.system = {
             const mine2 = apps.filter((a) => a.installed).map((a) => a.title);
             also.textContent = mine2.length ? 'Installing also updates ' + mine2.join(', ') + '.' : '';
             optional.replaceChildren();
+            // Update all: two or more with an update, one after another, then one restart.
+            const behind = apps.filter((a) => a.installed && a.status === 'behind');
+            if (behind.length > 1) {
+              optional.append(h('div', {},
+                h('span', { class: 'grow' }, h('div', {}, 'Updates for ' + behind.length + ' apps'), h('div', { class: 'small muted' }, behind.map((a) => a.title).join(', '))),
+                h('button', { class: 'btn small primary', onclick: async () => {
+                  if (!await App.confirm('Update all', 'Update ' + behind.map((a) => a.title).join(', ') + ' to ' + (o.from || o.tag) + '? Their settings are kept. KOReader restarts afterwards.', 'Update all')) return;
+                  run(() => App.api('/api/update/install', { json: { ...from, all: true } }));
+                } }, 'Update all')));
+            }
             if (!apps.length) optional.append(h('div', {}, h('span', { class: 'small muted grow' }, 'No optional apps in ' + o.tag + '.')));
             const v = o.from || o.tag;
             const kept = ' Its settings are kept. KOReader restarts afterwards.';
