@@ -366,7 +366,7 @@ App.pages.system = {
         } }, 'Back to the releases') : null;
         // Show test versions: on only past a warning, as on the Kindle.
         const tests = App.toggle(!!u.tests, async (on) => {
-          if (on && !await App.confirm('Show test versions', 'Test versions are for trying changes before they’re released. They may have bugs or be unfinished. They’re never offered as updates: you install one yourself from the version list. To go back, pick a release there, or use Undo a plugin update.', 'Show them')) {
+          if (on && !await App.confirm('Show test versions', 'Test versions are for trying changes before they’re released. They may have bugs or be unfinished. While this is on, Check for updates on the Kindle finds them too. To go back, pick a release there, or use Undo a plugin update.', 'Show them')) {
             tests.querySelector('input').checked = false;
             return;
           }

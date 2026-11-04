@@ -90,7 +90,9 @@ function U.installed(plugin)
     return tag and tag:match("^%s*(v[%w%.%-]+)%s*$")
 end
 
---- Whether tag a is newer than tag b ("v1.0.12" > "v1.0.9"); b unknown: yes.
+--- Whether tag a is newer than tag b ("v1.0.12" > "v1.0.9"); b unknown: yes. A test
+-- version comes before its release ("v1.0.15-test20" < "v1.0.15"), and after the ones
+-- before it ("v1.0.15-test20" > "v1.0.15-test9" and "v1.0.14").
 function U.newer(a, b)
     if not b then return true end
     local function parts(t)
@@ -98,11 +100,18 @@ function U.newer(a, b)
         for n in tostring(t):gmatch("%d+") do out[#out + 1] = tonumber(n) end
         return out
     end
-    local x, y = parts(a), parts(b)
-    for i = 1, math.max(#x, #y) do
-        if (x[i] or 0) ~= (y[i] or 0) then return (x[i] or 0) > (y[i] or 0) end
+    local function cmp(x, y)
+        for i = 1, math.max(#x, #y) do
+            if (x[i] or 0) ~= (y[i] or 0) then return (x[i] or 0) > (y[i] or 0) and 1 or -1 end
+        end
+        return 0
     end
-    return false
+    local coreA, testA = tostring(a):match("^([^%-]*)%-?(.*)$")
+    local coreB, testB = tostring(b):match("^([^%-]*)%-?(.*)$")
+    local c = cmp(parts(coreA), parts(coreB))
+    if c ~= 0 then return c > 0 end
+    if testA == "" or testB == "" then return testA == "" and testB ~= "" end
+    return cmp(parts(testA), parts(testB)) > 0
 end
 
 -- ------------------------------------------------------------------ downloads
@@ -192,8 +201,23 @@ local function assetsOf(r)
 end
 
 --- The latest release of the repo: done({ tag, notes, url, zip, size, optional }) or done(nil, why).
+-- With Show test versions on, the newest of the releases and test versions (pre = true for a test one).
 function U.latest(done)
     if NetworkMgr:isConnected() == false then return done(nil, _("The Kindle isn't on Wi-Fi.")) end
+    if U.tests() then
+        return U.releases(function(list, why)
+            if not list then return done(nil, why) end
+            local best
+            for __, r in ipairs(list) do
+                if not best or U.newer(r.tag, best.tag) then best = r end
+            end
+            if not best then return done(nil, T(_("No releases found at %1."), U.repo())) end
+            local s = settings()
+            s.update_latest = best.tag
+            G_reader_settings:saveSetting("apps", s)
+            done(best)
+        end)
+    end
     local path = cacheDir() .. "/latest.json"
     fetch("https://api.github.com/repos/" .. U.repo() .. "/releases/latest", path, nil, function(ok, why)
         if not ok then
@@ -235,7 +259,7 @@ function U.releases(done, repo)
         for __, r in ipairs(list) do
             local zip, size, optional = assetsOf(r)
             if zip and not r.draft then
-                out[#out + 1] = { tag = r.tag_name, notes = r.body or "", zip = zip, size = size, pre = r.prerelease == true, optional = optional }
+                out[#out + 1] = { tag = r.tag_name, notes = r.body or "", url = r.html_url, zip = zip, size = size, pre = r.prerelease == true, optional = optional }
             end
         end
         done(out)
@@ -937,7 +961,7 @@ function U.toggleTests(refresh)
         return
     end
     KO.confirm{ title = _("Show test versions"),
-        text = _("Test versions are for trying changes before they're released. They may have bugs or be unfinished. They're never offered as updates: you install one yourself from Select version. To go back, pick a release in Select version, or use Undo a plugin update."),
+        text = _("Test versions are for trying changes before they're released. They may have bugs or be unfinished. While this is on, Check for updates finds them too. To go back, pick a release in Select version, or use Undo a plugin update."),
         ok = _("Show them"), onOk = function()
             U.setTests(true)
             if refresh then refresh() end
@@ -949,7 +973,7 @@ function U.offer(plugin, rel)
     local have = U.installed(plugin)
     local notes = (rel.notes or ""):gsub("\r", "")
     if #notes > 1500 then notes = notes:sub(1, 1500) .. "…" end
-    local text = T(_("%1 is available. You have %2.\n\n%3"), rel.tag, have or _("a version that isn't known"), notes)
+    local text = T(_("%1 is available. You have %2.\n\n%3"), rel.pre and T(_("Test version %1"), rel.tag) or rel.tag, have or _("a version that isn't known"), notes)
     KO.confirm{ title = _("Update available"), text = text, ok = _("Update"), onOk = function() run(plugin, rel) end }
 end
 
@@ -992,7 +1016,8 @@ function U.check(plugin)
         local have = U.installed(plugin)
         if not U.newer(rel.tag, have) then
             -- (installed again on asking: a plugin damaged, or a file of it deleted)
-            return KO.confirm{ title = _("Up to date"), text = T(_("You have the latest version (%1). Install it again?"), have),
+            return KO.confirm{ title = _("Up to date"), text = T(U.tests() and _("You have the newest version, test versions included (%1). Install it again?")
+                or _("You have the latest version (%1). Install it again?"), have),
                 ok = _("Reinstall"), onOk = function() run(plugin, rel) end }
         end
         U.offer(plugin, rel)

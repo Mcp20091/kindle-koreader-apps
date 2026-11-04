@@ -1,4 +1,5 @@
-2026-11-03 19:00
+2026-11-03 20:00
+Nov 3  Launcher: Updates: with Show test versions on, Check for updates (and Check automatically) finds the newest test version too; a release counts as newer than its own test versions
 Nov 3  Launcher: Updates: Update all at the top of Optional apps when two or more have an update (one restart afterwards)
 Nov 3  Launcher: Updates: each optional app shows its version, Up to date or Update available, and offers Update or Reinstall as well as Remove; the Optional apps row names the ones with an update; clearer wording throughout Updates (Select version's hint gone, "is available. You have …")
 Nov 3  Launcher: settings text reads more naturally: Quick buttons (Take out of the group, Tap a button to use it, or hold it for more), the Settings list, KOReader settings, App lock, Fonts (List updated), AI, the Connection check and the Set up steps

@@ -578,6 +578,15 @@ do
     check("update all: version not known", behind[2].title, "NextDNS")
     check("update all: a branch needs no zip", #U.optionalBehind({ { installed = true, title = "X", version = "old" } },
         { tag = "main", branch = "main", sha = "1a2b3c4d" }), 1)
+    check("newer: a later release", U.newer("v1.0.12", "v1.0.9"), true)
+    check("newer: the same", U.newer("v1.0.15", "v1.0.15"), false)
+    check("newer: a release after its tests", U.newer("v1.0.15", "v1.0.15-test20"), true)
+    check("newer: a test before its release", U.newer("v1.0.15-test20", "v1.0.15"), false)
+    check("newer: a later test", U.newer("v1.0.15-test20", "v1.0.15-test9"), true)
+    check("newer: an earlier test", U.newer("v1.0.15-test19", "v1.0.15-test20"), false)
+    check("newer: a test after the last release", U.newer("v1.0.16-test1", "v1.0.15"), true)
+    check("newer: a release before a later test", U.newer("v1.0.14", "v1.0.15-test20"), false)
+    check("newer: nothing installed", U.newer("v1.0.15", nil), true)
     check("update all: none off Wi-Fi", #U.optionalBehind({ { installed = true, title = "X" } }, nil), 0)
     for k in pairs(stubs) do package.loaded[k] = saved[k] end
     package.loaded["appsupdate"] = nil
