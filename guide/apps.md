@@ -394,14 +394,14 @@ Settings > **Updates**:
 - **Check for updates**: shows the version you have. Tap it to look for a newer release. When there is one, you see what's new and **Update**, which downloads it, checks it, installs it and offers to restart KOReader. If anything goes wrong, nothing changes. When you're up to date, it offers **Reinstall**, to install the same version again.
 - **Repository**: where updates come from, as owner/repository on GitHub (this project's own, Mcp20091/kindle-koreader-apps, to start with). Change it to follow a fork; leave it empty to go back.
 - **Select version**: every release, with the one you have and the latest marked. Pick an older one to go back to it.
-- **Show test versions**: off to start with. Test versions are for trying changes before they're released, so they may have bugs or be unfinished. Once it's on (past a warning), they show in **Select version**, marked **test**, and **Check for updates** (and **Check automatically**) finds them too: the newest version, test or not. A release comes after its test versions, so v1.0.15 replaces v1.0.15-test20. To go back, pick a release in **Select version**, or use **Undo a plugin update**.
+- **Show test versions**: off to start with. Test versions let you try new features before they're released. They may have bugs or unfinished parts. Once it's on (past a warning), they show in **Select version**, marked **test**, and **Check for updates** (and **Check automatically**) finds them too: the newest version, test or not. A release comes after its test versions, so v1.0.15 replaces v1.0.15-test20. To go back, pick a release in **Select version**, or use **Undo a plugin update**.
 - **Check automatically**: on to start with. Once a day, only while the Kindle is already on Wi-Fi, a notification says when there's a newer release; tap it to see what's new and update. Until it's installed, the launcher's **Settings** tile says **Update available**.
 - **Undo a plugin update**: puts back the version an update replaced.
 - **Back to the releases**: only on a Kindle that was installed from a branch (an option of earlier versions). It installs the latest release, and updates come from releases again.
 
 While an update installs, a pop-up says how far it is: **Downloading… 40%**, then **Checking the update: notes (5 of 10)** and **Installing notes (5 of 10)**, a plugin at a time. The Kindle keeps answering meanwhile, so there's no need to restart it.
 
-**OPTIONAL APPS** are extra apps that aren't in the main install: FlashForge (for a FlashForge 3D printer), Pangolin (for a Pangolin server), NextDNS (for a NextDNS profile) and pfSense (for a pfSense firewall). Once installed, they update whenever the main apps do.
+**OPTIONAL APPS** are extra apps that aren't in the main install: FlashForge (for a FlashForge 3D printer), Pangolin (for a Pangolin server), NextDNS (for a NextDNS profile) and pfSense (for a pfSense firewall). They update along with everything else.
 
 The **Optional apps** row says how many are installed, and names any that have an update. Tap it for the list, once the Kindle is on Wi-Fi. Each app shows **Not installed**, or the version it has with **Up to date** or **Update available**. Tap one:
 

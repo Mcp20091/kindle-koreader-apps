@@ -36,7 +36,7 @@ U.DEFAULT_REPO = "Mcp20091/kindle-koreader-apps"
 U.NAME = "Clod UI"
 
 -- The note over the optional apps (Settings > Updates; the web page's System > Updates says the same).
-U.OPTIONAL_NOTE = _("Extra apps you can add. Once installed, they update whenever the main apps do.")
+U.OPTIONAL_NOTE = _("Apps you can add if you need them. They update along with everything else.")
 local ASSET = "kindle-plugins.zip"
 -- Files in a plugin's folder that are the user's, not the plugin's.
 local KEEP = { "client_id.txt", "notes_defaults.lua" }
@@ -488,7 +488,7 @@ function U.install(plugin, rel, done, progress)
             table.sort(list)
             local plugins = {}
             for i, name in ipairs(list) do
-                progress("checking", i - 1, #list, T(_("Checking the update: %1 (%2 of %3)"), short(name), i, #list))
+                progress("checking", i - 1, #list, T(_("Checking %1 (%2 of %3)"), short(name), i, #list))
                 coroutine.yield()
                 local one
                 one, err = check(r, { [name] = found[name] })
@@ -579,7 +579,7 @@ function U.installAll(plugin, rel, done, progress)
                         local PS = require("pluginshare")
                         if PS.notify then
                             pcall(PS.notify, { app = "apps", name = _("Launcher"), icon = "download", key = "apps:optional:" .. o.folder,
-                                text = T(_("%1 wasn't updated with the other apps (%2). Update it in Settings > Updates > Optional apps."), name, tostring(why2)),
+                                text = T(_("%1 couldn't be updated (%2). Try again in Settings > Updates > Optional apps."), name, tostring(why2)),
                                 route = { settings = "updates" },
                                 open = function() if PS.showSettings then PS.showSettings("updates") end end })
                         end
@@ -663,7 +663,7 @@ function U.optionalList(plugin, list, rel)
         items[#items + 1] = { text = T(_("Update all (%1)"), #behind), fn = function()
             KO.confirm{ title = _("Update all"),
                 text = T(_("Update %1 to %2?"), table.concat(titles, ", "), U.sourceText(rel))
-                    .. "\n\n" .. _("Their settings are kept. KOReader restarts afterwards."),
+                    .. "\n\n" .. _("Your settings are kept. KOReader restarts afterwards."),
                 ok = _("Update all"), onOk = function() U.forget() U.runAll(plugin, rel, behind) end }
         end }
     end
@@ -840,7 +840,7 @@ local function run(plugin, rel)
     local said
     U.installAll(plugin, rel, function(names, why)
         if wait then wait:close() end
-        if not names then return KO.message(T(_("The update didn't go through, so nothing changed.\n\n%1"), tostring(why))) end
+        if not names then return KO.message(T(_("The update failed. Nothing was changed.\n\n%1"), tostring(why))) end
         local s = settings()
         if not (rel.branch or rel.optional) then s.update_whatsnew = { tag = rel.tag, notes = rel.notes or "" } end
         G_reader_settings:saveSetting("apps", s)
@@ -862,10 +862,10 @@ function U.runAll(plugin, rel, apps)
     local said
     U.updateOptional(plugin, rel, apps, function(names, why)
         if wait then wait:close() end
-        if not names then return KO.message(T(_("The update didn't go through, so nothing changed.\n\n%1"), tostring(why))) end
+        if not names then return KO.message(T(_("The update failed. Nothing was changed.\n\n%1"), tostring(why))) end
         if why then
             -- (some went in: say which didn't, then offer the restart)
-            return KO.confirm{ title = _("Updated"), text = T(_("Some apps weren't updated and keep their old version:\n\n%1"), why)
+            return KO.confirm{ title = _("Updated"), text = T(_("These apps couldn't be updated and stay on their current version:\n\n%1"), why)
                 .. "\n\n" .. _("Restart KOReader now to use the new versions?"), ok = _("Restart"),
                 onOk = function() restart(plugin, true) end }
         end
@@ -961,7 +961,7 @@ function U.toggleTests(refresh)
         return
     end
     KO.confirm{ title = _("Show test versions"),
-        text = _("Test versions are for trying changes before they're released. They may have bugs or be unfinished. While this is on, Check for updates finds them too. To go back, pick a release in Select version, or use Undo a plugin update."),
+        text = _("Test versions let you try new features before they're released. They may have bugs or unfinished parts. While this is on, Check for updates offers them too. To go back, pick a release in Select version, or use Undo a plugin update."),
         ok = _("Show them"), onOk = function()
             U.setTests(true)
             if refresh then refresh() end
@@ -1016,8 +1016,7 @@ function U.check(plugin)
         local have = U.installed(plugin)
         if not U.newer(rel.tag, have) then
             -- (installed again on asking: a plugin damaged, or a file of it deleted)
-            return KO.confirm{ title = _("Up to date"), text = T(U.tests() and _("You have the newest version, test versions included (%1). Install it again?")
-                or _("You have the latest version (%1). Install it again?"), have),
+            return KO.confirm{ title = _("Up to date"), text = T(_("You're up to date (%1). Install it again?"), have),
                 ok = _("Reinstall"), onOk = function() run(plugin, rel) end }
         end
         U.offer(plugin, rel)
@@ -1125,39 +1124,39 @@ function U.optionalAction(plugin, o, rel)
     local online = rel and rel.tag and (o.zip or rel.branch)
     local from = U.sourceText(rel)
     local function install() U.forget() run(plugin, U.optionalRelease(rel, o)) end
-    local kept = _("Its settings are kept. KOReader restarts afterwards.")
+    local kept = _("Your settings are kept. KOReader restarts afterwards.")
     if not o.installed then
-        if not online then return KO.message(_("Connect to Wi-Fi first, so the Kindle can find the app to download.")) end
+        if not online then return KO.message(_("Connect to Wi-Fi to install it.")) end
         return KO.confirm{ title = T(_("Install %1"), o.title),
             text = (o.description and (o.description .. "\n\n") or "") .. T(_("Version %1. KOReader restarts afterwards."), from),
             ok = _("Install"), onOk = install }
     end
     local items = {}
     if not online then
-        items[#items + 1] = { text = _("Update or reinstall (connect to Wi-Fi first)"), enabled = false }
+        items[#items + 1] = { text = _("Connect to Wi-Fi to update or reinstall"), enabled = false }
     elseif U.optionalStatus(o, from) == "behind" then
         items[#items + 1] = { text = T(_("Update to %1"), from), fn = function()
             local text
             if o.old then
-                text = T(_("This copy of %1 is too old to show on the launcher. Install version %2 in its place?"), o.title, from)
+                text = T(_("This version of %1 is too old to work with the launcher. Update to %2?"), o.title, from)
             elseif o.version then
-                text = T(_("Replace version %1 with %2?"), o.version, from)
+                text = T(_("Update from %1 to %2?"), o.version, from)
             else
-                text = T(_("Install version %1 in place of the copy on the Kindle?"), from)
+                text = T(_("Update to version %1?"), from)
             end
             KO.confirm{ title = T(_("Update %1"), o.title), text = text .. "\n\n" .. kept, ok = _("Update"), onOk = install }
         end }
     else
         items[#items + 1] = { text = T(_("Reinstall %1"), from), fn = function()
             KO.confirm{ title = T(_("Reinstall %1"), o.title),
-                text = T(_("Download version %1 again and put it in place of the copy on the Kindle. Useful when the app isn't working as it should."), from)
+                text = T(_("Download and install version %1 again. This can fix an app that isn't working properly."), from)
                     .. "\n\n" .. kept,
                 ok = _("Reinstall"), onOk = install }
         end }
     end
     items[#items + 1] = { text = _("Remove"), fn = function()
         KO.confirm{ title = T(_("Remove %1"), o.title),
-            text = _("The app is taken off the Kindle. Undo a plugin update can bring it back. KOReader restarts afterwards."), ok = _("Remove"),
+            text = _("It's removed from this Kindle. Undo a plugin update can bring it back. KOReader restarts afterwards."), ok = _("Remove"),
             onOk = function()
                 local ok, err = U.removeOptional(plugin, o.folder)
                 if not ok then return KO.message(tostring(err)) end

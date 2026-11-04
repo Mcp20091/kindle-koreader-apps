@@ -292,7 +292,7 @@ function Web.installSteps(path, dir, plugin)
             purge(dir .. "/.install")
             job.stage, job.error = "failed", tostring(err)
             closeBox()
-            return require("webcommon").message("The update didn't go through, so nothing changed.\n\n" .. tostring(err))
+            return require("webcommon").message("The update failed. Nothing was changed.\n\n" .. tostring(err))
         end
         job.done = job.total
         if Web.restart(plugin) then
@@ -433,11 +433,11 @@ function Web.routes(server, plugin)
         local installer = apps and function(...) U.updateOptional(plugin, picked(U, b), apps, ...) end
             or function(...) U.installAll(plugin, rel, ...) end
         installer(function(names, why)
-            if names and why then require("webcommon").message("Some apps weren't updated and keep their old version:\n\n" .. tostring(why)) end
+            if names and why then require("webcommon").message("These apps couldn't be updated and stay on their current version:\n\n" .. tostring(why)) end
             if not names then
                 job.stage, job.error = "failed", tostring(why)
                 closeBox()
-                return require("webcommon").message("The update didn't go through, so nothing changed.\n\n" .. tostring(why))
+                return require("webcommon").message("The update failed. Nothing was changed.\n\n" .. tostring(why))
             end
             if not (rel.branch or rel.optional) then
                 local s = G_reader_settings:readSetting("apps") or {}
