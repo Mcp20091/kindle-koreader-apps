@@ -1,5 +1,5 @@
 // FlashForge (the optional FlashForge plugin): the printer's state, pause, resume, cancel, clear, the
-// light and the air filter, and its settings. While a print runs, the page reads the state again every
+// light, the air filter, the camera's stream, speed, Z offset and fans while printing, and its settings. While a print runs, the page reads the state again every
 // 10 seconds. Starting a print and the camera are on the Kindle only.
 App.pages.flashforge = {
   timer: null,
@@ -11,7 +11,7 @@ App.pages.flashforge = {
     s.lines = App.arr(s.lines); s.temps = App.arr(s.temps); s.slots = App.arr(s.slots);
     main.append(
       h('div', {}, h('h1', {}, 'FlashForge'), h('p', { class: 'sub' }, 'Your FlashForge 3D printer, straight over the Wi-Fi (its LAN-only mode).')),
-      ...[this.status(s), this.station(s), this.settings(s)].filter(Boolean));
+      ...[this.status(s), this.tune(s), this.station(s), this.settings(s)].filter(Boolean));
     if (s.configured) {
       this.timer = setTimeout(() => {
         if (main.isConnected && location.hash.startsWith('#flashforge') && !document.querySelector('.modal')) this.reload();
@@ -63,8 +63,28 @@ App.pages.flashforge = {
       s.hasLight ? App.setting('Light', App.toggle(!!s.light, (v) => page.act('light', { on: v }))) : null,
       s.hasFiltration ? App.setting('Air filter', App.select([['off', 'Off'], ['internal', 'Internal (filters the air inside)'], ['external', 'External (vents the air out)']],
         s.filtration || 'off', (v) => page.act('filtration', { mode: v }))) : null,
+      s.hasCamera ? App.setting('Camera', h('div', { class: 'row', style: 'gap:6px' },
+        btn('On', () => page.act('camera', { on: true }, 'Camera on')),
+        btn('Off', () => page.act('camera', { on: false }, 'Camera off'))), 'Its stream. Pictures are in FlashForge on the Kindle.') : null,
       h('p', { class: 'small muted' }, (s.read ? 'Read ' + App.ago(s.read) : '') + (s.why ? ' · ' + s.why : '') +
-        ' · Starting a print and the camera are in FlashForge on the Kindle.'));
+        ' · Starting a print and camera pictures are in FlashForge on the Kindle.'));
+  },
+
+  // While printing: speed, Z offset and fans, each sent as soon as it's picked.
+  tune(s) {
+    const t = s.tune;
+    if (!t) return null;
+    const page = this;
+    const send = (args) => page.act('tune', args, 'Sent to the printer');
+    const pct = (list) => App.arr(list).map((v) => [v, v + '%']);
+    // (the current value stays in the list even when it isn't one of the steps)
+    const withNow = (list, now) => (list.some((x) => String(x[0]) === String(now)) ? list : [[now, now + '%'], ...list]);
+    const z = [[t.zOffset, t.zText + ' (now)'], ...App.arr(t.zChoices).map((c) => [c.value, c.label])];
+    return h('div', { class: 'card' }, h('h2', {}, 'This print'),
+      App.setting('Speed', App.select(withNow(pct(t.speeds), t.speed), t.speed, (v) => send({ speed: Number(v) }))),
+      App.setting('Z offset', App.select(z, t.zOffset, (v) => send({ zOffset: Number(v) })), 'Up lifts the nozzle, down presses the first layer in.'),
+      App.setting('Cooling fan', App.select(withNow(pct(t.fans), t.coolingFan), t.coolingFan, (v) => send({ coolingFan: Number(v) }))),
+      t.chamberFan != null ? App.setting('Chamber fan', App.select(withNow(pct(t.fans), t.chamberFan), t.chamberFan, (v) => send({ chamberFan: Number(v) }))) : null);
   },
 
   station(s) {

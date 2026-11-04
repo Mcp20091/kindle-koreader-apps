@@ -1,4 +1,5 @@
-2026-10-27 23:58
+2026-11-03 12:00
+Nov 3  FlashForge: while printing, tap Speed, Z offset, Cooling fan or Chamber fan to change it; Camera on and Camera off on the Camera page; the same on the web page's FlashForge tab
 Oct 27  FlashForge: App lock (Settings > Launcher > App lock) asks before it opens, from the Tools menu and gestures too
 Oct 27  FlashForge: in Settings' Optional apps group
 Oct 27  FlashForge: says what it is to the launcher and the web page (its tile, its web tab, now in this folder)

@@ -2,12 +2,14 @@
 FlashForge's screens, drawn as the other apps' pages (ffpage):
   FlashForge     the print (picture, state, progress, time left), its
                  buttons (Pause, Resume, Cancel, Clear, Light, Filter,
-                 Camera), temperatures, the Material Station, and Recent
-                 files, Camera and Details
+                 Camera), temperatures, while printing speed, Z offset and
+                 fans (tap one to change it), the Material Station, and
+                 Recent files, Camera and Details
   Recent files   the printer's ten latest; a file: its picture and
                  materials, Start print (and matching its materials to the
                  Material Station's slots on the AD5X)
-  Camera         one picture, taken again with ⟳ or Take again
+  Camera         one picture, taken again with ⟳ or Take again; the
+                 camera's stream on or off
   Details        the model, firmware, address and lifetime counts
   Settings       how often it's read, levelling, the printer's address,
                  serial number and check code
@@ -295,9 +297,14 @@ function UI.mainItems(plugin)
     if M.active(i.state) then
         t[#t + 1] = { band = _("PRINT") }
         local p = {
-            { icon = "gauge", label = _("Speed"), value = T("%1%", math.floor(i.speed + 0.5)) },
-            { icon = "fan", label = _("Cooling fan"), value = T("%1%", math.floor(i.coolingFan + 0.5)) },
+            { icon = "gauge", label = _("Speed"), value = T("%1%", math.floor(i.speed + 0.5)), fn = function() UI.tune(plugin, "speed") end },
+            { icon = "arrow-up-down", label = _("Z offset"), value = M.zText(i.zOffset), fn = function() UI.tune(plugin, "zOffset") end },
+            { icon = "fan", label = _("Cooling fan"), value = T("%1%", math.floor(i.coolingFan + 0.5)), fn = function() UI.tune(plugin, "coolingFan") end },
         }
+        if i.hasChamberFan then
+            table.insert(p, { icon = "fan", label = _("Chamber fan"), value = T("%1%", math.floor(i.chamberFan + 0.5)),
+                fn = function() UI.tune(plugin, "chamberFan") end })
+        end
         if i.weight > 0 then
             table.insert(p, { icon = "layers", label = _("Filament"),
                 value = T(_("%1 g"), math.floor(i.weight * i.progress + 0.5)) .. " / " .. T(_("%1 g"), math.floor(i.weight + 0.5)) })
@@ -305,6 +312,7 @@ function UI.mainItems(plugin)
             table.insert(p, { icon = "layers", label = _("Filament"), value = i.filament })
         end
         t[#t + 1] = { stats = p, cols = 3 }
+        t[#t + 1] = { note = _("Tap Speed, Z offset or a fan to change it for this print.") }
     end
 
     if #i.slots > 0 then
@@ -382,6 +390,30 @@ function UI.filtration(plugin, i)
     end)
 end
 
+--- Speed, Z offset or a fan (what: speed, zOffset, coolingFan, chamberFan)
+-- during a print: a list to pick from, sent at once (no confirm: it can be put back).
+function UI.tune(plugin, what)
+    local i = plugin:info()
+    if not (i and M.active(i.state)) then return KO.toast(_("Nothing is printing")) end
+    local function send(v)
+        plugin:tune({ [what] = v }, function(ok, why) if not ok then failed(plugin, why) end end)
+    end
+    local function percents(list)
+        local out = {}
+        for __, v in ipairs(list) do table.insert(out, { label = T("%1%", v), value = v }) end
+        return out
+    end
+    if what == "speed" then
+        KO.choose(_("Print speed"), percents(M.SPEEDS), math.floor(i.speed + 0.5), send)
+    elseif what == "zOffset" then
+        KO.choose(T(_("Z offset · now %1"), M.zText(i.zOffset)), M.zChoices(i.zOffset), nil, send)
+    elseif what == "coolingFan" then
+        KO.choose(_("Cooling fan"), percents(M.FANS), math.floor(i.coolingFan + 0.5), send)
+    elseif what == "chamberFan" then
+        KO.choose(_("Chamber fan"), percents(M.FANS), math.floor(i.chamberFan + 0.5), send)
+    end
+end
+
 -- ------------------------------------------------------------------ the camera
 
 function UI.camera(plugin)
@@ -391,7 +423,12 @@ function UI.camera(plugin)
         local t = {}
         t[#t + 1] = { picture = shot or "", h = 420, empty = why and plugin:whyText(why) or _("Taking a picture…") }
         t[#t + 1] = { note = _("One picture at a time, to keep the Kindle's battery: tap Take again or ⟳ for a new one.") }
-        t[#t + 1] = { tiles = { { icon = "camera", text = _("Take again"), primary = true, fn = function() p.take() end } }, cols = 3 }
+        t[#t + 1] = { tiles = {
+            { icon = "camera", text = _("Take again"), primary = true, fn = function() p.take() end },
+            { icon = "play", text = _("Camera on"), sub = _("Start its stream"), fn = function() p.power(true) end },
+            { icon = "x", text = _("Camera off"), sub = _("Stop its stream"), fn = function() p.power(false) end },
+        }, cols = 3 }
+        t[#t + 1] = { note = _("No picture? Turn the camera on, then take one again.") }
         return t
     end
     p = page(_("Camera"), items, { status = function()
@@ -405,6 +442,19 @@ function UI.camera(plugin)
             p.item_table = items()
             p:redraw("full")
         end)
+    end
+    function p.power(on)
+        plugin:act("camera", { on = on }, function(ok, err)
+            if not ok then return failed(plugin, err) end
+            if not alive(p) then return end
+            if on then
+                -- (the stream takes a moment to start)
+                KO.toast(_("Camera on"))
+                UIManager:scheduleIn(3, function() if alive(p) then p.take() end end)
+            else
+                KO.toast(_("Camera off"))
+            end
+        end, { text = on and _("Turning the camera on…") or _("Turning the camera off…") })
     end
     p.on_refresh = function() p.take() end
     p.take()

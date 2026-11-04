@@ -1,6 +1,7 @@
 --[[--
 FlashForge on the web page (needs the optional FlashForge plugin): the
-printer's state, pause, resume, cancel, clear, the light and the air filter,
+printer's state, pause, resume, cancel, clear, the light, the air filter,
+the camera's stream, speed, Z offset and fans while printing,
 and its settings (address, serial number, check code, how often it's read,
 levelling). The plugin talks to the printer; these routes only pass things on.
 ]]
@@ -26,7 +27,8 @@ function Web.routes(server)
         res:json(out)
     end)
 
-    -- { name, args }: pause, resume, cancel, clear, light { on }, filtration { mode }, refresh,
+    -- { name, args }: pause, resume, cancel, clear, light { on }, filtration { mode }, camera { on },
+    -- tune { speed, zOffset, coolingFan, chamberFan } (while printing), refresh,
     -- settings { ip, serial, code, interval, leveling }.
     server:route("POST", "^/api/flashforge/act$", function(req, res)
         local f = ff()

@@ -1,6 +1,6 @@
 # FlashForge
 
-FlashForge shows your FlashForge 3D printer on the Kindle: the print and how far along it is, the temperatures, buttons to pause, resume or cancel, the light, the air filter, a picture from the printer's camera, and starting one of its recent files. The Kindle talks to the printer directly over the Wi-Fi: no account, no cloud and no Home Assistant.
+FlashForge shows your FlashForge 3D printer on the Kindle: the print and how far along it is, the temperatures, buttons to pause, resume or cancel, the light, the air filter, the speed, Z offset and fans during a print, a picture from the printer's camera, and starting one of its recent files. The Kindle talks to the printer directly over the Wi-Fi: no account, no cloud and no Home Assistant.
 
 It works with the **Adventurer 5M**, **Adventurer 5M Pro**, **AD5X**, **Creator 5** and **Creator 5 Pro**. Older printers (Adventurer 3 and 4) have no network interface it can use.
 
@@ -54,7 +54,12 @@ The launcher's **Set up your Kindle** has the same step (**FlashForge printer**)
   - **Filter**: the air filter (the 5M Pro and Creator 5 Pro): **Off**, **Internal (filters the air inside)** or **External (vents the air out)**.
   - **Camera**.
 - **TEMPERATURES**: the **Nozzle** (**Tool 1**, **Tool 2**… on the Creator 5), the **Bed**, and the **Chamber** when the printer has a heated one.
-- **PRINT**: while printing, the **Speed**, the **Cooling fan** and the **Filament** used so far out of the total.
+- **PRINT**: while printing, the **Speed**, the **Z offset**, the **Cooling fan**, the **Chamber fan** (when the printer reports one) and the **Filament** used so far out of the total. Tap one to change it for this print:
+  - **Speed**: from 50% to 200%.
+  - **Z offset**: the current one nudged up or down by 0.025, 0.05 or 0.1 mm, or reset to 0. Down presses the first layer into the bed; up lifts the nozzle.
+  - **Cooling fan** and **Chamber fan**: 0%, 25%, 50%, 75% or 100%.
+
+  The change goes to the printer at once, without asking first: pick another value to put it back. The printer keeps it until the print ends.
 - **MATERIAL STATION** (AD5X and Creator 5): each **Slot** with its material and colour (in words and as a grey swatch), **Empty** for one with nothing in it, and **In use** for the slot printing now.
 - **MORE**: **Recent files**, **Camera** and **Details**.
 - **At the bottom**: when the printer was last read (**Updated 14:02**), or **Not answering · last read 14:02**, and the printer's address.
@@ -74,6 +79,8 @@ While FlashForge is open the printer is read every 10 seconds (change it in Sett
 ### Camera
 
 **Camera** takes one picture from the printer's camera. To spare the battery it is one picture at a time: tap **Take again**, or **⟳**, for a new one.
+
+**Camera on** and **Camera off** start and stop the camera's stream on the printer. If there's no picture, tap **Camera on**: a new picture is taken a few seconds later.
 
 ### Details
 
@@ -115,11 +122,12 @@ The web page's backup (**System**) includes the printer and the settings; the se
 The web page (see the Web server chapter) has a **FlashForge** tab:
 
 - The printer's state and progress, with **Pause**, **Resume**, **Cancel print** (asks first) and **Clear**.
-- The temperatures, a **Light** switch and, on the printers that have one, the **Air filter**.
+- The temperatures, a **Light** switch, **Camera** **On** and **Off**, and, on the printers that have one, the **Air filter**.
+- While printing, **This print**: **Speed**, **Z offset**, **Cooling fan** and **Chamber fan**, each sent as soon as you pick it.
 - The **Material Station**'s slots.
 - **Settings**: **Read every**, **Level the bed first**, and the **IP address**, **Serial number** and **Check code**, with **Save** and **Test connection**.
 
-Starting a print and the camera are on the Kindle only. The tab updates itself while the printer is read.
+Starting a print and camera pictures are on the Kindle only. The tab updates itself while the printer is read.
 
 ## Good to know
 

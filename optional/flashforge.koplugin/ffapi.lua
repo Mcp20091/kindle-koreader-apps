@@ -83,6 +83,10 @@ function API:job(action) return self:control("jobCtl_cmd", { jobID = "", action 
 function API:light(on) return self:control("lightControl_cmd", { status = on and "open" or "close" }) end
 function API:filtration(mode) return self:control("circulateCtl_cmd", M.filtrationArgs(mode)) end
 function API:clearPlate() return self:control("stateCtrl_cmd", { action = "setClearPlatform" }) end
+--- Speed, Z offset and fans during a print: args from ffmodel.tuneArgs (all of them, every time).
+function API:tune(args) return self:control("printerCtl_cmd", args) end
+--- The camera's stream on or off.
+function API:camera(on) return self:control("streamCtrl_cmd", { action = on and "open" or "close" }) end
 
 --- /gcodeList: the ten most recent files (ffmodel.files reads it).
 function API:files()

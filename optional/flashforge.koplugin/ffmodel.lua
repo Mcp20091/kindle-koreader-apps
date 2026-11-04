@@ -164,6 +164,9 @@ function M.info(d)
     i.speed = num(d.printSpeedAdjust)
     i.zOffset = num(d.zAxisCompensation)
     i.coolingFan, i.chamberFan = num(d.coolingFanSpeed), num(d.chamberFanSpeed)
+    i.hasChamberFan = d.chamberFanSpeed ~= nil
+    -- (a second part-cooling fan, only when the printer reports one: sent back as it is)
+    i.coolingLeftFan = tonumber(d.coolingFanLeftSpeed)
     i.filament = str(d.rightFilamentType)
     i.firmware = str(d.firmwareVersion)
     i.ip = str(d.ipAddr)
@@ -485,7 +488,57 @@ function M.filtrationArgs(mode)
     return { internal = mode == "internal" and "open" or "close", external = mode == "external" and "open" or "close" }
 end
 
-local FILTRATION_TEXT = { off = _("Off"), internal = _("Internal"), external = _("External") }
+-- ------------------------------------------------------------------ tuning a print
+
+M.SPEEDS = { 50, 75, 90, 100, 110, 125, 150, 200 }   -- print speed, %
+M.FANS = { 0, 25, 50, 75, 100 }                        -- fan speed, %
+M.Z_STEPS = { -0.1, -0.05, -0.025, 0.025, 0.05, 0.1 }  -- Z offset nudges, mm
+M.Z_LIMIT = 1                                          -- the Z offset stays within ±1 mm
+
+local function clamp(v, lo, hi) return math.max(lo, math.min(hi, v)) end
+local function round(v, step) return math.floor(v / step + 0.5) * step end
+
+--- /control's args for printerCtl_cmd: the printer takes speed, Z offset and
+-- fans together, so each one not changed is sent as it is now (the reference
+-- library sends defaults for them, which put the others back to 100% or 0).
+-- change: { speed, zOffset, coolingFan, chamberFan } (any of them).
+function M.tuneArgs(i, change)
+    change = change or {}
+    local function pick(k, now) if change[k] ~= nil then return tonumber(change[k]) or now end return now end
+    local a = {
+        speed = math.floor(clamp(pick("speed", num(i.speed)), 10, 300) + 0.5),
+        zAxisCompensation = round(clamp(pick("zOffset", num(i.zOffset)), -M.Z_LIMIT, M.Z_LIMIT), 0.001),
+        coolingFan = math.floor(clamp(pick("coolingFan", num(i.coolingFan)), 0, 100) + 0.5),
+        chamberFan = math.floor(clamp(pick("chamberFan", num(i.chamberFan)), 0, 100) + 0.5),
+    }
+    if i.coolingLeftFan then a.coolingLeftFan = math.floor(clamp(i.coolingLeftFan, 0, 100) + 0.5) end
+    return a
+end
+
+--- "+0.050 mm", "0.000 mm", "-0.025 mm".
+function M.zText(z)
+    z = round(num(z), 0.001)
+    if math.abs(z) < 0.0005 then return "0.000 mm" end
+    return string.format("%+.3f mm", z)
+end
+
+--- The Z offsets to choose from: the current one nudged by each step, then 0.
+-- { { label, value } }, value rounded to 0.001 mm and within ±Z_LIMIT.
+function M.zChoices(z)
+    z = round(num(z), 0.001)
+    local out = {}
+    for __, s in ipairs(M.Z_STEPS) do
+        local v = round(z + s, 0.001)
+        if math.abs(v) <= M.Z_LIMIT + 0.0005 then
+            local dir = s > 0 and _("up") or _("down")
+            table.insert(out, { label = T(_("%1  (%2 %3)"), M.zText(v), dir, string.format("%.3f", math.abs(s))), value = v })
+        end
+    end
+    if math.abs(z) >= 0.0005 then table.insert(out, { label = T(_("%1  (reset)"), M.zText(0)), value = 0 }) end
+    return out
+end
+
+local FILTRATION_TEXT ={ off = _("Off"), internal = _("Internal"), external = _("External") }
 function M.filtrationText(mode) return FILTRATION_TEXT[mode] or FILTRATION_TEXT.off end
 
 --- A check code as shown: its last two characters ("••••••12").

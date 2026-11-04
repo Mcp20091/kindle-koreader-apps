@@ -290,12 +290,23 @@ local ACTIONS = {
     clear = function(api) return api:clearPlate() end,
     light = function(api, a) return api:light(a.on) end,
     filtration = function(api, a) return api:filtration(a.mode) end,
+    tune = function(api, a) return api:tune(a.args) end,
+    camera = function(api, a) return api:camera(a.on) end,
     print = function(api, a) return api:print(a.body) end,
 }
 FlashForge.ACTIONS = ACTIONS
 
+--- Change speed, Z offset or a fan during a print (change: { speed, zOffset,
+-- coolingFan, chamberFan }); the rest are sent as last read. done(ok, why).
+function FlashForge:tune(change, done)
+    local i = state.info
+    if not (i and M.active(i.state)) then return done and done(false, _("Nothing is printing.")) end
+    self:act("tune", { args = M.tuneArgs(i, change) }, done)
+end
+
 --- Do an action in the background; then done(ok, why) and the printer read again.
--- name: pause, resume, cancel, clear, light { on }, filtration { mode }, print { body }.
+-- name: pause, resume, cancel, clear, light { on }, filtration { mode }, tune { args },
+-- camera { on }, print { body }.
 -- opts.text: a waiting message meanwhile.
 function FlashForge:act(name, args, done, opts)
     local fn = ACTIONS[name]
@@ -561,6 +572,13 @@ function FlashForge:webState()
         if #i.tools > 1 then
             for k, t in ipairs(i.tools) do table.insert(out.temps, { name = T(_("Tool %1"), k), value = M.temp(t) }) end
         end
+        if M.active(i.state) then
+            out.tune = { speed = math.floor(i.speed + 0.5), zOffset = i.zOffset, zText = M.zText(i.zOffset),
+                coolingFan = math.floor(i.coolingFan + 0.5),
+                chamberFan = i.hasChamberFan and math.floor(i.chamberFan + 0.5) or nil,
+                speeds = M.SPEEDS, fans = M.FANS, zChoices = M.zChoices(i.zOffset) }
+        end
+        out.hasCamera = i.camera
         out.light, out.hasLight = i.light, self:hasLight()
         out.filtration, out.hasFiltration = i.filtration, i.hasFiltration
         out.error = i.error
@@ -574,7 +592,8 @@ function FlashForge:webState()
 end
 
 --- The web page's actions: pause, resume, cancel, clear, light { on },
--- filtration { mode }, refresh (started in the background: the page reads
+-- filtration { mode }, tune { speed, zOffset, coolingFan, chamberFan } (any of
+-- them, during a print), camera { on }, refresh (started in the background: the page reads
 -- the state again after); settings { ip, serial, code, interval, leveling }.
 -- Returns true, or false and why.
 function FlashForge:webAct(name, args)
@@ -601,7 +620,21 @@ function FlashForge:webAct(name, args)
         self:fetch()
         return true
     end
-    if name == "light" then args = { on = args.on == true } end
+    if name == "tune" then
+        local change = {}
+        for __, k in ipairs({ "speed", "zOffset", "coolingFan", "chamberFan" }) do
+            if args[k] ~= nil then
+                if not tonumber(args[k]) then return false, "Not a number: " .. k end
+                change[k] = tonumber(args[k])
+            end
+        end
+        if not next(change) then return false, "Nothing to change" end
+        local i = state.info
+        if not (i and M.active(i.state)) then return false, _("Nothing is printing.") end
+        self:tune(change)
+        return true
+    end
+    if name == "light" or name == "camera" then args = { on = args.on == true } end
     if name == "filtration" and not (args.mode == "off" or args.mode == "internal" or args.mode == "external") then
         return false, "Unknown mode"
     end

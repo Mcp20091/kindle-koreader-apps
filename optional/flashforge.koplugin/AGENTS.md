@@ -22,7 +22,13 @@ it's installed, with nothing of it in their code.
   `{ product = { lightCtrlState, … } }`: read once per run, only for whether there is a light.
 - `/control` `{ payload = { cmd, args } }`: `jobCtl_cmd { jobID = "", action = pause|continue|cancel }`,
   `lightControl_cmd { status = open|close }`, `circulateCtl_cmd { internal, external = open|close }`,
-  `stateCtrl_cmd { action = "setClearPlatform" }`.
+  `stateCtrl_cmd { action = "setClearPlatform" }`, `streamCtrl_cmd { action = open|close }` (the camera's stream),
+  `printerCtl_cmd { speed, zAxisCompensation, coolingFan, chamberFan [, coolingLeftFan] }` (tuning a print).
+- `printerCtl_cmd` takes every value at once: `ffmodel.tuneArgs` sends the ones not changed as /detail last
+  reported them (`printSpeedAdjust`, `zAxisCompensation`, `coolingFanSpeed`, `chamberFanSpeed`), and
+  `coolingLeftFan` only when /detail reports `coolingFanLeftSpeed`. The reference library sends defaults for
+  the others instead (100% speed, 0 offset), which would undo an earlier change: don't copy that. Only while
+  a print is active (`M.active`). Not yet tried on a real printer.
 - `/gcodeList` (ten latest files; only the AD5X sends `gcodeListDetail` with per-tool materials),
   `/gcodeThumb { fileName }` → base64 PNG, `/printGcode` (body per model: `M.printBody`).
 - Camera: `http://<ip>:8080/?action=stream` (or `cameraStreamUrl` from /detail), MJPEG; the first JPEG
@@ -72,7 +78,8 @@ it's installed, with nothing of it in their code.
 
 ## Rules
 
-- Cancel asks first (it can't be put back); everything else just does it.
+- Cancel asks first (it can't be put back); everything else just does it (tuning and the camera too: pick
+  another value to put it back).
 - Starting a print is refused while the printer is busy or the plate isn't cleared (as the printer would).
 - The Creator 5 has no Start print here (the same message as the Home Assistant card): it doesn't report a
   stored file's materials, so its tools can't be matched to slots. Don't infer them.
