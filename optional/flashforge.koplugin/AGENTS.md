@@ -69,6 +69,9 @@ it's installed, with nothing of it in their code.
 - Nothing in the background. The printer is read while a FlashForge page is on top (Settings > Read every,
   10 s by default, 5 to 300), when the launcher draws the tile (at most once a minute) and when a quick
   button shows. Only on Wi-Fi already (`NetworkMgr:isConnected()`); it never turns Wi-Fi on.
+- The Camera page's Refresh automatically (`flashforge_camera_auto`, every `flashforge_camera_every` s,
+  10 to 300, 30 by default) takes a picture only while that page is on top, quietly (no waiting box, no
+  full refresh); off by default for the battery.
 - Every request runs in a child process (`ffbg.run`) with a deadline; KOReader's loop only polls.
 - Pictures go to `koreader/cache/flashforge/`: thumbnails by file name (read once), camera pictures as a
   new file each time (the page keeps pictures by path), the one before removed. ffpage frees its pictures

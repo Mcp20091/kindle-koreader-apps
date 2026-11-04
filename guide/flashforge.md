@@ -82,6 +82,13 @@ While FlashForge is open the printer is read every 10 seconds (change it in Sett
 
 **Camera on** and **Camera off** start and stop the camera's stream on the printer. If there's no picture, tap **Camera on**: a new picture is taken a few seconds later.
 
+**Light** switches the printer's light on or off from here too, then takes a new picture with it.
+
+Under **REFRESH**:
+
+- **Refresh automatically**: takes a new picture by itself while the Camera page is open, so you can watch a print. It uses more battery, so it's off until you turn it on.
+- **Refresh every**: how often, from 10 seconds to 5 minutes (30 seconds to start with).
+
 ### Details
 
 **Details** lists the printer's **Name**, **Model**, **IP address**, **Serial number** (hidden except for its end), **Firmware**, **Nozzle** size, **Filament**, **Free space**, **Door**, **Error code**, and under **LIFETIME** its total **Printing time** and **Filament used**.

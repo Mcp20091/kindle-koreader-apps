@@ -370,7 +370,8 @@ end
 
 --- A picture from the camera; done(path) or done(nil, why). Each one a new
 -- file (the page keeps pictures by name); the one before is removed.
-function FlashForge:snapshot(done)
+-- quiet: no waiting message (the Camera page refreshing by itself).
+function FlashForge:snapshot(done, quiet)
     if not self:configured() then return done(nil, "notset") end
     if not NetworkMgr:isConnected() then return done(nil, "offline") end
     local api = self:api()
@@ -386,7 +387,7 @@ function FlashForge:snapshot(done)
             return done(r.path)
         end
         done(nil, (r and r.why) or why)
-    end, { limit = 20, text = _("Taking a picture…") })
+    end, { limit = 20, text = not quiet and _("Taking a picture…") or nil })
 end
 
 -- Kindles block incoming connections: the discovery answers' port while it listens.

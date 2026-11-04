@@ -1,4 +1,6 @@
-2026-11-03 12:00
+2026-11-03 14:00
+Nov 3  FlashForge: Refresh automatically on the Camera page (off at first), with Refresh every from 10 seconds to 5 minutes
+Nov 3  FlashForge: the Light button on the Camera page too (a new picture after it switches)
 Nov 3  FlashForge: while printing, tap Speed, Z offset, Cooling fan or Chamber fan to change it; Camera on and Camera off on the Camera page; the same on the web page's FlashForge tab
 Oct 27  FlashForge: App lock (Settings > Launcher > App lock) asks before it opens, from the Tools menu and gestures too
 Oct 27  FlashForge: in Settings' Optional apps group

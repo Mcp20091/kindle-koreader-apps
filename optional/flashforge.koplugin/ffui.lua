@@ -9,7 +9,8 @@ FlashForge's screens, drawn as the other apps' pages (ffpage):
                  materials, Start print (and matching its materials to the
                  Material Station's slots on the AD5X)
   Camera         one picture, taken again with ⟳ or Take again; the
-                 camera's stream on or off
+                 camera's stream on or off, the light, and
+                 Refresh automatically (every 10 s to 5 min)
   Details        the model, firmware, address and lifetime counts
   Settings       how often it's read, levelling, the printer's address,
                  serial number and check code
@@ -416,32 +417,96 @@ end
 
 -- ------------------------------------------------------------------ the camera
 
+--- "30 seconds", "1 minute", "5 minutes".
+local function everyName(s)
+    if s < 60 then return T(_("%1 seconds"), s) end
+    if s == 60 then return _("1 minute") end
+    return T(_("%1 minutes"), s / 60)
+end
+
+-- How often the Camera page can refresh its picture by itself (seconds).
+local CAMERA_EVERY = { 10, 15, 30, 60, 120, 300 }
+
+local function cameraAuto() return G_reader_settings:isTrue("flashforge_camera_auto") end
+local function cameraEvery()
+    local s = tonumber(G_reader_settings:readSetting("flashforge_camera_every")) or 30
+    return math.max(10, math.min(300, s))
+end
+
 function UI.camera(plugin)
-    local shot, why
+    local shot, why, taken
     local p
     local function items()
         local t = {}
         t[#t + 1] = { picture = shot or "", h = 420, empty = why and plugin:whyText(why) or _("Taking a picture…") }
-        t[#t + 1] = { note = _("One picture at a time, to keep the Kindle's battery: tap Take again or ⟳ for a new one.") }
-        t[#t + 1] = { tiles = {
+        if not cameraAuto() then
+            t[#t + 1] = { note = _("One picture at a time, to keep the Kindle's battery: tap Take again or ⟳ for a new one.") }
+        end
+        local tiles = {
             { icon = "camera", text = _("Take again"), primary = true, fn = function() p.take() end },
             { icon = "play", text = _("Camera on"), sub = _("Start its stream"), fn = function() p.power(true) end },
             { icon = "x", text = _("Camera off"), sub = _("Stop its stream"), fn = function() p.power(false) end },
-        }, cols = 3 }
+        }
+        if plugin:hasLight() then
+            local light = plugin:info() and plugin:info().light
+            table.insert(tiles, 2, { icon = "lightbulb", text = _("Light"), sub = light and _("On") or _("Off"),
+                fn = function() p.light(not light) end })
+        end
+        -- (four tiles as two rows of two: their words fit)
+        t[#t + 1] = { tiles = tiles, cols = #tiles == 4 and 2 or 3 }
         t[#t + 1] = { note = _("No picture? Turn the camera on, then take one again.") }
+        t[#t + 1] = { band = _("REFRESH") }
+        t[#t + 1] = { toggle = cameraAuto(), text = _("Refresh automatically"),
+            sub = _("While this page is open. Uses more battery."),
+            callback = function()
+                G_reader_settings:saveSetting("flashforge_camera_auto", not cameraAuto())
+                p.item_table = items()
+                p:redraw()
+                p.schedule()
+            end }
+        t[#t + 1] = { setting = true, text = _("Refresh every"), value = everyName(cameraEvery()),
+            callback = function()
+                local options = {}
+                for __, v in ipairs(CAMERA_EVERY) do table.insert(options, { label = everyName(v), value = v }) end
+                KO.choose(_("Refresh every"), options, cameraEvery(), function(v)
+                    G_reader_settings:saveSetting("flashforge_camera_every", v)
+                    p.item_table = items()
+                    p:redraw()
+                    p.schedule()
+                end)
+            end }
         return t
     end
     p = page(_("Camera"), items, { status = function()
-        return shot and T(_("Taken %1"), M.clock(os.time(), twentyFour())) or nil, plugin:printerName()
+        return taken and T(_("Taken %1"), M.clock(taken, twentyFour())) or nil, plugin:printerName()
     end })
-    function p.take()
+    -- quiet: a refresh by itself (no waiting message, no full flash of the screen).
+    local busy = false
+    function p.take(quiet)
+        if busy then return end
+        busy = true
         plugin:snapshot(function(path, err)
+            busy = false
             if not alive(p) then return end
             shot, why = path, err
-            if not path then shot = nil end
+            if path then taken = os.time() else shot = nil end
             p.item_table = items()
-            p:redraw("full")
-        end)
+            p:redraw(not quiet and "full" or nil)
+        end, quiet)
+    end
+    -- Refresh automatically: a new picture every few seconds while this page is
+    -- on top (not under a menu or another page); a change of setting starts again.
+    local round = 0
+    function p.schedule()
+        round = round + 1
+        if not cameraAuto() then return end
+        local mine = round
+        local function tick()
+            if mine ~= round or not alive(p) or not cameraAuto() then return end
+            if UIManager:getTopmostVisibleWidget() == p then p.take(true) end
+            UIManager:scheduleIn(cameraEvery(), tick)
+        end
+        UIManager:scheduleIn(cameraEvery(), tick)
     end
     function p.power(on)
         plugin:act("camera", { on = on }, function(ok, err)
@@ -456,8 +521,16 @@ function UI.camera(plugin)
             end
         end, { text = on and _("Turning the camera on…") or _("Turning the camera off…") })
     end
+    -- The light, then a new picture with it (the printer takes a moment to switch it).
+    function p.light(on)
+        plugin:act("light", { on = on }, function(ok, err)
+            if not ok then return failed(plugin, err) end
+            UIManager:scheduleIn(1.5, function() if alive(p) then p.take() end end)
+        end)
+    end
     p.on_refresh = function() p.take() end
     p.take()
+    p.schedule()
 end
 
 -- ------------------------------------------------------------------ details
@@ -727,11 +800,6 @@ end
 
 local EVERY = { 5, 10, 15, 30, 60, 120, 300 }
 
-local function everyName(s)
-    if s < 60 then return T(_("%1 seconds"), s) end
-    if s == 60 then return _("1 minute") end
-    return T(_("%1 minutes"), s / 60)
-end
 
 --- The settings rows: DISPLAY first, the printer's connection last.
 function UI.settingsItems(plugin, redo)
