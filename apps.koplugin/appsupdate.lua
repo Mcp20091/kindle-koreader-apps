@@ -35,8 +35,6 @@ U.DEFAULT_REPO = "Mcp20091/kindle-koreader-apps"
 -- What these apps are called together: the header over the version (Settings > Updates, Set up).
 U.NAME = "Clod UI"
 
--- The note over the optional apps (Settings > Updates; the web page's System > Updates says the same).
-U.OPTIONAL_NOTE = _("Apps you can add if you need them. They update along with everything else.")
 local ASSET = "kindle-plugins.zip"
 -- Files in a plugin's folder that are the user's, not the plugin's.
 local KEEP = { "client_id.txt", "notes_defaults.lua" }
@@ -579,7 +577,7 @@ function U.installAll(plugin, rel, done, progress)
                         local PS = require("pluginshare")
                         if PS.notify then
                             pcall(PS.notify, { app = "apps", name = _("Launcher"), icon = "download", key = "apps:optional:" .. o.folder,
-                                text = T(_("%1 couldn't be updated (%2). Try again in Settings > Updates > Optional apps."), name, tostring(why2)),
+                                text = T(_("Couldn't update %1 (%2)."), name, tostring(why2)),
                                 route = { settings = "updates" },
                                 open = function() if PS.showSettings then PS.showSettings("updates") end end })
                         end
@@ -663,7 +661,7 @@ function U.optionalList(plugin, list, rel)
         items[#items + 1] = { text = T(_("Update all (%1)"), #behind), fn = function()
             KO.confirm{ title = _("Update all"),
                 text = T(_("Update %1 to %2?"), table.concat(titles, ", "), U.sourceText(rel))
-                    .. "\n\n" .. _("Your settings are kept. KOReader restarts afterwards."),
+                    .. "\n\n" .. _("KOReader restarts afterwards."),
                 ok = _("Update all"), onOk = function() U.forget() U.runAll(plugin, rel, behind) end }
         end }
     end
@@ -840,7 +838,7 @@ local function run(plugin, rel)
     local said
     U.installAll(plugin, rel, function(names, why)
         if wait then wait:close() end
-        if not names then return KO.message(T(_("The update failed. Nothing was changed.\n\n%1"), tostring(why))) end
+        if not names then return KO.message(T(_("Update failed. Nothing changed.\n\n%1"), tostring(why))) end
         local s = settings()
         if not (rel.branch or rel.optional) then s.update_whatsnew = { tag = rel.tag, notes = rel.notes or "" } end
         G_reader_settings:saveSetting("apps", s)
@@ -862,10 +860,10 @@ function U.runAll(plugin, rel, apps)
     local said
     U.updateOptional(plugin, rel, apps, function(names, why)
         if wait then wait:close() end
-        if not names then return KO.message(T(_("The update failed. Nothing was changed.\n\n%1"), tostring(why))) end
+        if not names then return KO.message(T(_("Update failed. Nothing changed.\n\n%1"), tostring(why))) end
         if why then
             -- (some went in: say which didn't, then offer the restart)
-            return KO.confirm{ title = _("Updated"), text = T(_("These apps couldn't be updated and stay on their current version:\n\n%1"), why)
+            return KO.confirm{ title = _("Updated"), text = T(_("Couldn't update:\n\n%1"), why)
                 .. "\n\n" .. _("Restart KOReader now to use the new versions?"), ok = _("Restart"),
                 onOk = function() restart(plugin, true) end }
         end
@@ -961,7 +959,7 @@ function U.toggleTests(refresh)
         return
     end
     KO.confirm{ title = _("Show test versions"),
-        text = _("Test versions let you try new features before they're released. They may have bugs or unfinished parts. While this is on, Check for updates offers them too. To go back, pick a release in Select version, or use Undo a plugin update."),
+        text = _("They may have bugs."),
         ok = _("Show them"), onOk = function()
             U.setTests(true)
             if refresh then refresh() end
@@ -1124,7 +1122,7 @@ function U.optionalAction(plugin, o, rel)
     local online = rel and rel.tag and (o.zip or rel.branch)
     local from = U.sourceText(rel)
     local function install() U.forget() run(plugin, U.optionalRelease(rel, o)) end
-    local kept = _("Your settings are kept. KOReader restarts afterwards.")
+    local kept = _("KOReader restarts afterwards.")
     if not o.installed then
         if not online then return KO.message(_("Connect to Wi-Fi to install it.")) end
         return KO.confirm{ title = T(_("Install %1"), o.title),
@@ -1138,7 +1136,7 @@ function U.optionalAction(plugin, o, rel)
         items[#items + 1] = { text = T(_("Update to %1"), from), fn = function()
             local text
             if o.old then
-                text = T(_("This version of %1 is too old to work with the launcher. Update to %2?"), o.title, from)
+                text = T(_("Too old for the launcher. Update to %1?"), from)
             elseif o.version then
                 text = T(_("Update from %1 to %2?"), o.version, from)
             else
@@ -1149,14 +1147,14 @@ function U.optionalAction(plugin, o, rel)
     else
         items[#items + 1] = { text = T(_("Reinstall %1"), from), fn = function()
             KO.confirm{ title = T(_("Reinstall %1"), o.title),
-                text = T(_("Download and install version %1 again. This can fix an app that isn't working properly."), from)
+                text = T(_("Install version %1 again?"), from)
                     .. "\n\n" .. kept,
                 ok = _("Reinstall"), onOk = install }
         end }
     end
     items[#items + 1] = { text = _("Remove"), fn = function()
         KO.confirm{ title = T(_("Remove %1"), o.title),
-            text = _("It's removed from this Kindle. Undo a plugin update can bring it back. KOReader restarts afterwards."), ok = _("Remove"),
+            text = _("KOReader restarts afterwards."), ok = _("Remove"),
             onOk = function()
                 local ok, err = U.removeOptional(plugin, o.folder)
                 if not ok then return KO.message(tostring(err)) end
@@ -1187,11 +1185,9 @@ function U.settingsRows(plugin, refresh)
         end },
         { _("Select version"), "", function() U.pickVersion(plugin) end },
         { _("Show test versions"), U.tests(), function() U.toggleTests(refresh) end },
-        { note = _("Try new features before they're released. They may have bugs.") },
         { _("Check automatically"), U.auto(), function() U.setAuto(not U.auto()) end },
         { _("Undo a plugin update"), "", function() require("appsundo").undoMenu(plugin) end },
         { heading = _("OPTIONAL APPS") },
-        { note = U.OPTIONAL_NOTE },
     }
     -- (Installed from a branch, as could be done before: the way back to the releases.)
     if branch then
