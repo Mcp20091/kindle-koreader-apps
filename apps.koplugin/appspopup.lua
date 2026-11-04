@@ -1104,11 +1104,24 @@ function Popup.confirm(o)
         danger = o.danger, onOk = o.onOk, onCancel = o.onCancel })
 end
 
+-- Message time (Settings > Launcher): how long toasts and Undo bars stay, as a
+-- share of each one's own time (apps_message_time).
+Popup.MESSAGE_TIMES = { { "short", 0.6 }, { "normal", 1 }, { "long", 1.75 }, { "verylong", 2.5 } }
+function Popup.messageTime()
+    local v = G_reader_settings:readSetting("apps_message_time")
+    for __, t in ipairs(Popup.MESSAGE_TIMES) do if t[1] == v then return v, t[2] end end
+    return "normal", 1
+end
+local function stay(seconds)
+    local __, scale = Popup.messageTime()
+    return seconds * scale
+end
+
 function Popup.toast(text, seconds)
     local box = Box:new{ kind = "toast", text = text }
     show(box)
     box.timer = function() box:close() end
-    UIManager:scheduleIn(seconds or 2, box.timer)
+    UIManager:scheduleIn(stay(seconds or 2), box.timer)
     return box
 end
 
@@ -1123,7 +1136,7 @@ function Popup.undo(text, onUndo, seconds)
     local box = Box:new{ kind = "undo", text = text, onOk = onUndo }
     show(box)
     box.timer = function() box:close() end
-    UIManager:scheduleIn(seconds or 6, box.timer)
+    UIManager:scheduleIn(stay(seconds or 6), box.timer)
     return box
 end
 

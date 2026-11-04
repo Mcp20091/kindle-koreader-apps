@@ -9,7 +9,7 @@ local Common = require("webcommon")
 local Web = {}
 
 -- Settings the page may change, and their kinds.
-local SETTINGS = { layout = "string", clock = "string", columns = "number", clock_24h = "boolean", button_labels = "boolean", button_labels_app = "table", page_bar = "string", at_start = "boolean",
+local SETTINGS = { layout = "string", clock = "string", columns = "number", clock_24h = "boolean", button_labels = "boolean", button_labels_app = "table", page_bar = "string", message_time = "string", at_start = "boolean",
     today = "boolean", toggles = "boolean", recent = "boolean", recent_notes = "boolean", recent_crosswords = "boolean", recent_together = "boolean", quick_off = "table", wifi_idle = "number",
     weather = "string", weather_units = "string", weather_place = "table", sleep_widgets = "table", sleep_widgets_order = "table" }
 local WEATHER = { auto = true, ha = true, openmeteo = true, off = true }
@@ -27,6 +27,7 @@ local function state(a)
     out.settings.button_labels = G_reader_settings:readSetting("apps_button_labels") ~= false
     -- The bar at the foot of every app's pages (appscanvas.lua's Canvas.pageBar).
     out.settings.page_bar = require("appscanvas").pageBar()
+    out.settings.message_time = (require("appspopup").messageTime())
     -- Each app's own (Default, On, Off), as on the Kindle's Button labels page.
     local okP, Popup = pcall(require, "appspopup")
     if okP and Popup.labelApps then
@@ -277,6 +278,13 @@ function Web.routes(server)
             local v = b.button_labels_app.value
             if okP then Popup.setLabelsOf(b.button_labels_app.key, Popup.labelsValue(v)) end
             b.button_labels_app = nil
+        end
+        if b.message_time ~= nil then
+            local known = false
+            for __, t in ipairs(require("appspopup").MESSAGE_TIMES) do if t[1] == b.message_time then known = true end end
+            if not known then return res:error(400, "Unknown message time") end
+            G_reader_settings:saveSetting("apps_message_time", b.message_time ~= "normal" and b.message_time or nil)
+            b.message_time = nil
         end
         if b.page_bar ~= nil then
             if b.page_bar ~= "parts" and b.page_bar ~= "next" and b.page_bar ~= "words" then return res:error(400, "Unknown page bar") end

@@ -1,4 +1,5 @@
-2026-11-03 22:30
+2026-11-04 09:00
+Nov 4  Launcher: Message time (Settings > Launcher): how long short messages and Undo stay, in every app
 Nov 3  Launcher: SSH hosts as shortcuts (Add shortcut > SSH host)
 Nov 3  Launcher: Updates: much shorter text (Show test versions: They may have bugs; no notes that repeat a setting's name)
 Nov 3  Launcher: Updates: plainer wording throughout (You're up to date, The update failed, Update from … to …, the optional apps' note and Show test versions)

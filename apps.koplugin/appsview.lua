@@ -2338,6 +2338,14 @@ function View:settingsRows()
             for __, v in ipairs({ "parts", "next", "words" }) do table.insert(out, { View.pageBarName(v), v }) end
             return out, require("appscanvas").pageBar(), function(v) G_reader_settings:saveSetting("apps_page_bar", v) end
         end },
+        -- How long every app's toasts and Undo bars stay (appspopup.lua's Popup.messageTime).
+        { _("Message time"), View.messageTimeName(require("appspopup").messageTime()), pick = function()
+            local out = {}
+            for __, t in ipairs(require("appspopup").MESSAGE_TIMES) do table.insert(out, { View.messageTimeName(t[1]), t[1] }) end
+            return out, (require("appspopup").messageTime()), function(v)
+                G_reader_settings:saveSetting("apps_message_time", v ~= "normal" and v or nil)
+            end
+        end },
         { heading = _("HOME SCREEN") },
         { _("At a glance"), s.today ~= false, function() s.today = s.today == false and true or false end },
         { _("Quick buttons"), (function()
@@ -2640,6 +2648,13 @@ function View:setSleepAfter(seconds) require("appskosettings").setSleepAfter(sec
 
 
 --- The page bar's looks, in words: "parts", "next" or "words".
+function View.messageTimeName(v)
+    if v == "short" then return _("Short") end
+    if v == "long" then return _("Long") end
+    if v == "verylong" then return _("Very long") end
+    return _("Normal")
+end
+
 function View.pageBarName(v)
     if v == "next" then return _("Parts and Next") end
     if v == "words" then return _("Words") end
