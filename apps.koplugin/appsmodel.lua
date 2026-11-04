@@ -52,7 +52,7 @@ end
 -- "todoview", a notebook "note", a Notes folder "notefolder", a source's
 -- newest crossword "crossword").
 Model.PIN_PLUGINS = { ha = "homeassistant", todo = "todo", todoview = "todo", note = "notes", notefolder = "notes",
-    crossword = "notes" }
+    crossword = "notes", ssh = "sshclient" }
 
 --- A pin's key: "pin:ha:room:Kitchen", "pin:todo:<list id>", "pin:note:<id>",
 -- "pin:notefolder:Work/Clients".

@@ -53,7 +53,7 @@ The buttons you can have:
 - **Continue reading**: your last book. Hold: the Library.
 - **Weather**: shows the temperature; tap for the Weather screen. Hold: change the place.
 - **Search**, **Sleep** (hold: Sleep after), **Rotate** (hold: rotation), **Battery** (shows the level; tap for the Battery screen) and **Reading statistics** (today's reading time; tap for Reading statistics, hold for the calendar).
-- **Shortcuts**, as in Add shortcut: a Home Assistant screen or room, a To Do view or list (hold: a new task in it), a notebook, a Notes folder, a crossword source or a KOReader action.
+- **Shortcuts**, as in Add shortcut: a Home Assistant screen or room, a To Do view or list (hold: a new task in it), a notebook, a Notes folder, a crossword source, an SSH host or a KOReader action.
 - **Home Assistant devices** (picked by room): a light or fan with **−** and **+** (brightness or speed; tap the name to switch it), the thermostat's set point with **−** and **+**, a speaker or TV with **⏮ ⏯ ⏭**, mute and the volume, switches, locks, the garage, scripts and scenes (asked first where Home Assistant's own tiles ask), and sensors as a reading. Hold any of them for the device in Home Assistant.
 - **From the other apps**: **Random article**, **Today** and **Search** from Wikipedia (hold: the front page), **Syncthing** (on or off; hold: the app), a saved **SSH command** (tap runs it; hold: its host), **Sync To Do** (how many changes wait; hold: the Sync screen) and **Refresh Home Assistant** (hold: Home Assistant). They're under **Add a button** when those apps are installed.
 - **Groups**: one button that drops its own buttons down in the control center (hold to rename it, change its icon or edit the buttons).
@@ -148,9 +148,10 @@ A shortcut is a tile that goes straight to one place. In Settings > **Edit home 
 - **Notebook**: a Notes notebook, with when it was last edited.
 - **Notes folder**: a folder of notebooks.
 - **Crossword**: one newspaper's newest crossword.
+- **SSH host**: opens that host's page. App lock (or SSH's PIN) and the host's own PIN are asked first, as in SSH.
 - **KOReader action**: anything a gesture can do that needs no setting, such as **Calibre: Connect** or **Push progress from this device**. Pick a group (General, Device, Screen and lights, File browser, Book) and then the action. It runs when you tap the tile, just like the gesture. Book actions need a book open.
 
-Home Assistant, To Do and Notes can add shortcuts themselves: their **⋮** menu has **Add to launcher** on the screen you're looking at.
+The apps can add them too, with **Add to launcher**: Home Assistant's **⋮** menu on the screen you're on, a To Do list or tile held, a notebook or Notes folder held, Today's crossword held in Crosswords (or Notes' **Crosswords** button), and an SSH host held.
 
 To remove a shortcut, hold it and choose **Remove**, or tap its **x** in settings.
 

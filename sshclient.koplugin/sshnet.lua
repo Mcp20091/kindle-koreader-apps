@@ -27,11 +27,6 @@ Net.online = {}
 -- Hosts whose status is being read now: [host id] = true.
 Net.busy = {}
 
-local function keyFile(plugin, host)
-    if host.auth ~= "key" then return nil end
-    return host.key and plugin.store:keyFile(host.key)
-end
-
 --- Whether a host can be reached without asking anything; or false, why
 -- ("dbclient", "ask", "nokey", "untrusted").
 function Net.quiet(plugin, host)
@@ -40,6 +35,13 @@ function Net.quiet(plugin, host)
     if host.auth == "password" and not (host.password and host.password ~= "") then return false, "ask" end
     if host.auth == "key" and not (host.key and plugin.store.readFile(plugin.store:keyFile(host.key))) then return false, "nokey" end
     if not plugin.store:isKnown(host.address) then return false, "untrusted" end
+    -- (through another host: that one must be reachable quietly too, with its key)
+    if host.via then
+        local j = M.viaOf(plugin.store.data, host)
+        if not j or M.viaProblem(plugin.store.data, host, j.id) then return false, "via" end
+        local ok, why = Net.quiet(plugin, j)
+        if not ok then return false, why end
+    end
     return true
 end
 
@@ -54,7 +56,7 @@ function Net.run(plugin, host, cmd, done, opts)
         if not ok then return done(nil, nil, why) end
         password = host.auth == "password" and host.password or nil
     end
-    local args = M.dbclientArgs(plugin.store:dbclient(), host, { cmd = cmd, keyFile = keyFile(plugin, host) })
+    local args = require("sshrun").args(plugin, host, { cmd = cmd })
     require("sshrun").jobs(plugin, { { args = args, password = password, outFile = opts.outFile, inFile = opts.inFile } },
         { prefix = "bg", limit = opts.limit or 45 }, function(results, why)
             local r = results[1] or {}
@@ -146,7 +148,10 @@ end
 -- once in the background: Net.online, then done().
 function Net.ping(hosts, done)
     local list = {}
-    for __, h in ipairs(hosts) do list[#list + 1] = { id = h.id, address = h.address, port = tonumber(h.port) or 22 } end
+    -- (not one reached through another host: the Kindle can't knock on it directly)
+    for __, h in ipairs(hosts) do
+        if not h.via then list[#list + 1] = { id = h.id, address = h.address, port = tonumber(h.port) or 22 } end
+    end
     if #list == 0 then return done and done() end
     Bg.run(function()
         local socket = require("socket")

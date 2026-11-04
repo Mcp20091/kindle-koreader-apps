@@ -129,6 +129,37 @@ function SSH:show()
     return require("sshui").show(self)
 end
 
+--- A host as a launcher tile ({ kind = "ssh", id, name, icon }).
+function SSH:hostPin(h)
+    return { kind = "ssh", id = h.id, name = M.hostName(h), icon = "terminal" }
+end
+
+--- The hosts the launcher can pin (its Add shortcut list).
+function SSH:hostPins()
+    local out = {}
+    for __, h in ipairs(self.store and self.store.data and self.store.data.hosts or {}) do out[#out + 1] = self:hostPin(h) end
+    return out
+end
+
+--- A pinned host's tile line: its first stats as last read ("up 3 days · 52 °C"), or "".
+function SSH:hostLine(id)
+    local h = M.host(self.store.data, id)
+    if not (h and h.last) then return "" end
+    local S = require("sshstats")
+    return S.short(h.last.v, S.shown(h), 2) or ""
+end
+
+--- A pinned host's tile: its page, past App lock (or SSH's PIN) and the host's own PIN.
+function SSH:openHost(id)
+    local lock = require("pluginshare").lock
+    if lock and lock.ask("ssh", function() self:openHost(id) end) then return end
+    local h = M.host(self.store.data, id)
+    if not h then return require("sshko").toast(_("This host was deleted. Hold the tile to remove it."), 3) end
+    local UI = require("sshui")
+    UI.show(self)
+    UI.host(self, h)
+end
+
 function SSH:onShowSSH()
     self:show()
     return true
@@ -143,7 +174,7 @@ function SSH:onRunSSHCommand(ref)
         require("sshko").message(_("This SSH command was deleted. Choose another for the gesture."))
         return true
     end
-    require("sshui").withPin(h, function() require("sshrun").command(self, h, c.cmd) end)
+    require("sshui").withPin(h, function() require("sshrun").saved(self, h, c) end)
     return true
 end
 
@@ -229,7 +260,7 @@ function SSH.quickItem(id)
         icon = "terminal",
         tap = function(done)
             -- as from the host's page: in the background, then its output
-            UI.withPin(h, function() require("sshrun").command(UI.plugin, h, c.cmd) end)
+            UI.withPin(h, function() require("sshrun").saved(UI.plugin, h, c) end)
             if done then done() end
         end,
         hold = function()

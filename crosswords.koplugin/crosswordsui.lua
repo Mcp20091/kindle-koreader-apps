@@ -1447,6 +1447,22 @@ function Notes:randomPuzzle()
     self:randomCrossword(pick.src, pick.kind or "quick")
 end
 
+--- Add to launcher: a source's newest crossword as a tile (the launcher's pin "crossword").
+function Notes:crosswordToLauncher()
+    local apps = self.ui and self.ui.apps
+    if not (apps and apps.addPin) then return end
+    local buttons = {}
+    local dialog
+    for __, s in ipairs(self:crosswordSources()) do
+        table.insert(buttons, { { text = s.name, align = "left", callback = function()
+            UIManager:close(dialog)
+            apps:addPin({ kind = "crossword", id = s.key, name = T(_("%1 crossword"), (s.name:gsub(" %(.-%)$", ""))), icon = "grid-3x3" })
+        end } })
+    end
+    table.insert(buttons, { { text = _("Close"), callback = function() UIManager:close(dialog) end } })
+    dialog = require("notesko").buttonDialog{ title = _("Add to launcher"), buttons = buttons }
+end
+
 --- The sources Today's crossword can open (for the launcher's tiles):
 -- { { key = "usa", name = "USA Today" }... }.
 function Notes:crosswordSources()
@@ -1543,7 +1559,8 @@ function Notes:crosswordsItems()
     local items = {
         { text = _("+ Get a crossword"), bold = true, callback = function() self:getCrossword() end },
         { text = info.have and T(_("Today's: %1, %2"), info.name, states[info.state] or "") or T(_("Today's: %1"), info.name),
-            callback = function() self:todaysCrossword() end },
+            callback = function() self:todaysCrossword() end,
+            hold_callback = function() self:crosswordToLauncher() end },
         { text = _("Import"), callback = function() self:pickPDF(true) end },
         { text = _("Stats"), callback = function() self:showCrosswordStats() end },
         { text = T(_("Sort: %1"), SORTS[Settings.get("sort")] or SORTS.modified), icon = "arrow-up-down",
@@ -1676,6 +1693,9 @@ function Notes:crosswordMenu()
         { { text = _("Stats"), align = "left", callback = pick(function() self:showCrosswordStats() end) } },
         { { text = _("Crossword settings…"), align = "left", callback = pick(function() self:crosswordSettings() end) } },
     }
+    if self.ui and self.ui.apps and self.ui.apps.addPin then
+        table.insert(buttons, { { text = _("Add to launcher…"), align = "left", callback = pick(function() self:crosswordToLauncher() end) } })
+    end
     if self:crosswordsOnWebReady() then
         table.insert(buttons, { { text = _("Open on the web page"), align = "left", callback = pick(function() self:crosswordsOnWeb() end) } })
     end

@@ -258,6 +258,65 @@ eq(table.concat(M.dbclientArgs("db", host, { probe = true, trust = true, keyFile
     "db -T -y -o BatchMode=yes -o PasswordAuthentication=no -K 30 -p 2222 -l o'brien nas true", "trust probe")
 eq(table.concat(M.dbclientArgs("db", host, { pty = true }), " "), "db -t -K 30 -p 2222 -l o'brien nas", "session")
 
+-- Connect through another host
+local jump = { id = "hj", address = "gw.example.com", user = "me", port = 22, auth = "key", key = "k1" }
+eq(table.concat(M.dbclientArgs("db", host, { cmd = "uptime", keyFile = "/k/t", via = { host = jump, keyFile = "/k/j" } }), " "),
+    "db -T -i /k/j -o BatchMode=yes -i /k/t -K 30 me@gw.example.com/22,o'brien@nas/2222 uptime", "through a host")
+eq(table.concat(M.dbclientArgs("db", host, { probe = true, via = { host = jump, keyFile = "/k/j" } }), " "),
+    "db -T -i /k/j -o BatchMode=yes -o PasswordAuthentication=no -K 30 me@gw.example.com/22,o'brien@nas/2222 true",
+    "probe through a host: its key still signs in to the first one")
+do
+    local d = { hosts = { jump, { id = "hp", address = "a", user = "u", port = 22, auth = "password" },
+        { id = "hv", address = "b", user = "u", port = 22, auth = "key", via = "hj" },
+        { id = "ht", address = "c", user = "u", port = 22, auth = "ask" } }, keys = { { id = "k1" } }, commands = {} }
+    eq(M.viaProblem(d, d.hosts[4], "hj"), nil, "through a key host that connects directly")
+    eq(M.viaProblem(d, jump, "hj") ~= nil, true, "not through itself")
+    eq(M.viaProblem(d, d.hosts[4], "hp") ~= nil, true, "not through a password host")
+    eq(M.viaProblem(d, d.hosts[4], "hv") ~= nil, true, "one hop only")
+    eq(M.viaProblem(d, d.hosts[4], "nope") ~= nil, true, "not a deleted host")
+    eq(M.viaOf(d, d.hosts[3]), jump, "viaOf")
+    assert(M.act(d, "saveHost", { id = "ht", via = "hj" }))
+    eq(d.hosts[4].via, "hj", "saved: connect through")
+    eq(M.act(d, "saveHost", { id = "ht", via = "hp" }), nil, "saving a bad one is refused")
+    assert(M.act(d, "saveHost", { id = "ht", via = "" }))
+    eq(d.hosts[4].via, nil, "saved: directly again")
+    assert(M.act(d, "deleteHost", { id = "hj" }))
+    eq(d.hosts[2].via, nil, "the host it went through deleted: directly again")
+end
+
+-- Use a key
+local line = "ssh-ed25519 AAAAC3Nza kindle"
+local ac = M.authorizeCmd(line, "debian")
+eq(ac:sub(1, 6), "sh -c ", "authorize: through sh")
+eq(ac:find("authorized_keys", 1, true) ~= nil, true, "authorize: authorized_keys")
+eq(ac:find("KEY_OK", 1, true) ~= nil, true, "authorize: says so")
+eq(M.authorizeCmd(line, "windows"), nil, "authorize: not on Windows")
+do
+    -- it runs: the line added once, even twice over
+    local tmp = os.tmpname()
+    os.remove(tmp)
+    os.execute("mkdir -p " .. tmp)
+    local run = "HOME=" .. tmp .. " " .. ac
+    os.execute(run .. " >/dev/null")
+    local p = io.popen(run)
+    local said = p:read("*a")
+    p:close()
+    local f = io.open(tmp .. "/.ssh/authorized_keys")
+    local text = f and f:read("*a") or ""
+    if f then f:close() end
+    eq(text, line .. "\n", "authorize: added once")
+    eq(said:find("KEY_OK", 1, true) ~= nil, true, "authorize: KEY_OK")
+    os.execute("rm -rf " .. tmp)
+end
+
+-- Ask before running: kept with the command
+do
+    local d = { hosts = { { id = "h1", address = "a", user = "u", port = 22, auth = "ask", commands = {} } }, keys = {}, commands = {} }
+    assert(M.act(d, "saveHostCommands", { id = "h1", list = { { name = "x", cmd = "rm -rf /tmp/x", ask = true }, { name = "y", cmd = "ls", ask = "yes" } } }))
+    eq(d.hosts[1].commands[1].ask, true, "ask kept")
+    eq(d.hosts[1].commands[2].ask, nil, "ask only when true")
+end
+
 eq(M.stripAnsi("\27[1;32mok\27[0m done"), "ok done", "strip colours")
 eq(M.stripAnsi("a\r\nb"), "a\nb", "strip CRLF")
 eq(M.stripAnsi("10%\r50%\r100%\nend"), "100%\nend", "a redrawn line keeps the last")

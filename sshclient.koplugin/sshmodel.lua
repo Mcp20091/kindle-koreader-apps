@@ -299,7 +299,7 @@ local function cleanCommands(data, list)
         if type(c) == "table" and type(c.cmd) == "string" and c.cmd:match("%S") then
             out[#out + 1] = { id = type(c.id) == "string" and c.id or M.newId(data, "c"),
                 name = type(c.name) == "string" and c.name or "", cmd = c.cmd,
-                os = OS_IDS[c.os] and c.os or nil }
+                os = OS_IDS[c.os] and c.os or nil, ask = c.ask == true or nil }
         end
     end
     return out
@@ -558,10 +558,16 @@ end
 --- dbclient's arguments for a host: opts.cmd (a command to run; none for a
 -- shell), opts.pty (a terminal, for a live session), opts.keyFile,
 -- opts.trust (accept and save an unknown host key), opts.probe (only to read
--- the host key: no sign-in).
+-- the host key: no sign-in), opts.via ({ host, keyFile }: connect through that
+-- host first, dbclient's "user@jump/port,user@host/port"; it signs in with its key,
+-- also when probing).
 function M.dbclientArgs(dbclient, h, opts)
     opts = opts or {}
     local a = { dbclient, opts.pty and "-t" or "-T" }
+    if opts.via and opts.via.keyFile then
+        a[#a + 1] = "-i"
+        a[#a + 1] = opts.via.keyFile
+    end
     if opts.trust then a[#a + 1] = "-y" end
     if not opts.pty then
         a[#a + 1] = "-o"
@@ -578,17 +584,49 @@ function M.dbclientArgs(dbclient, h, opts)
     -- Keepalive: a session on a link that went away ends instead of waiting.
     a[#a + 1] = "-K"
     a[#a + 1] = "30"
-    a[#a + 1] = "-p"
-    a[#a + 1] = tostring(tonumber(h.port) or 22)
-    a[#a + 1] = "-l"
-    a[#a + 1] = h.user
-    a[#a + 1] = h.address
+    if opts.via then
+        local j = opts.via.host
+        a[#a + 1] = string.format("%s@%s/%d,%s@%s/%d", j.user, j.address, tonumber(j.port) or 22,
+            h.user, h.address, tonumber(h.port) or 22)
+    else
+        a[#a + 1] = "-p"
+        a[#a + 1] = tostring(tonumber(h.port) or 22)
+        a[#a + 1] = "-l"
+        a[#a + 1] = h.user
+        a[#a + 1] = h.address
+    end
     if opts.probe then
         a[#a + 1] = "true"
     elseif opts.cmd then
         a[#a + 1] = opts.cmd
     end
     return a
+end
+
+--- The host a host connects through (Edit host > Connect through), or nil.
+function M.viaOf(data, h)
+    return h and h.via and M.host(data, h.via) or nil
+end
+
+--- Why `h` can't connect through the host `viaId`, or nil: not itself, one that
+-- exists, connects directly, and signs in with a key.
+function M.viaProblem(data, h, viaId)
+    local j = M.host(data, viaId)
+    if not j then return "No such host." end
+    if h and j.id == h.id then return "A host can't connect through itself." end
+    if j.via then return "That host connects through another one. Choose one that connects directly." end
+    if j.auth ~= "key" then return "That host signs in with a password. Connecting through a host needs it to sign in with a key." end
+    return nil
+end
+
+--- The command that adds a public key line to ~/.ssh/authorized_keys (once) and
+-- says KEY_OK; nil for Windows, which has no sh.
+function M.authorizeCmd(line, os_id)
+    if os_id == "windows" then return nil end
+    local q = M.quote(line)
+    local inner = "umask 077; mkdir -p ~/.ssh && touch ~/.ssh/authorized_keys && "
+        .. "(grep -qxF " .. q .. " ~/.ssh/authorized_keys || echo " .. q .. " >> ~/.ssh/authorized_keys) && echo KEY_OK"
+    return "sh -c " .. M.quote(inner)
 end
 
 function M.shellLine(args)
@@ -1186,6 +1224,16 @@ function M.act(data, name, args)
         end
         for __, k in ipairs({ "name", "address", "user", "port", "auth", "key", "password", "os", "detected" }) do h[k] = new[k] end
         for k, v in pairs(extras) do h[k] = v[1] end
+        -- Connect through ("" or false: directly)
+        if args.via ~= nil then
+            if args.via == "" or args.via == false then
+                h.via = nil
+            else
+                local vwhy = M.viaProblem(data, h, args.via)
+                if vwhy then return nil, vwhy end
+                h.via = args.via
+            end
+        end
         return { id = h.id }
     elseif name == "saveHostStats" then
         local h = M.host(data, args.id)
@@ -1212,6 +1260,7 @@ function M.act(data, name, args)
         local __, i = M.host(data, args.id)
         if not i then return nil, "No such host." end
         table.remove(data.hosts, i)
+        for __, x in ipairs(data.hosts) do if x.via == args.id then x.via = nil end end
         return {}
     elseif name == "saveCommands" then
         data.commands = cleanCommands(data, args.list)

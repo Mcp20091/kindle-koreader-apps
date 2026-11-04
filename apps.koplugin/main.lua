@@ -601,7 +601,7 @@ function Apps:addToMainMenu(menu_items)
 end
 
 --- What can be pinned: Home Assistant's screens and rooms, To Do's lists,
--- Notes' notebooks. Each: { kind, name, icon, route or id }.
+-- Notes' notebooks and folders, crossword sources, SSH hosts, KOReader actions. Each: { kind, name, icon, route or id }.
 function Apps:pinChoices(kind)
     local out = {}
     if kind == "ha" then
@@ -640,6 +640,11 @@ function Apps:pinChoices(kind)
     elseif kind == "action" then
         -- KOReader's own actions (as gestures run them).
         local ok, list = pcall(function() return require("appsactions").choices() end)
+        for __, p in ipairs(ok and list or {}) do table.insert(out, p) end
+    elseif kind == "ssh" then
+        -- SSH's hosts (each opens its page).
+        local ssh = self:plugin("sshclient")
+        local ok, list = pcall(function() return ssh:hostPins() end)
         for __, p in ipairs(ok and list or {}) do table.insert(out, p) end
     elseif kind == "crossword" then
         -- A source's newest crossword ("usa", "guardian/quick").

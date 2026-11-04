@@ -34,6 +34,10 @@ You can also add and edit hosts on the web page (see below), which is easier wit
 
 Each host has a **System** (in **Edit host**): Debian/Ubuntu, Raspberry Pi OS, Fedora/RHEL, Arch, openSUSE, Alpine, Other Linux, Windows, macOS, FreeBSD, pfSense, TrueNAS, TrueNAS CORE, Proxmox VE or ReadyNAS OS. It starts as **Detect automatically**: the first time the Kindle connects, it reads `/etc/os-release` on the device (or sees a Mac, Windows, FreeBSD, pfSense, TrueNAS, Proxmox or ReadyNAS) and shows **Auto: Debian/Ubuntu**, for example. Set it by hand when it guesses wrong. **Commands** then shows the commands for that system first (see below).
 
+### Connect through another host
+
+A device you can only reach from another one (a Pi behind your NAS, or your home network from outside through one host that's open to the internet): **Edit host > Connect through**, then pick that host. The Kindle signs in to it first, then to this one from there. The host it goes through has to connect directly and sign in with a key; this one can use a key or a password. The online dot isn't shown for a host reached this way.
+
 ## Trusting a host
 
 The first time the Kindle connects to a host, it shows the host's key fingerprint and asks **Trust this host?** Tap **Trust**. The Kindle remembers the key, and next time it connects without asking.
@@ -70,12 +74,12 @@ Tap a host to open its page. Its first line is its address, its system, how it s
   - **Raspberry Pi**: low voltage or throttling, now or since it started, and **Camera**, **I2C**, **SPI**, **SSH**, **VNC** and **Serial port** to turn on or off (raspi-config's own; some after a restart).
   - **pfSense**: firewall states, DHCP leases, gateways, VPNs, each interface's traffic, and **Check for updates**.
   - **3D printer** (Klipper with Moonraker on the printer): the file, progress, nozzle and bed, with **Pause**, **Resume** and **Cancel the print**.
-- **Saved commands**: tap one to run it; hold for more. **+** in the title bar adds one.
+- **Saved commands**: tap one to run it; hold for more. **+** in the title bar adds one. Hold one for **Ask before running**: a tap (or its quick button or gesture) then asks **Run on …?** first; **Run without asking** turns it off.
 - **Recent**: the last commands you ran here, with when. **All recent commands** has the last 10.
 - **Files** and **Stats and alerts**.
 - **Wake**: when the host doesn't answer and its MAC address is known, a **Wake** tile sends Wake on LAN (see **Wake on LAN**).
 
-The pencil in the title bar is **Edit host**: name, address, user, port, system, sign-in and password; **PIN**; **Groups**; **Stats and alerts** and **Quick commands**; **MAC address** and **Wake it now**; **Forget host key** and **Delete host**.
+The pencil in the title bar is **Edit host**: name, address, user, port, system, sign-in and password, **Use a key** and **Connect through**; **PIN**; **Groups**; **Stats and alerts** and **Quick commands**; **MAC address** and **Wake it now**; **Forget host key** and **Delete host**.
 
 **PIN** (optional, off until you set one): **Set a PIN** (4 to 8 digits) in **Edit host**. The host then asks for it before its page or a live session opens, and before its saved commands run from a gesture or the launcher; once typed, it's open for 5 minutes. After 5 wrong tries, wait a minute. **Remove PIN** turns it off.
 
@@ -146,7 +150,7 @@ On a Linux host with systemd, the **Services** section shows failed services, an
 
 ## Wake on LAN
 
-A PC or NAS that's off or asleep can be woken from the Kindle, when its network card allows it (Wake on LAN on in its BIOS or settings). SSH reads its MAC address with its status, or you can type it in **Edit host > MAC address**. Then **Wake** (on its page when it doesn't answer, in **Edit host**, or a hold on the host) sends the wake-up packet on your Wi-Fi.
+A PC or NAS that's off or asleep can be woken from the Kindle, when its network card allows it (Wake on LAN on in its BIOS or settings). SSH reads its MAC address with its status, or you can type it in **Edit host > MAC address**. Then **Wake** (on its page when it doesn't answer, in **Edit host**, or a hold on the host) sends the wake-up packet on your Wi-Fi, then waits for it: **Waking …** checks every few seconds, and when it answers, **… is awake** and its status is read. **Stop** stops waiting. After 3 minutes without an answer, it says so.
 
 ![A host that doesn't answer](img/ssh/host-offline.png)
 
@@ -172,6 +176,7 @@ A long output is in pages: swipe, or tap either side of ‹ n/m ›. The buttons
 
 - **Find**: type a word; it shows where it is. **Find** again with the same word goes to the next one.
 - **Copy all** copies the whole output to KOReader's clipboard.
+- **Save** (on the full page) keeps it as a text file in the Kindle's Downloads folder, named after the host, the command and the time.
 - **Explain** and **Summarize** (with an AI set up): see **AI help** below.
 - **Run again** runs the same command again.
 
@@ -224,7 +229,7 @@ Long-press almost anything for more:
 ![Long-press on a command](img/ssh/hold-command.png)
 
 - **A command** (in a host's saved commands, or in the command list): **Run** and **Edit and run** (opens it in the command box) on a host's command, **Run on a host** (choose the host; it opens in its command box) on the command list's, then **Edit**, **Copy** (a copy below it, to change first), **Copy to a host** (into a host's saved commands, to change first), **Copy text**, **Move up**, **Move down**, **Delete**.
-- **A host** (on the SSH page): **Run a command**, **Live session**, **Wake** (with its MAC address), **Edit host**, **Copy host** (a copy with its saved commands, opened to change), **Copy address**, **Move up**, **Move down**, **Delete host**.
+- **A host** (on the SSH page): **Run a command**, **Live session**, **Wake** (with its MAC address), **Edit host**, **Copy host** (a copy with its saved commands, opened to change), **Copy address**, **Add to launcher** (a tile that opens this host's page; App lock and the host's PIN are asked first), **Move up**, **Move down**, **Delete host**.
 - **A recent command**: **Run**, **Edit and run**, **Save as command**, **Copy text**, **Remove from recent**.
 - **A key**: **Show public key**, **Copy public key**, **Rename**, **Delete**.
 
@@ -250,7 +255,7 @@ The icons under the terminal, from left to right:
 - **Edit** (a pencil): a file's path (or **Files** to find it), then **Edit** opens it in the Kindle's text editor (see **Files**). Back in the session when you close it.
 - **AI** (sparkles, with an AI set up): tap it for the session's AI chat (see below). Hold it for **AI for this**: which AI service, and which of its models, the chat uses. Without an AI, **Paste** (a clipboard) is in its place: it types what's on the clipboard.
 - **Copy text**: hold on a word to select it, or hold and drag over a part. It's copied to KOReader's clipboard at once, and shows with **Paste** (types it at the prompt), **Copy all** (the whole screen), **Done** and, with an AI set up, **Ask AI** (see below). What you copy pastes into the apps' text boxes too: hold the text in a box for **Paste**, **Copy all** and **Clear**.
-- **Disconnect** (✕) asks **Disconnect?** (the keyboard hides while it asks, and comes back on **Cancel**). Typing `exit` also ends the session (**[Session ended]**).
+- **Disconnect** (✕) asks **Disconnect?** (the keyboard hides while it asks, and comes back on **Cancel**). Typing `exit` also ends the session (**[Session ended]**). When a session ends (`exit`, or the Wi-Fi or the host went away), **Reconnect** opens a new one on the same host; **Not now** leaves the old one to read.
 
 Programs that draw the whole screen (top, nano, htop) don't draw well on the Kindle: it is a simple terminal. Use `top -bn1 | head -20` instead of `top`, for example, and **Edit** instead of nano (when nano starts anyway, SSH says so; **Keys** has its keys, by name, to save and leave).
 
@@ -311,7 +316,7 @@ A key lets the Kindle sign in without a password. **Keys** (on the SSH page) lis
 - **Create key** makes a new Ed25519 key on the Kindle. The page that opens shows its **public key** (one line starting with `ssh-ed25519`).
 - **Import key file** uses a key you already have: copy the private key file (for example `id_ed25519` from your computer's `.ssh` folder) to the Kindle over USB, then pick it. The Kindle keeps its own copy and offers to delete the file you copied. Ed25519, RSA and ECDSA keys work. A key with a passphrase doesn't: remove the passphrase from a copy first (`ssh-keygen -p -N "" -f copy` on the computer).
 
-To use a key with a device, add its public key to `~/.ssh/authorized_keys` on that device. The easiest way is the web page: **Copy public key**, then on the device run `nano ~/.ssh/authorized_keys`, paste it on a new line, and save. Each key's public key is also in `koreader/settings/sshclient/keys/<key>.pub`. On Windows, use `C:\Users\<you>\.ssh\authorized_keys`, or `C:\ProgramData\ssh\administrators_authorized_keys` for an administrator.
+To use a key with a device, add its public key to `~/.ssh/authorized_keys` on that device. The easiest way: **Edit host > Use a key** (on a host that signs in with a password), then pick the key. SSH signs in with the password, adds the key, checks that it signs in, and switches the host to the key (its saved password goes). For Linux, macOS and BSD hosts. By hand, use the web page: **Copy public key**, then on the device run `nano ~/.ssh/authorized_keys`, paste it on a new line, and save. Each key's public key is also in `koreader/settings/sshclient/keys/<key>.pub`. On Windows, use `C:\Users\<you>\.ssh\authorized_keys`, or `C:\ProgramData\ssh\administrators_authorized_keys` for an administrator.
 
 ![A key's public key](img/ssh/key.png)
 
@@ -319,7 +324,7 @@ To use a key with a device, add its public key to `~/.ssh/authorized_keys` on th
 
 The web page (Web server) has an **SSH** tab, handy for setting things up with a computer keyboard:
 
-- **Hosts**: each with its system ("Debian/Ubuntu (detected)"). **Add host** and **Edit** (name, address, user, port, **System** (Detect automatically, or one), sign in with a key, a saved password, or asking each time; **Groups**, **Check it**, **Read when its page opens**, **Stats and alerts** and **Quick commands** (each opens a box with the same choices as on the Kindle, custom sensors, alerts and your own quick commands included), **MAC address** with **Wake it now**, **Forget host key**, **Delete host**). A saved password is sent to the Kindle but never shown again. **Commands** edits a host's saved commands: **Add command**, **Add from command list** (a copy to change), each command's system, ⧉ (copy), ↑ ↓ (move) and ✕ (remove).
+- **Hosts**: each with its system ("Debian/Ubuntu (detected)"). **Add host** and **Edit** (name, address, user, port, **System** (Detect automatically, or one), **Connect through**, sign in with a key, a saved password, or asking each time; **Groups**, **Check it**, **Read when its page opens**, **Stats and alerts** and **Quick commands** (each opens a box with the same choices as on the Kindle, custom sensors, alerts and your own quick commands included), **MAC address** with **Wake it now**, **Forget host key**, **Delete host**). A saved password is sent to the Kindle but never shown again. **Commands** edits a host's saved commands: **Add command**, **Add from command list** (a copy to change), each command's system, ⧉ (copy), ↑ ↓ (move) and ✕ (remove).
 - **SSH settings**: **Check hosts**, **Stats under each host**, **Dark terminal** and **Text size**, as in SSH settings on the Kindle. Each change is saved at once.
 - **Keys**: **Upload key file** (a private key from the computer), **Paste key** (paste the private key's text, including its BEGIN and END lines), **Create key** (made on the Kindle; its public key is copied for you), **Show** (the public key, hidden until you ask), **Copy public key**, **Rename**, **Delete**. Private keys are never shown or sent to the page.
 - **Import ~/.ssh/config** (under Hosts): paste your computer's `~/.ssh/config` (or a part of it). Each `Host` becomes a host, with its address (`HostName`), user and port; hosts already saved and patterns (`Host *`) are skipped. New hosts sign in with your first key, or ask for a password when there's none. Key files aren't copied: add them under **Keys**.

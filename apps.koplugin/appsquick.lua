@@ -290,7 +290,7 @@ function Quick.item(e)
 end
 
 -- The app (App lock's key) an entry's button belongs to, or nil.
-local PIN_APP = { todo = "todo", todoview = "todo", note = "notes", notefolder = "notes", crossword = "notes", ha = "ha" }
+local PIN_APP = { todo = "todo", todoview = "todo", note = "notes", notefolder = "notes", crossword = "notes", ha = "ha", ssh = "ssh" }
 local BUILTIN_APP = { newtask = "todo", newnote = "notes" }
 local function appOf(e)
     if e.app then return e.app end

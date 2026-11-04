@@ -1,4 +1,6 @@
-2026-11-03 16:00
+2026-11-03 22:30
+Nov 3  SSH: Use a key (adds the key to the host for you), Connect through another host, Reconnect when a live session ends, Wake waits until the host answers, Ask before running on saved commands, Save on the full output page
+Nov 3  SSH: hold a host for Add to launcher (a tile that opens its page, past App lock and its PIN)
 Nov 3  SSH: clearer hints in Settings (Check hosts, stats, Dark terminal, Text size, App lock)
 Oct 28  SSH: a gesture for a deleted command says so in the apps' message box, not KOReader's
 Oct 27  SSH: App lock asks before it opens; its own app PIN joins App lock (it becomes the passcode the first time it's typed), hosts' PINs stay

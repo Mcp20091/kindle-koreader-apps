@@ -101,8 +101,7 @@ function Session:spawn()
     end
     local slave = ffi.string(name)
     local store = self.plugin.store
-    local key = self.host.auth == "key" and self.host.key and store:keyFile(self.host.key) or nil
-    local args = M.dbclientArgs(store:dbclient(), self.host, { pty = true, keyFile = key })
+    local args = require("sshrun").args(self.plugin, self.host, { pty = true })
     -- everything the child needs, made before fork
     local argv = ffi.new("char*[?]", #args + 1)
     local keep = {}
@@ -243,9 +242,26 @@ function Session:ended()
         self.ptmx = nil
     end
     self.input:addChars("\n" .. _("[Session ended]") .. "\n", true)
+    -- Reconnect: a new session on the same host (Not now: this one stays, to read).
+    if self.closing then return end
+    self.dialog:onCloseKeyboard()
+    UIManager:scheduleIn(0.3, function()
+        if Session.current ~= self or self.open then return end
+        KO.confirm{
+            text = _("Session ended"),
+            ok = _("Reconnect"),
+            cancel = _("Not now"),
+            onOk = function()
+                local plugin, host = self.plugin, self.host
+                self:close()
+                require("sshui").session(plugin, host)
+            end,
+        }
+    end)
 end
 
 function Session:close()
+    self.closing = true
     if Session.current == self then Session.current = nil end
     -- (the AI chat ends with the session)
     if self.chat then

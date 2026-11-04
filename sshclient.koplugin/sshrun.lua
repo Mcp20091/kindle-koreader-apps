@@ -152,6 +152,17 @@ local function keyFileOf(plugin, host)
     return host.key and plugin.store:keyFile(host.key)
 end
 
+--- dbclient's arguments for a host (M.dbclientArgs), with its key file and the host
+-- it connects through, if any.
+function Run.args(plugin, host, opts)
+    local o = {}
+    for k, v in pairs(opts or {}) do o[k] = v end
+    o.keyFile = keyFileOf(plugin, host)
+    local j = M.viaOf(plugin.store.data, host)
+    if j then o.via = { host = j, keyFile = keyFileOf(plugin, j) } end
+    return M.dbclientArgs(plugin.store:dbclient(), host, o)
+end
+
 -- ------------------------------------------------------------------ host keys
 
 --- Trusts a host's key: asks, then saves it (dbclient -y). cb() once trusted.
@@ -162,8 +173,7 @@ local function askTrust(plugin, host, keytype, fingerprint, cb)
             M.hostName(host), M.hostLabel(host), keytype or "", fingerprint or ""),
         ok = _("Trust"),
         onOk = function()
-            local db = plugin.store:dbclient()
-            Run.jobs(plugin, { { args = M.dbclientArgs(db, host, { probe = true, trust = true }) } },
+            Run.jobs(plugin, { { args = Run.args(plugin, host, { probe = true, trust = true }) } },
                 { text = T(_("Connecting to %1…"), M.hostName(host)), limit = 60 }, function(results, why)
                     if why then return end
                     local r = M.parseRun(results[1].text)
@@ -190,8 +200,7 @@ end
 --- cb() once the host's key is trusted (asking the first time).
 function Run.trusted(plugin, host, cb)
     if plugin.store:isKnown(host.address) then return cb() end
-    local db = plugin.store:dbclient()
-    Run.jobs(plugin, { { args = M.dbclientArgs(db, host, { probe = true }) } },
+    Run.jobs(plugin, { { args = Run.args(plugin, host, { probe = true }) } },
         { text = T(_("Connecting to %1…"), M.hostName(host)), limit = 60 }, function(results, why)
             if why then return end
             local r = M.parseRun(results[1].text)
@@ -234,12 +243,29 @@ function Run.prepare(plugin, host, cb)
             return info(T(_("%1 has no key. Edit the host and choose a key."), M.hostName(host)))
         end
     end
+    local via = host.via and M.host(plugin.store.data, host.via)
+    if host.via and not via then
+        return info(T(_("%1 connects through a host that was deleted. Edit the host."), M.hostName(host)))
+    end
+    if via then
+        local why = M.viaProblem(plugin.store.data, host, via.id)
+        if why then return info(T("%1\n\n%2", M.hostName(host), _(why))) end
+        local f = keyFileOf(plugin, via)
+        if not f or not plugin.store.readFile(f) then
+            return info(T(_("%1 has no key. Edit the host and choose a key."), M.hostName(via)))
+        end
+    end
     NetworkMgr:runWhenConnected(function()
-        Run.password(host, function(password)
-            Run.trusted(plugin, host, function()
-                Run.detect(plugin, host, password, function() cb(password) end)
+        local function go()
+            Run.password(host, function(password)
+                Run.trusted(plugin, host, function()
+                    Run.detect(plugin, host, password, function() cb(password) end)
+                end)
             end)
-        end)
+        end
+        -- (the host it connects through is trusted first, on its own)
+        if via then return Run.trusted(plugin, via, go) end
+        go()
     end)
 end
 
@@ -248,8 +274,7 @@ end
 -- When it can't tell, it asks again next time.
 function Run.detect(plugin, host, password, cb)
     if host.os ~= "auto" or host.detected then return cb() end
-    local db = plugin.store:dbclient()
-    local args = M.dbclientArgs(db, host, { cmd = M.DETECT_CMD, keyFile = keyFileOf(plugin, host) })
+    local args = Run.args(plugin, host, { cmd = M.DETECT_CMD })
     Run.jobs(plugin, { { args = args, password = password } },
         { text = T(_("Connecting to %1…"), M.hostName(host)), limit = 30 }, function(results, why)
             if not why then
@@ -305,8 +330,7 @@ function Run.command(plugin, host, cmd, opts)
         return require("sshscreens").fillBlanks(plugin, host, cmd, function(filled) Run.command(plugin, host, filled, opts) end)
     end
     Run.prepare(plugin, host, function(password)
-        local db = plugin.store:dbclient()
-        local args = M.dbclientArgs(db, host, { cmd = cmd, keyFile = keyFileOf(plugin, host) })
+        local args = Run.args(plugin, host, { cmd = cmd })
         M.addRecent(host, cmd)
         M.addHistory(plugin.store.data, host.id, cmd)
         plugin:saved()
@@ -353,6 +377,63 @@ function Run.command(plugin, host, cmd, opts)
     end)
 end
 
+--- A saved command, run: asked first when it's set to (Ask before running).
+function Run.saved(plugin, host, c, opts)
+    if not c.ask then return Run.command(plugin, host, c.cmd, opts) end
+    KO.confirm{ title = T(_("Run on %1?"), M.hostName(host)), text = c.cmd, ok = _("Run"),
+        onOk = function() Run.command(plugin, host, c.cmd, opts) end }
+end
+
+--- Use a key: signs in as the host does now (its password), adds the key's public line
+-- to ~/.ssh/authorized_keys there, checks that the key signs in, then the host signs in
+-- with it (its saved password goes). done() once it does.
+function Run.useKey(plugin, host, kid, done)
+    local k = M.key(plugin.store.data, kid)
+    if not (k and k.public) then return info(_("That key has no public key.")) end
+    local cmd = M.authorizeCmd(k.public, M.hostOS(host))
+    if not cmd then return info(_("This works on Linux, macOS and BSD hosts. On Windows, add the public key by hand.")) end
+    Run.prepare(plugin, host, function(password)
+        Run.jobs(plugin, { { args = Run.args(plugin, host, { cmd = cmd }), password = password } },
+            { text = T(_("Adding the key to %1…"), M.hostName(host)), limit = 60 }, function(results, why)
+                if why then return end
+                local r = M.parseRun(results[1].text)
+                if r.problem or not r.output:find("KEY_OK", 1, true) then
+                    return info(T(_("Couldn't add the key.\n\n%1"), r.message or r.output or ""))
+                end
+                -- (signs in with the key, before the host is changed)
+                local test = { id = host.id, name = host.name, address = host.address, user = host.user, port = host.port,
+                    auth = "key", key = kid, via = host.via }
+                Run.jobs(plugin, { { args = Run.args(plugin, test, { cmd = "true" }) } },
+                    { text = T(_("Signing in to %1 with the key…"), M.hostName(host)), limit = 45 }, function(res2, why2)
+                        if why2 then return end
+                        local r2 = M.parseRun(res2[1].text)
+                        if r2.problem then
+                            return info(T(_("The key was added, but %1 didn't accept it. The host still signs in as before."), M.hostName(host)))
+                        end
+                        host.auth, host.key, host.password = "key", kid, nil
+                        plugin:saved()
+                        KO.toast(T(_("%1 signs in with %2 now."), M.hostName(host), k.name), 3)
+                        if done then done() end
+                    end)
+            end)
+    end)
+end
+
+--- Save: the output as a text file in the Kindle's Downloads folder. Returns its path, or nil and why.
+function Run.saveOutput(title, text)
+    local Device = require("device")
+    local home = G_reader_settings:readSetting("home_dir") or Device.home_dir or "/mnt/us/documents"
+    local dir = home .. "/Downloads"
+    require("util").makePath(dir)
+    local name = (tostring(title):gsub("[/\\:%*%?\"<>|%c]", " "):gsub("%s+", " "):sub(1, 60):gsub("%s+$", ""))
+    local path = dir .. "/" .. name .. os.date(" %Y-%m-%d %H%M") .. ".txt"
+    local f, err = io.open(path, "w")
+    if not f then return nil, err end
+    f:write(title, "\n\n", text, "\n")
+    f:close()
+    return path
+end
+
 --- Runs a command on several hosts at once; one page with each host's part.
 function Run.many(plugin, hosts, cmd)
     if #require("sshstats").blanks(cmd) > 0 then
@@ -377,7 +458,7 @@ function Run.many(plugin, hosts, cmd)
             local jobs, order = {}, {}
             for __, x in ipairs(ready) do
                 if not x.skip then
-                    jobs[#jobs + 1] = { args = M.dbclientArgs(db, x.host, { cmd = cmd, keyFile = keyFileOf(plugin, x.host) }),
+                    jobs[#jobs + 1] = { args = Run.args(plugin, x.host, { cmd = cmd }),
                         password = x.password }
                     order[#order + 1] = x
                     M.addRecent(x.host, cmd)
@@ -443,11 +524,18 @@ function Run.show(plugin, title, text, again, ctx)
             buttons[#buttons + 1] = { icon = "sparkles", text = _("Explain"), aiJob = "ssh_explain", fn = function() AI.output(plugin, "explain", aiCtx()) end }
             buttons[#buttons + 1] = { icon = "file-text", text = _("Summarize"), aiJob = "ssh_summary", fn = function() AI.output(plugin, "summary", aiCtx()) end }
         end
+        local popup = ctx.host and not ctx.full
+        if not popup then
+            buttons[#buttons + 1] = { icon = "download", text = _("Save"), fn = function()
+                local path, err = Run.saveOutput(title, text)
+                if not path then return info(tostring(err)) end
+                KO.toast(T(_("Saved to %1"), (path:gsub("^.*/([^/]+/[^/]+)$", "%1"))), 3)
+            end }
+        end
         buttons[#buttons + 1] = { icon = "rotate-ccw", text = _("Run again"), primary = true, fn = function()
             page:onClose()
             again()
         end }
-        local popup = ctx.host and not ctx.full
         if popup then
             -- (Find is on the full page: Full screen.)
             table.remove(buttons, 1)

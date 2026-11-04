@@ -251,6 +251,10 @@ App.pages.ssh = {
       s.oses.map((o) => h('option', { value: o.id }, o.name)));
     system.value = x && x.os ? x.os : 'auto';
     const keyField = f('Key', s.keys.length ? key : h('div', { class: 'small muted' }, 'No keys yet: upload or create one under Keys, below.'));
+    // Connect through: another host that connects directly and signs in with a key
+    const through = h('select', {}, h('option', { value: '' }, 'Directly'),
+      s.hosts.filter((o) => (!x || o.id !== x.id) && !o.via && o.auth === 'key').map((o) => h('option', { value: o.id }, o.name || o.address)));
+    through.value = x && x.via ? x.via : '';
     const pwField = f('Password', password);
     const pwHint = h('div', { class: 'small muted', style: 'margin-top:4px' }, 'Kept on the Kindle, in KOReader’s settings folder. It isn’t shown here again.');
     const show = () => {
@@ -300,6 +304,7 @@ App.pages.ssh = {
     const body = h('div', {},
       heading('Connection'),
       f('Name', name), f('Address', address), f('User', user), f('Port', port), f('System', system), f('Sign in with', auth), keyField, pwField, pwHint,
+      f('Connect through', through),
       heading('On the SSH page'),
       f('Groups', groups), hint('Separated by commas. They filter the SSH page and Run on several hosts.'),
       heading('Status'),
@@ -332,6 +337,7 @@ App.pages.ssh = {
     args.mac = mac.value.trim();
     args.check = Number(check.value);
     args.readOnOpen = readOnOpen.checked;
+    args.via = through.value;
     // (the host first; then the boxes' choices, for a host that exists)
     try {
       const call = (name, a) => App.api('/api/ssh/act', { json: { name, args: a } });
@@ -558,6 +564,8 @@ App.pages.ssh = {
         h('input', { type: 'text', value: c.name || '', placeholder: 'Name', style: 'flex:1;min-width:0' }),
         h('input', { type: 'text', value: c.cmd || '', placeholder: 'Command', style: 'flex:2;min-width:0;font-family:monospace' }),
         sel,
+        from_list ? h('label', { class: 'row small', title: 'Ask before running', style: 'flex:0 0 auto;gap:3px' },
+          h('input', { type: 'checkbox', class: 'ask', checked: !!c.ask }), 'Ask') : null,
         h('button', { class: 'icon-btn', title: 'Copy (edit the copy below)', onclick: () => {
           const [n, c2] = r.querySelectorAll('input');
           const copy = row({ name: n.value, cmd: c2.value, os: sel.value });
@@ -590,7 +598,8 @@ App.pages.ssh = {
       get: () => [...box.children].map((r) => {
         const [n, c] = r.querySelectorAll('input');
         const os = r.querySelector('select').value;
-        return { id: r.dataset.id || undefined, name: n.value.trim(), cmd: c.value, os: os || undefined };
+        const ask = r.querySelector('input.ask');
+        return { id: r.dataset.id || undefined, name: n.value.trim(), cmd: c.value, os: os || undefined, ask: ask && ask.checked ? true : undefined };
       }).filter((c) => c.cmd.trim() !== ''),
     };
   },

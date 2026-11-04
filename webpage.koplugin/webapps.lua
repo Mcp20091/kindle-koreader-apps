@@ -52,7 +52,7 @@ local function state(a)
         table.insert(out.tiles, { key = t.key, name = t.name, hidden = hidden, pin = t.pin ~= nil,
             groupTile = t.groupTile, group = groups[g] and g or nil, icon = t.icon })
     end
-    for __, kind in ipairs({ "ha", "todo", "note", "notefolder", "action", "crossword" }) do
+    for __, kind in ipairs({ "ha", "todo", "note", "notefolder", "action", "crossword", "ssh" }) do
         local list = {}
         for __, p in ipairs(a:pinChoices(kind)) do
             table.insert(list, { key = Model.pinKey(p), name = p.group and (p.group .. " \u{00B7} " .. p.name) or p.name, icon = p.icon })
@@ -136,7 +136,7 @@ local function quickFromPage(a, list)
     mark(Model.quickList(a.settings))
     local function pinOf(key)
         if known[key] and known[key].pin then return known[key].pin end
-        for __, kind in ipairs({ "ha", "todo", "note", "notefolder", "action", "crossword" }) do
+        for __, kind in ipairs({ "ha", "todo", "note", "notefolder", "action", "crossword", "ssh" }) do
             for __, p in ipairs(a:pinChoices(kind)) do
                 if Model.pinKey(p) == key then return p end
             end
@@ -338,7 +338,7 @@ function Web.routes(server)
         elseif type(b.add) == "string" then
             -- Only a place the Kindle itself offers.
             local found
-            for __, kind in ipairs({ "ha", "todo", "note", "notefolder", "action" }) do
+            for __, kind in ipairs({ "ha", "todo", "note", "notefolder", "action", "crossword", "ssh" }) do
                 for __, p in ipairs(a:pinChoices(kind)) do
                     if Model.pinKey(p) == b.add then found = p end
                 end

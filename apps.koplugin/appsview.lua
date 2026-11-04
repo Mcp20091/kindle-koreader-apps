@@ -304,6 +304,9 @@ function View:pinStatus(p)
             end
             return _("Notebook not found")
         end) or ""
+    elseif p.kind == "ssh" then
+        local ssh = self:plugin("sshclient")
+        return ssh and ssh.hostLine and try(function() return ssh:hostLine(p.id) end) or ""
     elseif p.kind == "crossword" then
         local notes = self:plugin("notes")
         if not (notes and notes.todaysCrosswordInfo) then return "" end
@@ -441,6 +444,9 @@ function View:open(tile)
         elseif p.kind == "note" then
             local notes = self:plugin("notes")
             if notes then notes:open(p.id) end
+        elseif p.kind == "ssh" then
+            local ssh = self:plugin("sshclient")
+            if ssh and ssh.openHost then ssh:openHost(p.id) end
         elseif p.kind == "crossword" then
             -- That source's newest crossword (downloaded first when needed).
             local notes = self:plugin("notes")
@@ -2240,6 +2246,9 @@ function View:pickPin()
         if self:plugin("notes").crosswordSources then
             table.insert(buttons, { { text = _("Crossword"), callback = function() pick(_("A source's newest crossword"), "crossword") end } })
         end
+    end
+    if self:plugin("sshclient") and self:plugin("sshclient").hostPins then
+        table.insert(buttons, { { text = _("SSH host"), callback = function() pick(_("SSH"), "ssh") end } })
     end
     table.insert(buttons, { { text = _("KOReader action"), callback = function()
         UIManager:close(dialog)

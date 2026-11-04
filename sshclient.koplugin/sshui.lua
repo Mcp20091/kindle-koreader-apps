@@ -958,6 +958,24 @@ function UI.editHost(plugin, host)
                 end)
             end },
         }
+        if host.auth ~= "key" then
+            t[#t + 1] = { setting = true, text = _("Use a key"), hint = _("Adds a key to the host, then signs in with it"), callback = function()
+                chooseKey(plugin, function(kid) Run.useKey(plugin, host, kid, redo) end)
+            end }
+        end
+        local via = M.viaOf(store.data, host)
+        t[#t + 1] = { setting = true, text = _("Connect through"), value = via and M.hostName(via) or _("Directly"), callback = function()
+            local options = { { label = _("Directly"), value = "" } }
+            for __, x in ipairs(store.data.hosts) do
+                if not M.viaProblem(store.data, host, x.id) then options[#options + 1] = { label = M.hostName(x), value = x.id } end
+            end
+            if #options == 1 then
+                return info(_("Connecting through a host needs another host that connects directly and signs in with a key."))
+            end
+            KO.choose(_("Connect through"), options, host.via or "", function(id)
+                if saveHost(plugin, { id = host.id, via = id }) then redo() end
+            end)
+        end }
         if host.auth == "password" then
             t[#t + 1] = { setting = true, text = _("Password"), value = host.password and _("Saved") or _("Not saved"), callback = function()
                 ask(_("Password"), "", function(pw)

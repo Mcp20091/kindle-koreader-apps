@@ -258,6 +258,10 @@ function Screens.hostHold(plugin, h, i)
         UI().editHost(plugin, copy)
     end }
     items[#items + 1] = { text = _("Copy address"), fn = function() H().copyText(M.hostLabel(h)) end }
+    local apps = plugin.ui and plugin.ui.apps
+    if apps and apps.addPin and plugin.hostPin then
+        items[#items + 1] = { text = _("Add to launcher"), fn = function() apps:addPin(plugin:hostPin(h)) end }
+    end
     items[#items + 1] = { text = _("Move up"), enabled = i > 1, fn = function()
         M.move(data.hosts, i, -1)
         plugin:saved()
@@ -335,11 +339,34 @@ function Screens.hostButtons(plugin, host)
     }
 end
 
+Screens.WAKE_WAIT, Screens.WAKE_EVERY = 180, 5
+
 function Screens.wake(plugin, host)
     local ok, why = Net.wake(host)
     if not ok then return KO.message(why) end
-    KO.toast(T(_("Wake sent to %1. It may take a minute to start."), M.hostName(host)))
-    UIManager:scheduleIn(30, function() Screens.pingAll(plugin) end)
+    -- Then waits for it: its SSH port knocked on every few seconds, Stop to stop.
+    local started, stopped = os.time(), false
+    local box = KO.wait(T(_("Waking %1…"), M.hostName(host)), function() stopped = true end)
+    local function close() if box and box.close then pcall(box.close, box) end end
+    local function check()
+        if stopped then return end
+        Net.ping({ host }, function()
+            if stopped then return end
+            local o = Net.online[host.id]
+            if o and o.ok then
+                close()
+                KO.toast(T(_("%1 is awake."), M.hostName(host)), 3)
+                UI().refreshMain(plugin)
+                Screens.readStatus(plugin, host, false)
+            elseif os.time() - started >= Screens.WAKE_WAIT then
+                close()
+                KO.message(T(_("%1 didn't answer after 3 minutes. Is Wake on LAN on in its BIOS or settings?"), M.hostName(host)))
+            else
+                UIManager:scheduleIn(Screens.WAKE_EVERY, check)
+            end
+        end)
+    end
+    UIManager:scheduleIn(Screens.WAKE_EVERY, check)
 end
 
 local function statusRight(plugin, host)
@@ -744,14 +771,18 @@ function Screens.hostItems(plugin, host)
     t[#t + 1] = { band = _("SAVED COMMANDS"), right = tostring(#host.commands) }
     for i, c in ipairs(host.commands) do
         t[#t + 1] = { text = M.commandName(c), sub = c.cmd, mono = true, icon = "play",
-            callback = function() Run().command(plugin, host, c.cmd) end,
+            callback = function() Run().saved(plugin, host, c) end,
             hold_callback = function()
                 H().commandActions(plugin, host.commands, i, function() UI().refreshHost(plugin, host) end, { {
-                    { text = _("Run"), callback = function() Run().command(plugin, host, c.cmd) end },
+                    { text = _("Run"), callback = function() Run().saved(plugin, host, c) end },
                     { text = _("Edit and run"), callback = function()
                         UI().runDialog(plugin, host, c.cmd, function(cmd) Run().command(plugin, host, cmd) end)
                     end },
-                } })
+                }, { { text = c.ask and _("Run without asking") or _("Ask before running"), callback = function()
+                    c.ask = not c.ask or nil
+                    plugin:saved()
+                    KO.toast(c.ask and _("It asks before running.") or _("It runs without asking."), 2)
+                end } } })
             end }
     end
     if #host.commands == 0 then

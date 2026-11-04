@@ -72,7 +72,7 @@ You can open it three ways:
 
 - **Today's** at the top of the Crosswords list.
 - A gesture: in KOReader, go to **Settings > Taps and gestures > Gesture manager**, pick a gesture, then **General > Today's crossword**.
-- A shortcut on the launcher for one source: **Add shortcut > Crossword**, then pick the source. Each source can have its own tile, showing whether today's puzzle is started or done.
+- A shortcut on the launcher for one source: **Add shortcut > Crossword**, then pick the source. Or hold **Today's** in Crosswords (or Notes' **Crosswords** button > **Add to launcher…**). Each source can have its own tile, showing whether today's puzzle is started or done.
 
 ### Random puzzle
 

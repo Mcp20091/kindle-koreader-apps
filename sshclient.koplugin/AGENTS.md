@@ -171,6 +171,21 @@ All in `koreader/settings/`, never in the plugin folder:
 
 ## How it runs
 
+- **Connect through** (`host.via`, a host id; Edit host, the web's Edit): dbclient's multihop,
+  `user@jump/port,user@host/port` (`M.dbclientArgs` opts.via), with the jump's key first (`-i`, also when
+  probing, so the first hop signs in). Every connection is built by `Run.args(plugin, host, opts)`, which
+  adds the key and the jump: use it, not `M.dbclientArgs` directly. One hop only; the jump must connect
+  directly and use a key (`M.viaProblem`), because DROPBEAR_PASSWORD is one password for every hop.
+  `Run.prepare` trusts the jump first. `Net.ping` skips such hosts (no direct TCP); `Net.quiet` needs the
+  jump quiet too. Deleting the jump sets its hosts back to direct. Tried with two asyncssh servers.
+- **Use a key** (`Run.useKey`): signs in as the host does, runs `M.authorizeCmd` (sh -c; not Windows),
+  needs KEY_OK, then a `true` run with the key before the host switches (`auth = "key"`, password dropped).
+- **Ask before running** (`c.ask` on a host's saved command, kept by `cleanCommands`): `Run.saved` asks
+  first; the host page's tap and Run, its quick button and the gesture go through it.
+- **Reconnect**: `Session:ended()` offers it (not after `Session:close()`: `self.closing`).
+- **Wake** waits (`Screens.wake`): `Net.ping` every `WAKE_EVERY` s for `WAKE_WAIT` s, then reads the status.
+- **Save** on the full output page: `Run.saveOutput` to `<home>/Downloads`.
+
 - Every connection is dbclient with `-o BatchMode=yes` (it must never wait for
   typing) and `-T` for runs (`-t` only in the live session).
 - A password goes in the `DROPBEAR_PASSWORD` environment variable, set in the
