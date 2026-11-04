@@ -1188,7 +1188,7 @@ function U.settingsRows(plugin, refresh)
         end },
         { _("Select version"), "", function() U.pickVersion(plugin) end },
         { _("Show test versions"), U.tests(), function() U.toggleTests(refresh) end },
-        { note = _("Test versions try out changes before they're released. They appear in Select version.") },
+        { note = _("Try new features before they're released. They may have bugs.") },
         { _("Check automatically"), U.auto(), function() U.setAuto(not U.auto()) end },
         { _("Undo a plugin update"), "", function() require("appsundo").undoMenu(plugin) end },
         { heading = _("OPTIONAL APPS") },

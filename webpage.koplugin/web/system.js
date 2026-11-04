@@ -385,7 +385,7 @@ App.pages.system = {
           App.setting('Repository', repo),
           back ? App.setting('Branch', back, 'This Kindle has the ' + u.branch + ' branch. Updates come from its newer commits until it goes back to the releases.') : null,
           App.setting('Select version', h('div', { class: 'row' }, version, versionGo), 'Any release, including older ones.'),
-          App.setting('Show test versions', tests, 'Test versions try out changes before they’re released. They appear in the version list.'),
+          App.setting('Show test versions', tests, 'Try new features before they’re released. They may have bugs.'),
           also, note,
           h('div', { class: 'group-head' }, 'Optional apps'),
           h('div', { class: 'small muted' }, 'Extra apps you can add. Once installed, they update whenever the main apps do.'),
