@@ -9,6 +9,10 @@ on:
   pull_request:
     types: [opened, edited, synchronize, reopened]
 
+# (it only reads the code)
+permissions:
+  contents: read
+
 jobs:
   check:
     if: github.repository == 'Mcp20091/kindle-koreader-apps'

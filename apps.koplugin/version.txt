@@ -4,7 +4,7 @@ Nov 3  Launcher: SSH hosts as shortcuts (Add shortcut > SSH host)
 Nov 3  Launcher: Updates: much shorter text (Show test versions: They may have bugs; no notes that repeat a setting's name)
 Nov 3  Launcher: Updates: plainer wording throughout (You're up to date, The update failed, Update from … to …, the optional apps' note and Show test versions)
 Nov 3  Launcher: Updates: Show test versions' note reads naturally
-Nov 3  Launcher: Updates: with Show test versions on, Check for updates (and Check automatically) finds the newest test version too; a release counts as newer than its own test versions
+Nov 3  Launcher: Updates: with Show test versions on, Check for updates (and Check automatically) finds the newest test version too
 Nov 3  Launcher: Updates: Update all at the top of Optional apps when two or more have an update (one restart afterwards)
 Nov 3  Launcher: Updates: each optional app shows its version, Up to date or Update available, and offers Update or Reinstall as well as Remove; the Optional apps row names the ones with an update; clearer wording throughout Updates (Select version's hint gone, "is available. You have …")
 Nov 3  Launcher: settings text reads more naturally: Quick buttons (Take out of the group, Tap a button to use it, or hold it for more), the Settings list, KOReader settings, App lock, Fonts (List updated), AI, the Connection check and the Set up steps

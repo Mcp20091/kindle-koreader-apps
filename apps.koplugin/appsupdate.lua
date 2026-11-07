@@ -88,9 +88,10 @@ function U.installed(plugin)
     return tag and tag:match("^%s*(v[%w%.%-]+)%s*$")
 end
 
---- Whether tag a is newer than tag b ("v1.0.12" > "v1.0.9"); b unknown: yes. A test
--- version comes before its release ("v1.0.15-test20" < "v1.0.15"), and after the ones
--- before it ("v1.0.15-test20" > "v1.0.15-test9" and "v1.0.14").
+--- Whether tag a is newer than tag b ("v1.0.12" > "v1.0.9"); b unknown: yes. Only the
+-- numbers count, so a test version comes after the release it's made from and before the
+-- next one (tools/test-release.sh: "v1.0.15-test20" > "v1.0.15" and "v1.0.15-test9", and
+-- < "v1.0.16").
 function U.newer(a, b)
     if not b then return true end
     local function parts(t)
@@ -98,18 +99,11 @@ function U.newer(a, b)
         for n in tostring(t):gmatch("%d+") do out[#out + 1] = tonumber(n) end
         return out
     end
-    local function cmp(x, y)
-        for i = 1, math.max(#x, #y) do
-            if (x[i] or 0) ~= (y[i] or 0) then return (x[i] or 0) > (y[i] or 0) and 1 or -1 end
-        end
-        return 0
+    local x, y = parts(a), parts(b)
+    for i = 1, math.max(#x, #y) do
+        if (x[i] or 0) ~= (y[i] or 0) then return (x[i] or 0) > (y[i] or 0) end
     end
-    local coreA, testA = tostring(a):match("^([^%-]*)%-?(.*)$")
-    local coreB, testB = tostring(b):match("^([^%-]*)%-?(.*)$")
-    local c = cmp(parts(coreA), parts(coreB))
-    if c ~= 0 then return c > 0 end
-    if testA == "" or testB == "" then return testA == "" and testB ~= "" end
-    return cmp(parts(testA), parts(testB)) > 0
+    return false
 end
 
 -- ------------------------------------------------------------------ downloads

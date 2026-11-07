@@ -6,6 +6,10 @@ on:
   push:
   pull_request:
 
+# (it only reads the code)
+permissions:
+  contents: read
+
 jobs:
   check:
     runs-on: ubuntu-latest

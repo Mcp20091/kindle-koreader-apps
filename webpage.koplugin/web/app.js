@@ -29,16 +29,17 @@ function h(tag, attrs, ...kids) {
     if (v === undefined || v === null || v === false) continue;
     if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
     else if (k === 'class') el.className = v;
-    else if (k === 'html') el.innerHTML = v;
     else if (k === 'value') el.value = v;
     else if (k === 'checked') el.checked = !!v;
     else if (k === 'style') el.style.cssText = v;
     else el.setAttribute(k, v === true ? '' : v);
   }
+  // (text always goes in as a text node, never as HTML)
   const add = (kid) => {
     if (kid === undefined || kid === null || kid === false) return;
     if (Array.isArray(kid)) kid.forEach(add);
-    else el.appendChild(kid instanceof Node ? kid : document.createTextNode(String(kid)));
+    else if (kid instanceof Node) el.appendChild(kid);
+    else el.appendChild(document.createTextNode(String(kid)));
   };
   kids.forEach(add);
   return el;

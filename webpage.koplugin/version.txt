@@ -1,4 +1,5 @@
-2026-11-04 09:00
+2026-11-07 12:00
+Nov 7  Web server: text on the page always goes in as plain text (the page's element helper has no HTML option)
 Nov 4  Launcher tab: Message time
 Nov 3  Launcher tab: Add shortcut has Crossword and SSH host too
 Nov 3  Updates: Update all for the optional apps when two or more have an update
