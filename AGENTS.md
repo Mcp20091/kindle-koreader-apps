@@ -51,7 +51,8 @@ optional/               apps not everyone needs, not in the main install zip: ea
                         zip (build-zip.py). flashforge.koplugin: a FlashForge 3D printer over the Wi-Fi;
                         pangolin.koplugin: a Pangolin server's sites, resources and clients (its Integration API);
                         nextdns.koplugin: a NextDNS profile (its API: blocked queries, the log, lists, switches);
-                        pfsense.koplugin: a pfSense firewall (its REST API package)
+                        pfsense.koplugin: a pfSense firewall (its REST API package);
+                        spotify.koplugin: Spotify Remote, a remote control for Spotify (its Web API; plays on Spotify Connect devices)
 guide/                  the user guide: one Markdown chapter per app, img/, build.py, chapters.txt
 Kindle Apps Guide.pdf   the guide, built from guide/
 ```
