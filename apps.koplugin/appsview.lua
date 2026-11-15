@@ -2044,18 +2044,32 @@ function View.drawSleep(apps, c)
 end
 
 --- The parts the Apps widgets sleep screen can show, in their order.
-View.WIDGETS = { "clock", "forecast", "book", "todo", "ha", "notifications" }
-View.WIDGET_NAMES = { clock = _("Clock and weather"), forecast = _("Weather forecast"), book = _("Current book"), todo = _("To Do today"), ha = _("Home Assistant alerts"),
-    notifications = _("Latest notifications") }
+View.WIDGETS = { "clock", "forecast", "book", "todo", "events", "ha", "notifications" }
+View.WIDGET_NAMES = { clock = _("Clock and weather"), forecast = _("Weather forecast"), book = _("Current book"), todo = _("To Do today"),
+    events = _("Calendar events today"), ha = _("Home Assistant alerts"), notifications = _("Latest notifications") }
 
 --- The parts in their order: as set (sleep_widgets_order), the others after in the usual order.
+-- A part added since the order was set goes after the one it follows there (To Do's
+-- calendar events after To Do's today), not at the end.
 function View.widgetOrder(s)
     local out, seen = {}, {}
     for __, k in ipairs(type(s.sleep_widgets_order) == "table" and s.sleep_widgets_order or {}) do
         if View.WIDGET_NAMES[k] and not seen[k] then table.insert(out, k) seen[k] = true end
     end
+    local index = {}
+    for i, k in ipairs(View.WIDGETS) do index[k] = i end
     for __, k in ipairs(View.WIDGETS) do
-        if not seen[k] then table.insert(out, k) end
+        if not seen[k] then
+            -- Right after the part it follows (the nearest one before it in the usual
+            -- order) wherever that one is in the saved order.
+            local at, closest = 1, 0
+            for j, outk in ipairs(out) do
+                local i = index[outk]
+                if i and i < index[k] and i > closest then closest, at = i, j + 1 end
+            end
+            table.insert(out, at, k)
+            seen[k] = true
+        end
     end
     return out
 end
@@ -2094,7 +2108,8 @@ end
 
 --- The Apps widgets sleep screen: the parts picked (Settings > Sleep screen >
 -- Widgets), each a card: the clock, the book being read (cover and how far),
--- To Do's today, Home Assistant's alerts, the latest notifications. Drawn
+-- To Do's today, To Do's calendar events, Home Assistant's alerts, the latest
+-- notifications. Drawn
 -- only from what is already in memory: nothing read from the disk or the
 -- network as the Kindle goes to sleep; each card says how old its data is.
 function View.drawWidgets(apps, c)
@@ -2199,14 +2214,12 @@ function View.drawWidgets(apps, c)
         if todo and todo.store then
             local ok, list = pcall(tasksToday, todo)
             list = ok and list or {}
-            local okE, events = pcall(eventsToday, todo)
-            events = okE and events or {}
-            local n = math.min(#list + #events, 6)
+            local n = math.min(#list, 6)
             card(46 + math.max(1, n) * 32, function(yy)
-                heading(yy, T(_("TODAY  %1"), #list + #events), agoText(try(function() return todo.store:syncedAt() end)))
+                heading(yy, T(_("TODAY  %1"), #list), agoText(try(function() return todo.store:syncedAt() end)))
                 if n == 0 then c:text(46, yy + 60, _("Nothing due today."), 13, { color = C.GREY }) end
                 local ty = yy + 38
-                for i = 1, math.min(#list, n) do
+                for i = 1, n do
                     local t = list[i]
                     c:box(46, ty + 4, 18, 18, { r = 4, border = C.BLACK, bw = 1.3 })
                     local due = overdueText(t)
@@ -2214,16 +2227,29 @@ function View.drawWidgets(apps, c)
                     if due then c:text(c.W - 46, ty + 19, due, 11, { bold = true, align = "end" }) end
                     ty = ty + 32
                 end
-                for i = 1, math.max(0, math.min(#events, n - #list)) do
-                    local e = events[i]
-                    c:icon("calendar-days", 46, ty + 3, 18)
-                    local when = e.minute and clockText(e.minute) or _("All day")
-                    c:text(76, ty + 19, e.title, 13, { maxw = c.W - 122 - c:width(when, 11) - 16 })
-                    c:text(c.W - 46, ty + 19, when, 11, { bold = true, align = "end" })
-                    ty = ty + 32
-                end
             end)
         end
+    end
+    -- Today's calendar events (CalDAV) in a card of their own, after To Do's own
+    -- (a day's appointments, with a time first). No card when there are none.
+    parts.events = function()
+        local todo = apps:plugin("todo")
+        if not (todo and todo.store) then return end
+        local events = eventsToday(todo)
+        if #events == 0 then return end
+        local n = math.min(#events, 6)
+        card(46 + n * 32, function(yy)
+            heading(yy, T(_("EVENTS  %1"), #events), agoText(try(function() return todo.store:syncedAt() end)))
+            local ty = yy + 38
+            for i = 1, n do
+                local e = events[i]
+                c:icon("calendar-days", 46, ty + 3, 18)
+                local when = e.minute and clockText(e.minute) or _("All day")
+                c:text(76, ty + 19, e.title, 13, { maxw = c.W - 122 - c:width(when, 11) - 16 })
+                c:text(c.W - 46, ty + 19, when, 11, { bold = true, align = "end" })
+                ty = ty + 32
+            end
+        end)
     end
     parts.ha = function()
         local ha = apps:plugin("homeassistant")
