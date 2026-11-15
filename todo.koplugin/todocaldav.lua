@@ -309,7 +309,8 @@ end
 
 --- The events on one `day` (a day number), each `{ event, day, minute,
 -- ["repeat"] }` (all-day ones have no minute): all-day first, then by start
--- time, then title. What the launcher and the sleep screen show as today's events.
+-- time, then title. The calendar view shows them in this order; the launcher's
+-- home screen and the sleep screens put the ones with a time first.
 function Caldav.dayEvents(events, day, offset)
     local out = {}
     for _, ev in ipairs(events or {}) do

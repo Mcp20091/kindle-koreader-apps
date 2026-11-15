@@ -2047,9 +2047,10 @@ function Todo:caldavEvents()
     return nil
 end
 
---- Today's calendar events (CalDAV), each `{ event, minute, ["repeat"] }`
+--- Today's calendar events (CalDAV), each `{ event, day, minute, ["repeat"] }`
 -- sorted (all-day first, then by start time); nil when the calendar is off
--- or not set up. What the launcher's At a glance and the sleep screens show.
+-- or not set up. What the launcher's At a glance and the sleep screens show,
+-- which put the ones with a time first.
 function Todo:dayEvents()
     if not self:opt("caldav_show") or not self.caldav:configured() then return nil end
     return Cal.dayEvents(self.caldavList, self:today(), self:offset())

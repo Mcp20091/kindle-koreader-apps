@@ -1838,22 +1838,27 @@ local function clockText(minute)
     return string.format("%02d:%02d", math.floor(minute / 60) % 24, minute % 60)
 end
 
---- Today's calendar events (CalDAV) from To Do: { title, minute } sorted
--- (all-day first); empty when the calendar is off or not set up.
+--- Today's calendar events (CalDAV) from To Do: { title, minute, day }, the
+-- ones with a time first (in their order), then the all-day ones; empty when
+-- the calendar is off or not set up. The home screen and the sleep screens show
+-- a timed event before an all-day one.
 local function eventsToday(todo)
     local ok, events = pcall(function() return todo:dayEvents() end)
     if not ok or type(events) ~= "table" then return {} end
-    local out = {}
+    local out, allDay = {}, {}
     for __, e in ipairs(events) do
-        table.insert(out, { title = e.event.title, minute = e.minute })
+        local one = { title = e.event.title, minute = e.minute, day = e.day }
+        table.insert(e.minute and out or allDay, one)
     end
+    for __, e in ipairs(allDay) do table.insert(out, e) end
     return out
 end
 
 --- The next thing with a time: the earliest of a Home Assistant calendar
--- event, a To Do calendar event (CalDAV) and a To Do reminder.
+-- event, a To Do calendar event (CalDAV) and a To Do reminder. A To Do event
+-- without a time (all day) is next only when nothing today has one.
 local function nextUp(apps)
-    local best
+    local best, allDayEvent
     local function take(title, when, icon, at)
         if title and when and (not best or at < best.at) then
             best = { title = title, when = when, icon = icon, at = at }
@@ -1868,14 +1873,19 @@ local function nextUp(apps)
     end
     local todo = apps:plugin("todo")
     if todo and todo.store then
-        -- The calendar's events (CalDAV): the first one today. `minute` is
-        -- minutes from the day's local midnight; all-day events have none.
-        local okE, events = pcall(function() return todo:dayEvents() end)
+        -- The calendar's events (CalDAV): the first one with a time today.
+        -- `minute` is minutes from the day's local midnight; an all-day event
+        -- has none, and is next only when nothing today has a time.
+        local events = eventsToday(todo)
         local okO, offset = pcall(function() return todo:offset() end)
-        if okE and type(events) == "table" and events[1] then
+        if events[1] then
             local e = events[1]
-            local at = okO and e.day * 86400 + (e.minute or 0) * 60 - offset or 0
-            take(e.event.title, e.minute and clockText(e.minute) or _("All day"), "calendar", at)
+            if e.minute then
+                local at = okO and e.day * 86400 + e.minute * 60 - offset or 0
+                take(e.title, clockText(e.minute), "calendar", at)
+            else
+                allDayEvent = { title = e.title, when = _("All day") }
+            end
         end
         local soonest
         for __, list in ipairs(todo.store:lists()) do
@@ -1888,6 +1898,7 @@ local function nextUp(apps)
         end
     end
     if best then return best.title, best.when, best.icon end
+    if allDayEvent then return allDayEvent.title, allDayEvent.when, "calendar" end
 end
 
 --- The line under the clock: the weather, what is next, the tasks due. Returns its height.
