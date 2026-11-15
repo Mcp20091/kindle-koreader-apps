@@ -543,6 +543,13 @@ function Todo:show(view)
     end
 end
 
+--- The calendar, opened on a day (a day number): an event of today tapped on
+-- the launcher's At a glance line comes here.
+function Todo:showCalendar(day)
+    local y, m, d = Dates.toCivil(day or self:today())
+    self:show({ kind = "calendar", y = y, m = m, sel = d, page = 1 })
+end
+
 --- The time in the title bar, once a minute while To Do shows (only the
 -- title bar is refreshed, and only when To Do is on top).
 function Todo:tickClock()

@@ -29,7 +29,7 @@ To leave the launcher, open **Library** or a book, or tap **Exit KOReader**. Bac
 The line under the clock shows three things when they are available. Tap any of them to go there.
 
 - **The weather**: the temperature, the conditions and today's high and low, such as "59° Clear · 64° / 48°", from Home Assistant or from Open-Meteo (free, no account; see **Weather** below). A weather alert shows instead of the conditions. Tap it for the weather screen.
-- **What's next** (the clock or calendar icon): the next of your Home Assistant calendar events, To Do's calendar events (CalDAV) today and To Do reminders in the next day and a half, whichever comes first, with its time. Tap it for To Do's Today.
+- **What's next** (the clock or calendar icon): the next of your Home Assistant calendar events, To Do's calendar events (CalDAV) today and To Do reminders in the next day and a half, whichever comes first, with its time. Tap it for To Do's Today, or, when it's a To Do calendar event, for the calendar on that day.
 - **Tasks due** from To Do: "3 due" (overdue tasks count too) or "Nothing due". Tap it for To Do's Today.
 
 Turn the line off in settings: **At a glance**.

@@ -1856,12 +1856,14 @@ end
 
 --- The next thing with a time: the earliest of a Home Assistant calendar
 -- event, a To Do calendar event (CalDAV) and a To Do reminder. A To Do event
--- without a time (all day) is next only when nothing today has one.
+-- without a time (all day) is next only when nothing today has one. Returns its
+-- title, when, icon, and where a tap goes: nil for To Do's Today, else
+-- `{ day = … }` (a To Do calendar event, which the calendar opens on).
 local function nextUp(apps)
     local best, allDayEvent
-    local function take(title, when, icon, at)
+    local function take(title, when, icon, at, where)
         if title and when and (not best or at < best.at) then
-            best = { title = title, when = when, icon = icon, at = at }
+            best = { title = title, when = when, icon = icon, at = at, where = where }
         end
     end
     local ha = apps:plugin("homeassistant")
@@ -1882,9 +1884,9 @@ local function nextUp(apps)
             local e = events[1]
             if e.minute then
                 local at = okO and e.day * 86400 + e.minute * 60 - offset or 0
-                take(e.title, clockText(e.minute), "calendar", at)
+                take(e.title, clockText(e.minute), "calendar", at, { day = e.day })
             else
-                allDayEvent = { title = e.title, when = _("All day") }
+                allDayEvent = { title = e.title, when = _("All day"), where = { day = e.day } }
             end
         end
         local soonest
@@ -1897,8 +1899,8 @@ local function nextUp(apps)
             take(soonest.title, os.date("%a %I:%M %p", soonest.remindAt):gsub(" 0", " "), "clock", soonest.remindAt)
         end
     end
-    if best then return best.title, best.when, best.icon end
-    if allDayEvent then return allDayEvent.title, allDayEvent.when, "calendar" end
+    if best then return best.title, best.when, best.icon, best.where end
+    if allDayEvent then return allDayEvent.title, allDayEvent.when, "calendar", allDayEvent.where end
 end
 
 --- The line under the clock: the weather, what is next, the tasks due. Returns its height.
@@ -1918,10 +1920,16 @@ function View:todayStrip(c, top, right)
             end })
     end
     local todo = self:plugin("todo")
-    local okn, title, when = pcall(nextUp, self.apps)
+    local okn, title, when, icon, where = pcall(nextUp, self.apps)
     if okn and title then
-        table.insert(parts, { icon = "clock", text = title .. "  \u{00B7}  " .. when, grow = true,
-            fn = todo and function() self.away = true todo:show({ kind = "today" }) end })
+        table.insert(parts, { icon = icon or "clock", text = title .. "  \u{00B7}  " .. when, grow = true,
+            fn = todo and function()
+                self.away = true
+                -- A To Do calendar event opens the calendar on its day; anything
+                -- else To Do's Today. (An older To Do has no showCalendar.)
+                if where and todo.showCalendar then todo:showCalendar(where.day)
+                else todo:show({ kind = "today" }) end
+            end })
     end
     if todo and todo.store then
         local ok, list = pcall(tasksToday, todo)
