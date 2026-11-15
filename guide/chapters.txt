@@ -17,4 +17,5 @@ flashforge.md
 pangolin.md
 pfsense.md
 nextdns.md
+spotify.md
 credits.md

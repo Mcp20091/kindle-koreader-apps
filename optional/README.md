@@ -9,6 +9,7 @@ Each one is a plugin folder here, and a zip of it built by `build-zip.py`:
 | [Pangolin](pangolin.koplugin/README.md) | A Pangolin server's organization: sites online, each resource's health, resources and clients turned on or off | The same way (`kindle-pangolin.zip`) |
 | [NextDNS](nextdns.koplugin/README.md) | A NextDNS profile: today's queries and blocked ones, the query log (filtered and searched), the denylist and allowlist, the security, privacy and parental control switches, and whether this Kindle uses NextDNS | The same way (`kindle-nextdns.zip`) |
 | [pfSense](pfsense.koplugin/README.md) | A pfSense firewall over its REST API package: gateways, interfaces and services (start, stop, restart), devices (DHCP leases, the ARP table; Wake-on-LAN), DHCP static mappings and DNS host overrides, firewall rules on or off, VPN, logs, packages with updates, reboot | The same way (`kindle-pfsense.zip`) |
+| [Spotify Remote](spotify.koplugin/README.md) | A remote control for Spotify (Premium): what's playing with the album's picture, play and pause, next and previous, volume, shuffle and repeat, the devices that are on (to move the music to one), your playlists, recently played songs and a search. Nothing plays on the Kindle | The same way (`kindle-spotify.zip`) |
 
 The launcher, its search, settings, notifications and the web page pick an optional app up when it's
 installed (from what it says about itself: `PS.appInfo`, apps.koplugin/appsinfo.lua), and show nothing of it

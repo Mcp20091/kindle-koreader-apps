@@ -403,7 +403,7 @@ Settings > **Updates**:
 
 While an update installs, a pop-up says how far it is: **Downloading… 40%**, then **Checking the update: notes (5 of 10)** and **Installing notes (5 of 10)**, a plugin at a time. The Kindle keeps answering meanwhile, so there's no need to restart it.
 
-**OPTIONAL APPS** are extra apps that aren't in the main install: FlashForge (for a FlashForge 3D printer), Pangolin (for a Pangolin server), NextDNS (for a NextDNS profile) and pfSense (for a pfSense firewall). They update along with everything else.
+**OPTIONAL APPS** are extra apps that aren't in the main install: FlashForge (for a FlashForge 3D printer), Pangolin (for a Pangolin server), NextDNS (for a NextDNS profile), pfSense (for a pfSense firewall) and Spotify Remote (a remote control for Spotify). They update along with everything else.
 
 The **Optional apps** row says how many are installed, and names any that have an update. Tap it for the list, once the Kindle is on Wi-Fi. Each app shows **Not installed**, or the version it has with **Up to date** or **Update available**. Tap one:
 

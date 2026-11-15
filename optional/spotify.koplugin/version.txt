@@ -1,0 +1,4 @@
+2026-11-13 23:00
+Nov 13  Spotify Remote: playlists open to their songs, with Move up, Move down, Move to top and Move to bottom in your own; player controls above a list and what a tap and a hold do set in Settings > Buttons; Library by kind
+Nov 13  Spotify Remote: Like, Add to playlist and Remove from this playlist; Queue; Library (Liked Songs, albums, artists) with album and artist pages; Open album and Open artist on a hold; several songs selected at once; a full screen with its own refresh time
+Nov 13  Spotify Remote: a new optional app, a remote for Spotify over its Web API (what's playing with the album's picture, play and pause, next and previous, volume, shuffle and repeat, the devices that are on with a tap to move the music to one, your playlists, recently played songs and a search), read only while it's open, in optional/ with its own zip

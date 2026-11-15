@@ -234,5 +234,17 @@ The same guide as [Kindle Apps Guide.pdf](../Kindle%20Apps%20Guide.pdf), one pag
 - [On the web page](nextdns.md#on-the-web-page)
 - [Good to know](nextdns.md#good-to-know)
 
+## [Spotify Remote](spotify.md)
+
+- [Installing it](spotify.md#installing-it)
+- [Requirements](spotify.md#requirements)
+- [Opening it](spotify.md#opening-it)
+- [Setting it up](spotify.md#setting-it-up)
+- [The app](spotify.md#the-app)
+- [The menu](spotify.md#the-menu)
+- [Settings](spotify.md#settings)
+- [On the web page](spotify.md#on-the-web-page)
+- [Good to know](spotify.md#good-to-know)
+
 ## [Credits](credits.md)
 
