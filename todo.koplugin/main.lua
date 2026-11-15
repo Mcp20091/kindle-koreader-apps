@@ -772,24 +772,37 @@ function notify(text)
     require("todoko").toast(text)
 end
 
+--- A picker shown over another window: a tap outside it closes that picker alone.
+-- (KOReader's own tap-outside closes it without saying the tap is taken, so the
+-- window under it — an event's box — would take the tap as its Cancel.)
+local function closesOnlyItself(widget)
+    local tapOutside = widget.onTapClose
+    function widget:onTapClose(arg, ges)
+        local outside = ges and ges.pos and ges.pos:notIntersectWith(self.date_frame.dimen)
+        tapOutside(self, arg, ges)
+        return outside
+    end
+    return widget
+end
+
 function Todo:pickDate(day, title, fn)
     local y, m, d = Dates.toCivil(day or self:today())
-    UIManager:show(DateTimeWidget:new{
+    UIManager:show(closesOnlyItself(DateTimeWidget:new{
         year = y, month = m, day = d,
         ok_text = _("Set date"),
         title_text = title,
         callback = function(t) fn(Dates.fromCivil(t.year, t.month, t.day)) end,
-    })
+    }))
 end
 
 function Todo:pickTime(minute, title, fn)
     minute = minute or 9 * 60
-    UIManager:show(DateTimeWidget:new{
+    UIManager:show(closesOnlyItself(DateTimeWidget:new{
         hour = math.floor(minute / 60), min = minute % 60,
         ok_text = _("Set time"),
         title_text = title,
         callback = function(t) fn(t.hour * 60 + t.min) end,
-    })
+    }))
 end
 
 -- A moment (Unix seconds) for a local day and minute.
@@ -2282,6 +2295,57 @@ end
 
 -- ------------------------------------------------------------------ event dialogs
 
+--- An end at or before the start on the same day: an hour after it, the next day
+-- when that crosses midnight.
+local function fitEnd(state)
+    if state.allDay or (state.endDay or 0) > 0 or state.endMinute > state.startMinute then return end
+    local e = state.startMinute + 60
+    if e < 24 * 60 then
+        state.endMinute = e
+    else
+        state.endDay, state.endMinute = 1, e - 24 * 60
+    end
+end
+
+--- The end as its chip and button read it: "End 10:30 AM", or "End Tue, Oct 20,
+-- 10:30 AM" when the event ends on a later day.
+local function endText(state)
+    local last = state.day + (state.endDay or 0)
+    if last ~= state.day then return T(_("End %1, %2"), Dates.short(last), Dates.clock(state.endMinute)) end
+    return T(_("End %1"), Dates.clock(state.endMinute))
+end
+
+--- The end of a timed event: its day and time in one picker. done() once chosen.
+function Todo:pickEventEnd(state, done)
+    local y, m, d = Dates.toCivil(state.day + (state.endDay or 0))
+    UIManager:show(closesOnlyItself(DateTimeWidget:new{
+        year = y, month = m, day = d,
+        hour = math.floor(state.endMinute / 60), min = state.endMinute % 60,
+        ok_text = _("Set"),
+        title_text = _("End"),
+        callback = function(t)
+            state.endDay = math.max(0, Dates.fromCivil(t.year, t.month, t.day) - state.day)
+            state.endMinute = t.hour * 60 + t.min
+            fitEnd(state)
+            done()
+        end,
+    }))
+end
+
+--- The last day of an all-day event (its days follow from it). done() once chosen.
+function Todo:pickEventLastDay(state, done)
+    local y, m, d = Dates.toCivil(state.day + (state.days or 1) - 1)
+    UIManager:show(closesOnlyItself(DateTimeWidget:new{
+        year = y, month = m, day = d,
+        ok_text = _("Set date"),
+        title_text = _("End day"),
+        callback = function(t)
+            state.days = math.max(1, Dates.fromCivil(t.year, t.month, t.day) - state.day + 1)
+            done()
+        end,
+    }))
+end
+
 --- A new event on a day (the + on the calendar).
 function Todo:addEvent(day)
     return self:editEvent(nil, day)
@@ -2316,9 +2380,7 @@ function Todo:saveEvent(state, ev, title)
     state.title = (title or ""):match("^%s*(.-)%s*$")
     if state.title == "" then return end
     -- An end before the start on the same day is an hour after it.
-    if not state.allDay and (state.endDay or 0) == 0 and state.endMinute <= state.startMinute then
-        state.endMinute = state.startMinute + 60
-    end
+    fitEnd(state)
     self:putEvent(self:eventFrom(state, ev))
     -- The change goes to the server at once (in the background, quietly).
     self:syncEvents(true)
@@ -2345,6 +2407,7 @@ function Todo:editEvent(ev, day)
             end
         end
     end
+    fitEnd(state)
     if self:eventBox(state, ev) then return end
     self:eventDialog(state, ev)
 end
@@ -2356,31 +2419,33 @@ function Todo:eventBox(state, ev)
     if not (P and P.request) then return false end
     local box
     local function redraw() if box then box:redraw() end end
+    -- KOReader's keyboard is modal: a picker or a text box opened while it is up
+    -- would be under it and take no taps. It goes while one is up; a tap on the
+    -- text brings it back.
+    local function keyboardAway()
+        if not (box and not box.closed) then return end
+        box:stopTyping()
+        box:redraw()
+    end
     local function pickDay()
+        keyboardAway()
         self:pickDate(state.day, _("Event day"), function(day) state.day = day redraw() end)
     end
-    local function pickDays()
-        UIManager:show(SpinWidget:new{
-            title_text = _("How many days?"), value = state.days or 1, value_min = 1, value_max = 30,
-            value_step = 1, ok_text = _("Set"),
-            callback = function(spin) state.days = spin.value redraw() end,
-        })
-    end
     local function pickStart()
+        keyboardAway()
         self:pickTime(state.startMinute, _("Start time"), function(minute)
             state.startMinute = minute
-            -- An end at or before the start runs an hour after it (same day).
-            if (state.endDay or 0) == 0 and state.endMinute <= minute then state.endMinute = minute + 60 end
+            fitEnd(state)
             redraw()
         end)
     end
     local function pickEnd()
-        self:pickTime(state.endMinute, _("End time"), function(minute)
-            -- Before the start: into the next day (an event over midnight).
-            state.endDay = minute < state.startMinute and 1 or 0
-            state.endMinute = minute
-            redraw()
-        end)
+        keyboardAway()
+        self:pickEventEnd(state, redraw)
+    end
+    local function pickLastDay()
+        keyboardAway()
+        self:pickEventLastDay(state, redraw)
     end
     local sections = {}
     local function whenChips()
@@ -2389,19 +2454,26 @@ function Todo:eventBox(state, ev)
             row = {
                 { text = _("All day"), on = true },
                 { text = function() return Dates.short(state.day) end, tap = pickDay },
-                { text = function() return (state.days or 1) > 1 and T(_("%1 days"), state.days) or _("1 day") end,
-                    on = function() return (state.days or 1) > 1 end, tap = pickDays },
+                { text = function() return T(_("End %1"), Dates.short(state.day + (state.days or 1) - 1)) end,
+                    tap = pickLastDay },
             }
         else
             row = {
                 { text = _("All day"), on = false },
                 { text = function() return Dates.short(state.day) end, tap = pickDay },
                 { text = function() return T(_("Start %1"), Dates.clock(state.startMinute)) end, tap = pickStart },
-                { text = function() return T(_("End %1"), Dates.clock(state.endMinute)) end, tap = pickEnd },
+                { text = function() return endText(state) end, tap = pickEnd },
             }
         end
         row[1].tap = function()
+            -- (Its days become a timed one's end day, and the other way round.)
+            if state.allDay then
+                state.endDay = (state.days or 1) - 1
+            else
+                state.days = (state.endDay or 0) + 1
+            end
             state.allDay = not state.allDay
+            fitEnd(state)
             sections[1].chips = whenChips()
         end
         return row
@@ -2409,12 +2481,14 @@ function Todo:eventBox(state, ev)
     local function whereChips()
         return {
             { text = _("Location"), on = function() return state.location ~= nil end, tap = function()
+                keyboardAway()
                 input(_("Location"), state.location, function(v)
                     state.location = v ~= "" and v or nil
                     redraw()
                 end)
             end },
             { text = _("Notes"), on = function() return state.notes ~= nil end, tap = function()
+                keyboardAway()
                 input(_("Notes"), state.notes, function(v)
                     state.notes = v ~= "" and v or nil
                     redraw()
@@ -2458,47 +2532,41 @@ function Todo:eventDialog(state, ev)
         UIManager:close(dialog)
         change(function() self:eventDialog(state, ev) end)
     end
-    local function pickDays(back)
-        UIManager:show(SpinWidget:new{
-            title_text = _("How many days?"), value = state.days or 1, value_min = 1, value_max = 30,
-            value_step = 1, ok_text = _("Set"),
-            callback = function(spin)
-                state.days = spin.value
-                if back then back() end
-            end,
-        })
-    end
     local buttons = {
         { text = Dates.short(state.day), callback = function()
             reopen(function(back) self:pickDate(state.day, _("Event day"), function(day) state.day = day back() end) end)
         end },
         { text = state.allDay and _("All day") or _("Timed"), font_bold = state.allDay, callback = function()
-            reopen(function(back) state.allDay = not state.allDay back() end)
+            reopen(function(back)
+                -- (Its days become a timed one's end day, and the other way round.)
+                if state.allDay then
+                    state.endDay = (state.days or 1) - 1
+                else
+                    state.days = (state.endDay or 0) + 1
+                end
+                state.allDay = not state.allDay
+                fitEnd(state)
+                back()
+            end)
         end },
     }
     if state.allDay then
-        table.insert(buttons, { text = (state.days or 1) > 1 and T(_("%1 days"), state.days) or _("1 day"),
+        table.insert(buttons, { text = T(_("End %1"), Dates.short(state.day + (state.days or 1) - 1)),
             font_bold = (state.days or 1) > 1, callback = function()
-                reopen(function(back) pickDays(back) end)
+                reopen(function(back) self:pickEventLastDay(state, back) end)
             end })
     else
         table.insert(buttons, { text = T(_("Start %1"), Dates.clock(state.startMinute)), callback = function()
             reopen(function(back)
                 self:pickTime(state.startMinute, _("Start time"), function(minute)
                     state.startMinute = minute
-                    if (state.endDay or 0) == 0 and state.endMinute <= minute then state.endMinute = minute + 60 end
+                    fitEnd(state)
                     back()
                 end)
             end)
         end })
-        table.insert(buttons, { text = T(_("End %1"), Dates.clock(state.endMinute)), callback = function()
-            reopen(function(back)
-                self:pickTime(state.endMinute, _("End time"), function(minute)
-                    state.endDay = minute < state.startMinute and 1 or 0
-                    state.endMinute = minute
-                    back()
-                end)
-            end)
+        table.insert(buttons, { text = endText(state), callback = function()
+            reopen(function(back) self:pickEventEnd(state, back) end)
         end })
     end
     table.insert(buttons, { text = _("Location"), font_bold = state.location ~= nil, callback = function()

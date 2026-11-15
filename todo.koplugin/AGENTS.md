@@ -96,6 +96,12 @@ hours after a sleep. The Kindle can't wake itself for a reminder.
   sends the repeat again from the new day. Remove repeat clears the due date and keeps the old one
   in the notes.
 - **A task under the wrong list** gives an error rather than a 404. Look a task up in its own list.
+- **Pickers over a text box:** the launcher's request box is always active, with a tap area over the
+  whole screen, and KOReader's keyboard is modal. A picker (or a second box) opened while the keyboard
+  is up goes under it, takes no taps, and a tap that does reach the box closes it as Cancel. The event
+  box stops typing before it opens one, and its pickers close alone on a tap outside (`closesOnlyItself`),
+  so that tap doesn't go on to the box. (The new-task box still opens its date and reminder pickers
+  under the keyboard.)
 - **Methods named `on…`** are treated as event handlers: only the first return value comes back
   and errors are swallowed. Use other names for helpers.
 - **Online checks:** `NetworkMgr:isConnected()`, not `isOnline()`.
