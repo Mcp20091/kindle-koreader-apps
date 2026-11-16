@@ -1,10 +1,21 @@
 # Kindle apps for KOReader
 
-A set of KOReader plugins that turn a jailbroken Kindle Scribe into a small system of its own: a launcher, a library for your books, Home Assistant, Microsoft To Do, handwritten notes, crosswords, Wikipedia, Syncthing, SSH, and a web server for running it all from a phone or computer's browser. Every app shares one title bar, one notifications list, one settings design and one look for pop-ups.
+A set of KOReader plugins that turn a jailbroken Kindle Scribe into a small system of its own: a launcher, a library for your books, Home Assistant, Microsoft To Do (with CalDAV calendars), handwritten notes, crosswords, Wikipedia, Syncthing, SSH, and a web server for running it all from a phone or computer's browser. Every app shares one title bar, one notifications list, one settings design and one look for pop-ups.
 
 > **Made almost entirely by AI.** The code, the guide and its screenshots were written by Claude (through Claude Code), with a person choosing what to build, testing it on a Kindle and reporting bugs. See [How this came about](#how-this-came-about).
 
 ![The launcher on the Kindle, and the Kindle's web server page on a computer](media/overview.png)
+
+## New in this fork: CalDAV calendars in To Do
+
+This fork adds calendar events from a CalDAV server to To Do:
+
+- **Events on the calendar.** To Do's calendar shows the events from a CalDAV server next to the day's tasks. Settings > Calendar events (CalDAV) sets the server, the calendar, the sign-in and whether they show.
+- **Events are editable.** The + on the calendar adds one on the selected day (title, day, start and end time or all day, location and notes); an event's details have Edit and Delete. Editing a repeating event changes the whole series.
+- **Changes go to the server.** Additions, edits and deletions wait in a queue like the tasks' and go to the server at the calendar's sync (the ⟳ or Sync now); a delete works at once, with Undo until it's sent. One change that fails stops the queue and the rest stay queued for the next sync.
+- **Events at a glance.** Today's events also show in the launcher's At a glance under the clock.
+
+Everything else works as in the upstream repository.
 
 ## How this came about
 
@@ -19,7 +30,7 @@ Almost all of it (the code, the guide and its screenshots) was written by AI: Cl
 | `apps.koplugin` | **Launcher**: the home screen, Reading statistics, Weather, Fonts, and the pieces every app shares. |
 | `library.koplugin` | **Library**: your books and folders, in place of KOReader's file browser. |
 | `homeassistant.koplugin` | **Home Assistant**: your lights, locks, cameras and the rest, and a Dashboard tile. |
-| `todo.koplugin` | **To Do**: Microsoft To Do, or lists kept on the Kindle only. |
+| `todo.koplugin` | **To Do**: Microsoft To Do, lists kept on the Kindle only, and calendar events from a CalDAV server. |
 | `notes.koplugin` | **Notes**: handwritten notebooks for the pen. |
 | `crosswords.koplugin` | **Crosswords**: daily crosswords solved with the pen. Needs Notes. |
 | `wikipedia.koplugin` | **Wikipedia**: read articles, and save them for offline. |
@@ -82,7 +93,7 @@ Tap an app to see what it does. Each one links to its chapter of the guide.
 </details>
 
 <details>
-<summary><b>To Do</b>: Microsoft To Do, or lists on the Kindle only</summary>
+<summary><b>To Do</b>: Microsoft To Do, lists on the Kindle only, and a CalDAV calendar</summary>
 <br>
 <img src="guide/img/apps/todo-home.png" width="300" alt="To Do's Home"> <img src="guide/img/apps/todo-task.png" width="300" alt="A task">
 
@@ -90,6 +101,7 @@ Tap an app to see what it does. Each one links to its chapter of the guide.
 - Due dates, reminders, repeats, steps and notes. Type dates in plain words ("Pay rent Friday 9am").
 - Works without Wi-Fi: changes wait and sync in the background.
 - Works without an account too, with lists kept on the Kindle that you can move to To Do later.
+- Calendar events from a CalDAV server show on the calendar next to the tasks: add, edit and delete them, and your changes go to the server at the next sync.
 - A sleep screen with today's tasks.
 
 [The To Do chapter](guide/todo.md)

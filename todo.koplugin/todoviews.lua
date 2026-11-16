@@ -232,6 +232,18 @@ function Views.bandRow(title, right)
     end }
 end
 
+--- A day's count on the calendar: "1 task", "2 tasks · 1 event".
+function Views.dayCount(nTasks, nEvents)
+    local out = {}
+    if nTasks > 0 or nEvents == 0 then
+        table.insert(out, nTasks == 1 and _("1 task") or T(_("%1 tasks"), nTasks))
+    end
+    if nEvents > 0 then
+        table.insert(out, nEvents == 1 and _("1 event") or T(_("%1 events"), nEvents))
+    end
+    return table.concat(out, "  \u{00B7}  ")
+end
+
 function Views.messageRow(text)
     return { h = 60, draw = function(p, y, zone, W)
         p:text(W / 2, y + 36, text, 12, false, MID, "middle", W - 40)
@@ -856,7 +868,7 @@ function Views.calendar(c, view)
     local ty, tm = Dates.toCivil(today)
     view.y, view.m = view.y or ty, view.m or tm
     local cal = Model.calendar(c.store:lists(), view.y, view.m, today, c:offset(),
-        { hidden = c:hiddenSet(), starredFirst = c:opt("starred_first") })
+        { hidden = c:hiddenSet(), starredFirst = c:opt("starred_first"), events = c:caldavEvents() })
     local monday = c:opt("week_start") == "monday"
     local firstCol = (Dates.weekdayIndex(cal.first) - (monday and 1 or 0)) % 7
     local daysInMonth = cal.last - cal.first + 1
@@ -884,7 +896,8 @@ function Views.calendar(c, view)
             if d == view.sel then p:frame(x + 1.5, cy + 1.5, cw - 3, 51, 2, BLACK) end
             local entries = cal.days[d] or {}
             for j = 1, math.min(#entries, 3) do
-                local overdue = entries[j].task.due < today and not entries[j]["repeat"]
+                local e = entries[j]
+                local overdue = e.task ~= nil and e.task.due < today and not e["repeat"]
                 if overdue then
                     p:circle(x + 10 + (j - 1) * 8, cy + 40, 3, BLACK, 1)
                 else
@@ -905,10 +918,19 @@ function Views.calendar(c, view)
     end
     local selDay = cal.first + view.sel - 1
     local entries = cal.days[view.sel] or {}
-    table.insert(rows, Views.bandRow(Dates.short(selDay):upper(), #entries == 1 and _("1 task") or T(_("%1 tasks"), #entries)))
-    for __, e in ipairs(entries) do table.insert(rows, Views.taskRow(c, e, { withList = true })) end
+    local showEvents = c:caldavEvents() ~= nil
+    local nTasks, nEvents = 0, 0
+    for __, e in ipairs(entries) do
+        if e.event then nEvents = nEvents + 1 else nTasks = nTasks + 1 end
+    end
+    table.insert(rows, Views.bandRow(Dates.short(selDay):upper(), Views.dayCount(nTasks, nEvents)))
+    for __, e in ipairs(entries) do
+        table.insert(rows, e.event and Views.eventRow(c, e, selDay) or Views.taskRow(c, e, { withList = true }))
+    end
     if #entries == 0 then
-        table.insert(rows, Views.messageRow(_("Nothing due. Hold a day to add a task.")))
+        table.insert(rows, Views.messageRow(showEvents
+            and _("Nothing due. Hold a day to add a task; the + adds an event.")
+            or _("Nothing due. Hold a day to add a task.")))
     else
         table.insert(rows, { h = 28, draw = function(p, y)
             p:text(14, y + 20, _("Hollow dot: overdue. Tap a day for its tasks; hold a day to add one."), 9.5, false, MID, "start", W - 28)
@@ -924,9 +946,44 @@ function Views.calendar(c, view)
     return {
         title = Dates.MONTH_NAMES[view.m] .. " " .. view.y,
         left = { icon = "chevron-left", fn = function() c:back() end },
-        right = { { icon = "chevron-right", fn = function() month(1) end }, { icon = "chevron-left", fn = function() month(-1) end } },
+        -- ⟳ fetches the calendar's events (CalDAV) when the calendar is set up.
+        right = { { icon = "refresh-cw", fn = function() c:syncEvents() end },
+            { icon = "chevron-right", fn = function() month(1) end }, { icon = "chevron-left", fn = function() month(-1) end } },
         rows = rows,
+        -- + adds an event on the day selected (when the calendar's events show).
+        reserve = showEvents and 52 or 0,
+        after = showEvents and function(p, zone, W, H)
+            p:circle(W - 40, H - 70, 22, BLACK)
+            p:icon("plus", W - 51, H - 81, 22, true)
+            zone(W - 64, H - 94, 48, 48, function() c:addEvent(selDay) end, function() c:addEvent(selDay) end)
+        end or nil,
     }
+end
+
+--- A calendar event's row (from CalDAV): no box to tick, so read only. Tap
+-- for the details; a hold works as a tap.
+function Views.eventRow(c, e, day)
+    local ev = e.event
+    return { h = 46, draw = function(p, y, zone, W)
+        p:icon(e.minute and "calendar-clock" or "calendar-days", 14, y + 13, 16)
+        p:text(40, y + 21, ev.title, 12.5, false, BLACK, "start", W - 84)
+        local sub = {}
+        if e.minute then
+            local text = Dates.clock(e.minute)
+            if ev.ends then
+                local offset = c:offset()
+                if math.floor((ev.ends + offset) / 86400) == day then
+                    text = text .. " \u{2013} " .. Dates.clock(math.floor((ev.ends + offset) % 86400 / 60))
+                end
+            end
+            table.insert(sub, { nil, text })
+        end
+        if e["repeat"] then table.insert(sub, { "repeat", "" }) end
+        if ev.location and ev.location ~= "" then table.insert(sub, { "map-pin", ev.location }) end
+        parts(p, 40, y + 37, sub, W - 40)
+        p:hline(40, y + 46, W - 40, LINE)
+        zone(0, y, W, 46, function() c:showEvent(ev, day, e.minute) end, function() c:showEvent(ev, day, e.minute) end)
+    end }
 end
 
 -- ------------------------------------------------------------------ sync
@@ -1051,6 +1108,10 @@ function Views.settings(c, view)
     add(Views.settingRow(_("Reminder alerts"), nil, c:opt("reminders"), function() c:flip("reminders") end))
     add(Views.settingRow(_("Lists on this Kindle"), nil, c:opt("local_lists"), function() c:flip("local_lists") end,
         _("Lists kept only on this Kindle, never synced. Off hides them without deleting them.")))
+    add(Views.settingsHeading(_("CALENDAR EVENTS")))
+    add(Views.settingRow(_("Calendar events (CalDAV)"),
+        not c.caldav:configured() and _("Not set") or (c:opt("caldav_show") and _("On") or _("Off")), nil,
+        function() c:calendarMenu() end))
     add(Views.settingsHeading(_("SYNC")))
     add(Views.settingRow(_("Background sync"), c:opt("sync_interval") > 0 and T(_("Every %1 min"), c:opt("sync_interval")) or _("Off"),
         nil, function() c:chooseInterval() end))
@@ -1093,8 +1154,12 @@ function Views.settings(c, view)
     if not c.api.account then
         add(Views.settingRow(_("App ID"), c.api.clientId and (c.api.clientId:sub(1, 8) .. "…") or _("Not set"), nil, function() c:editClientId() end))
     end
-    if PS.showConnectionTest and (c.api.clientId or c.api:signedIn()) then
-        add(Views.settingRow(_("Test connection"), _("Microsoft"), nil, function() PS.showConnectionTest("todo") end))
+    if PS.showConnectionTest and (c.api.clientId or c.api:signedIn() or c.caldav:configured()) then
+        local tests = {}
+        if c.api.clientId or c.api:signedIn() then table.insert(tests, _("Microsoft")) end
+        if c.caldav:configured() then table.insert(tests, _("Calendar")) end
+        add(Views.settingRow(_("Test connection"), table.concat(tests, "  \u{00B7}  "), nil,
+            function() PS.showConnectionTest("todo") end))
     end
     return {
         title = _("To Do settings"),

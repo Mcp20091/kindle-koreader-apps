@@ -265,7 +265,8 @@ App.pages.apps = {
       if (!s.widgets) return null;
       const SAMPLE = {
         clock: ['', '9:41 PM · Saturday, October 24'], book: ['READING', 'Your book, its cover and how far in'],
-        todo: ['TODAY', 'The tasks due today'], ha: ['HOME', 'Home Assistant’s alerts: doors, locks, batteries'],
+        todo: ['TODAY', 'The tasks due today'], events: ['EVENTS', 'To Do’s calendar events today, with their times'],
+        ha: ['HOME', 'Home Assistant’s alerts: doors, locks, batteries'],
         notifications: ['NOTIFICATIONS', 'The latest few'],
       };
       const items = App.arr(s.widgets).map((w) => ({ key: w.key, name: w.name, on: w.on }));

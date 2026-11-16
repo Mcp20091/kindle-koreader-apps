@@ -31,7 +31,9 @@ row is about 12 mm tall) and scale with any other screen.
   deleted; notes read and edited. **Move to list**, **Hide on sleep** and **Delete** are at the bottom.
 - **Calendar**: a month with a dot for each task due a day (a hollow dot is overdue); repeating tasks
   show on the later days they fall on. Tasks that repeat every day or two are listed once instead.
-  Tap a day for its tasks, hold a day to add one; swipe or use the arrows for other months.
+  Tap a day for its tasks, hold a day to add one; swipe or use the arrows for other months. Events
+  from a calendar server (CalDAV) show next to the tasks; the + adds one, an event's details have
+  Edit and Delete, and your changes go to the server when the calendar syncs (the ⟳).
 - **Search**: titles, notes and steps.
 - **Sleep screen** (optional): the date, then overdue, today and up next (or Today only, Starred, or the
   pinned list). Tasks hidden on sleep and hidden lists are left out. KOReader only draws the sleep screen

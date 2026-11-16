@@ -9,6 +9,7 @@ steps = { {id, title, checked} } }. A list: { id, name, wellknown, tasks }.
 ]]
 
 local Dates = require("tododates")
+local Caldav = require("todocaldav")
 
 local Model = {}
 
@@ -451,7 +452,9 @@ end
 
 --- A month: `days[d]` = entries due that day (with `repeat = true` for a
 -- later day a repeating task falls on), and `frequent` = the tasks that
--- repeat every day or two (listed once, not dotted every day).
+-- repeat every day or two (listed once, not dotted every day). `opts.events`:
+-- calendar events from a CalDAV server (todocaldav's), shown after the tasks
+-- of each day.
 function Model.calendar(lists, y, m, today, offset, opts)
     opts = opts or {}
     local first = Dates.fromCivil(y, m, 1)
@@ -486,6 +489,27 @@ function Model.calendar(lists, y, m, today, offset, opts)
     for _, entries in pairs(days) do
         local sorted = Model.sortEntries(entries, offset, opts.starredFirst)
         for i, e in ipairs(sorted) do entries[i] = e end
+    end
+    -- The events go after the day's tasks, each day's by start time (all-day first).
+    local events = opts.events
+    if events and #events > 0 then
+        local perDay = {}
+        for _, ev in ipairs(events) do
+            for __, occ in ipairs(Caldav.occurrences(ev, first, last, offset)) do
+                local d = occ.day - first + 1
+                perDay[d] = perDay[d] or {}
+                table.insert(perDay[d], { event = ev, minute = occ.minute, ["repeat"] = occ["repeat"] })
+            end
+        end
+        for d, list in pairs(perDay) do
+            table.sort(list, function(a, b)
+                local ma, mb = a.minute or -1, b.minute or -1
+                if ma ~= mb then return ma < mb end
+                return (a.event.title or ""):lower() < (b.event.title or ""):lower()
+            end)
+            days[d] = days[d] or {}
+            for __, e in ipairs(list) do table.insert(days[d], e) end
+        end
     end
     frequent = Model.sortEntries(frequent, offset, false)
     return { first = first, last = last, days = days, frequent = frequent }

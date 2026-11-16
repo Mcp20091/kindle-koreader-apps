@@ -1831,15 +1831,64 @@ local function overdueText(t)
     return day and (_("Overdue") .. "  \u{00B7}  " .. day) or _("Overdue")
 end
 
---- The next thing with a time: a Home Assistant calendar event, else a To Do reminder today.
+--- "2:30 PM" for a minute of the day (To Do's clock), the hour alone when whole.
+local function clockText(minute)
+    local okD, Dates = pcall(require, "tododates")
+    if okD and Dates.clock then return Dates.clock(minute) end
+    return string.format("%02d:%02d", math.floor(minute / 60) % 24, minute % 60)
+end
+
+--- Today's calendar events (CalDAV) from To Do: { title, minute, day }, the
+-- ones with a time first (in their order), then the all-day ones; empty when
+-- the calendar is off or not set up. The home screen and the sleep screens show
+-- a timed event before an all-day one.
+local function eventsToday(todo)
+    local ok, events = pcall(function() return todo:dayEvents() end)
+    if not ok or type(events) ~= "table" then return {} end
+    local out, allDay = {}, {}
+    for __, e in ipairs(events) do
+        local one = { title = e.event.title, minute = e.minute, day = e.day }
+        table.insert(e.minute and out or allDay, one)
+    end
+    for __, e in ipairs(allDay) do table.insert(out, e) end
+    return out
+end
+
+--- The next thing with a time: the earliest of a Home Assistant calendar
+-- event, a To Do calendar event (CalDAV) and a To Do reminder. A To Do event
+-- without a time (all day) is next only when nothing today has one. Returns its
+-- title, when, icon, and where a tap goes: nil for To Do's Today, else
+-- `{ day = … }` (a To Do calendar event, which the calendar opens on).
 local function nextUp(apps)
+    local best, allDayEvent
+    local function take(title, when, icon, at, where)
+        if title and when and (not best or at < best.at) then
+            best = { title = title, when = when, icon = icon, at = at, where = where }
+        end
+    end
     local ha = apps:plugin("homeassistant")
     if ha and ha.snap then
         local ok, ev = pcall(function() return require("hamodel").nextEvent(ha.snap) end)
-        if ok and ev then return ev.title, ev.allDay and _("All day") or os.date("%a %I:%M %p", ev.start):gsub(" 0", " "), "calendar" end
+        if ok and ev then
+            take(ev.title, ev.allDay and _("All day") or os.date("%a %I:%M %p", ev.start):gsub(" 0", " "), "calendar", ev.start)
+        end
     end
     local todo = apps:plugin("todo")
     if todo and todo.store then
+        -- The calendar's events (CalDAV): the first one with a time today.
+        -- `minute` is minutes from the day's local midnight; an all-day event
+        -- has none, and is next only when nothing today has a time.
+        local events = eventsToday(todo)
+        local okO, offset = pcall(function() return todo:offset() end)
+        if events[1] then
+            local e = events[1]
+            if e.minute then
+                local at = okO and e.day * 86400 + e.minute * 60 - offset or 0
+                take(e.title, clockText(e.minute), "calendar", at, { day = e.day })
+            else
+                allDayEvent = { title = e.title, when = _("All day"), where = { day = e.day } }
+            end
+        end
         local soonest
         for __, list in ipairs(todo.store:lists()) do
             for __, t in ipairs(list.tasks or {}) do
@@ -1847,9 +1896,11 @@ local function nextUp(apps)
             end
         end
         if soonest and soonest.remindAt - os.time() < 36 * 3600 then
-            return soonest.title, os.date("%a %I:%M %p", soonest.remindAt):gsub(" 0", " "), "clock"
+            take(soonest.title, os.date("%a %I:%M %p", soonest.remindAt):gsub(" 0", " "), "clock", soonest.remindAt)
         end
     end
+    if best then return best.title, best.when, best.icon, best.where end
+    if allDayEvent then return allDayEvent.title, allDayEvent.when, "calendar", allDayEvent.where end
 end
 
 --- The line under the clock: the weather, what is next, the tasks due. Returns its height.
@@ -1869,10 +1920,16 @@ function View:todayStrip(c, top, right)
             end })
     end
     local todo = self:plugin("todo")
-    local okn, title, when = pcall(nextUp, self.apps)
+    local okn, title, when, icon, where = pcall(nextUp, self.apps)
     if okn and title then
-        table.insert(parts, { icon = "clock", text = title .. "  \u{00B7}  " .. when, grow = true,
-            fn = todo and function() self.away = true todo:show({ kind = "today" }) end })
+        table.insert(parts, { icon = icon or "clock", text = title .. "  \u{00B7}  " .. when, grow = true,
+            fn = todo and function()
+                self.away = true
+                -- A To Do calendar event opens the calendar on its day; anything
+                -- else To Do's Today. (An older To Do has no showCalendar.)
+                if where and todo.showCalendar then todo:showCalendar(where.day)
+                else todo:show({ kind = "today" }) end
+            end })
     end
     if todo and todo.store then
         local ok, list = pcall(tasksToday, todo)
@@ -1947,14 +2004,16 @@ function View.drawSleep(apps, c)
         c:text(c.W - 28, y + 39, when, 12, { align = "end", color = C.GREY })
         y = y + 60
     end
-    -- Today's tasks (To Do).
+    -- Today's tasks and calendar events (To Do).
     local todo = apps:plugin("todo")
     if todo and todo.store then
         local ok, list = pcall(tasksToday, todo)
         list = ok and list or {}
-        c:text(28, y + 14, T(_("TODAY  %1"), #list), 10, { bold = true, color = C.GREY })
+        local okE, events = pcall(eventsToday, todo)
+        events = okE and events or {}
+        c:text(28, y + 14, T(_("TODAY  %1"), #list + #events), 10, { bold = true, color = C.GREY })
         y = y + 24
-        if #list == 0 then
+        if #list + #events == 0 then
             c:text(28, y + 22, _("Nothing due today."), 13, { color = C.GREY })
         end
         for __, t in ipairs(list) do
@@ -1969,22 +2028,48 @@ function View.drawSleep(apps, c)
             c:hline(58, y + 34, c.W - 86)
             y = y + 36
         end
+        for __, e in ipairs(events) do
+            if y + 36 > c.H - 48 then
+                c:text(28, y + 22, _("… and more"), 12, { color = C.GREY })
+                break
+            end
+            c:icon("calendar-days", 28, y + 7, 20)
+            local when = e.minute and clockText(e.minute) or _("All day")
+            c:text(58, y + 23, e.title, 13, { maxw = c.W - 86 - c:width(when, 11) - 16 })
+            c:text(c.W - 28, y + 23, when, 11, { bold = true, align = "end" })
+            c:hline(58, y + 34, c.W - 86)
+            y = y + 36
+        end
     end
 end
 
 --- The parts the Apps widgets sleep screen can show, in their order.
-View.WIDGETS = { "clock", "forecast", "book", "todo", "ha", "notifications" }
-View.WIDGET_NAMES = { clock = _("Clock and weather"), forecast = _("Weather forecast"), book = _("Current book"), todo = _("To Do today"), ha = _("Home Assistant alerts"),
-    notifications = _("Latest notifications") }
+View.WIDGETS = { "clock", "forecast", "book", "todo", "events", "ha", "notifications" }
+View.WIDGET_NAMES = { clock = _("Clock and weather"), forecast = _("Weather forecast"), book = _("Current book"), todo = _("To Do today"),
+    events = _("Calendar events today"), ha = _("Home Assistant alerts"), notifications = _("Latest notifications") }
 
 --- The parts in their order: as set (sleep_widgets_order), the others after in the usual order.
+-- A part added since the order was set goes after the one it follows there (To Do's
+-- calendar events after To Do's today), not at the end.
 function View.widgetOrder(s)
     local out, seen = {}, {}
     for __, k in ipairs(type(s.sleep_widgets_order) == "table" and s.sleep_widgets_order or {}) do
         if View.WIDGET_NAMES[k] and not seen[k] then table.insert(out, k) seen[k] = true end
     end
+    local index = {}
+    for i, k in ipairs(View.WIDGETS) do index[k] = i end
     for __, k in ipairs(View.WIDGETS) do
-        if not seen[k] then table.insert(out, k) end
+        if not seen[k] then
+            -- Right after the part it follows (the nearest one before it in the usual
+            -- order) wherever that one is in the saved order.
+            local at, closest = 1, 0
+            for j, outk in ipairs(out) do
+                local i = index[outk]
+                if i and i < index[k] and i > closest then closest, at = i, j + 1 end
+            end
+            table.insert(out, at, k)
+            seen[k] = true
+        end
     end
     return out
 end
@@ -2023,7 +2108,8 @@ end
 
 --- The Apps widgets sleep screen: the parts picked (Settings > Sleep screen >
 -- Widgets), each a card: the clock, the book being read (cover and how far),
--- To Do's today, Home Assistant's alerts, the latest notifications. Drawn
+-- To Do's today, To Do's calendar events, Home Assistant's alerts, the latest
+-- notifications. Drawn
 -- only from what is already in memory: nothing read from the disk or the
 -- network as the Kindle goes to sleep; each card says how old its data is.
 function View.drawWidgets(apps, c)
@@ -2131,16 +2217,39 @@ function View.drawWidgets(apps, c)
             local n = math.min(#list, 6)
             card(46 + math.max(1, n) * 32, function(yy)
                 heading(yy, T(_("TODAY  %1"), #list), agoText(try(function() return todo.store:syncedAt() end)))
-                if #list == 0 then c:text(46, yy + 60, _("Nothing due today."), 13, { color = C.GREY }) end
+                if n == 0 then c:text(46, yy + 60, _("Nothing due today."), 13, { color = C.GREY }) end
+                local ty = yy + 38
                 for i = 1, n do
-                    local t, ty = list[i], yy + 38 + (i - 1) * 32
+                    local t = list[i]
                     c:box(46, ty + 4, 18, 18, { r = 4, border = C.BLACK, bw = 1.3 })
                     local due = overdueText(t)
                     c:text(76, ty + 19, t.title, 13, { maxw = c.W - 122 - (due and c:width(due, 11) + 16 or 0) })
                     if due then c:text(c.W - 46, ty + 19, due, 11, { bold = true, align = "end" }) end
+                    ty = ty + 32
                 end
             end)
         end
+    end
+    -- Today's calendar events (CalDAV) in a card of their own, after To Do's own
+    -- (a day's appointments, with a time first). No card when there are none.
+    parts.events = function()
+        local todo = apps:plugin("todo")
+        if not (todo and todo.store) then return end
+        local events = eventsToday(todo)
+        if #events == 0 then return end
+        local n = math.min(#events, 6)
+        card(46 + n * 32, function(yy)
+            heading(yy, T(_("EVENTS  %1"), #events), agoText(try(function() return todo.store:syncedAt() end)))
+            local ty = yy + 38
+            for i = 1, n do
+                local e = events[i]
+                c:icon("calendar-days", 46, ty + 3, 18)
+                local when = e.minute and clockText(e.minute) or _("All day")
+                c:text(76, ty + 19, e.title, 13, { maxw = c.W - 122 - c:width(when, 11) - 16 })
+                c:text(c.W - 46, ty + 19, when, 11, { bold = true, align = "end" })
+                ty = ty + 32
+            end
+        end)
     end
     parts.ha = function()
         local ha = apps:plugin("homeassistant")
